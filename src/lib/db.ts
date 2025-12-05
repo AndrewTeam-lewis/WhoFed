@@ -1,22 +1,20 @@
 import Dexie, { type Table } from 'dexie';
 
-export interface User {
-    id?: number;
+export interface Profile {
+    id: string; // UUID from auth.users
     username: string;
-    email: string;
-    passwordHash: string;
-    firstName: string;
-    phone: string;
-    synced: number; // 0 = not synced, 1 = synced
+    first_name: string;
+    last_name?: string;
+    phone?: string;
 }
 
 export class AppDatabase extends Dexie {
-    users!: Table<User>;
+    profiles!: Table<Profile>;
 
     constructor() {
         super('OfflineShellDB');
-        this.version(1).stores({
-            users: '++id, username, &email, firstName, phone, synced'
+        this.version(2).stores({
+            profiles: 'id, username'
         });
     }
 }

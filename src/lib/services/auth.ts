@@ -1,59 +1,168 @@
-import { db, type User } from '$lib/db';
-import bcrypt from 'bcryptjs';
+import { supabase } from '$lib/supabase';
+import type { User, Session } from '@supabase/supabase-js';
 
 export interface RegisterData {
-    username: string;
     email: string;
     password: string;
+    username: string;
     firstName: string;
-    phone: string;
+    lastName?: string;
+    phone?: string;
+}
+
+export interface Profile {
+    id: string;
+    username: string;
+    first_name: string;
+    last_name?: string;
+    phone?: string;
 }
 
 export const authService = {
-    async register(data: RegisterData) {
-        const existingUser = await db.users
-            .where('username').equals(data.username)
-            .or('email').equals(data.email)
-            .first();
+    // Check if username is available
+    async checkUsernameAvailable(username: string): Promise<boolean> {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('username', username)
+            .single();
 
-        if (existingUser) {
-            throw new Error('Username or Email already exists');
-        }
-
-        const passwordHash = await bcrypt.hash(data.password, 10);
-
-        const userId = await db.users.add({
-            username: data.username,
-            email: data.email,
-            passwordHash,
-            firstName: data.firstName,
-            phone: data.phone,
-            synced: 0
-        });
-
-        return userId;
+        return !data; // Available if no data found
     },
 
+    // Register with email/password
+    async register(data: RegisterData) {
+        // Check username availability first
+        const available = await this.checkUsernameAvailable(data.username);
+        if (!available) {
+            throw new Error('Username already taken');
+        }
+
+        // Sign up with Supabase Auth
+        const { data: authData, error } = await supabase.auth.signUp({
+            email: data.email,
+            password: data.password,
+            options: {
+                data: {
+                    username: data.username,
+                    firstName: data.firstName,
+                    lastName: data.lastName || null,
+                    phone: data.phone || null
+                }
+            }
+        });
+
+        if (error) throw error;
+        return authData;
+    },
+
+    // Login with email OR username
     async login(usernameOrEmail: string, password: string) {
-        const user = await db.users
-            .where('username').equals(usernameOrEmail)
-            .or('email').equals(usernameOrEmail)
-            .first();
+        let email = usernameOrEmail;
 
-        if (!user) {
-            throw new Error('Invalid credentials');
+        // If not an email, look up email by username
+        if (!usernameOrEmail.includes('@')) {
+            const { data: profiles, error: profileError } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('username', usernameOrEmail)
+                .single();
+
+            if (profileError || !profiles?.email) {
+                throw new Error('Invalid credentials');
+            }
+
+            email = profiles.email;
         }
 
-        const isValid = await bcrypt.compare(password, user.passwordHash);
-        if (!isValid) {
-            throw new Error('Invalid credentials');
-        }
+        // Login with email and password
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
 
+        if (error) throw error;
+        return data;
+    },
+
+    // Sign in with Google OAuth
+    async signInWithGoogle() {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback`
+            }
+        });
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Create profile for OAuth users
+    async createProfile(userId: string, profileData: Omit<Profile, 'id'>) {
+        const { data, error } = await supabase
+            .from('profiles')
+            .insert({
+                id: userId,
+                username: profileData.username,
+                first_name: profileData.first_name,
+                last_name: profileData.last_name,
+                phone: profileData.phone
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Get user profile
+    async getProfile(userId: string): Promise<Profile | null> {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (error) return null;
+        return data;
+    },
+
+    // Update profile
+    async updateProfile(userId: string, updates: Partial<Omit<Profile, 'id'>>) {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Get current session
+    async getSession(): Promise<Session | null> {
+        const { data: { session } } = await supabase.auth.getSession();
+        return session;
+    },
+
+    // Get current user
+    async getCurrentUser(): Promise<User | null> {
+        const { data: { user } } = await supabase.auth.getUser();
         return user;
     },
 
-    async updatePassword(userId: number, newPassword: string) {
-        const passwordHash = await bcrypt.hash(newPassword, 10);
-        await db.users.update(userId, { passwordHash, synced: 0 });
+    // Logout
+    async logout() {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+    },
+
+    // Listen to auth state changes
+    onAuthStateChange(callback: (session: Session | null) => void) {
+        return supabase.auth.onAuthStateChange((_event, session) => {
+            callback(session);
+        });
     }
 };
