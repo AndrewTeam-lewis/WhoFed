@@ -1,3 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--color-indigo-600);
+  --font-family-sans: "Inter", system-ui, sans-serif;
+}
+
+body {
+    background-color: var(--color-gray-50);
+}

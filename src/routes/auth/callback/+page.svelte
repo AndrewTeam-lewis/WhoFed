@@ -24,11 +24,11 @@
         }
       } else {
         // No session, redirect to login
-        goto('/login');
+        goto('/auth/login');
       }
     } catch (error) {
       console.error('OAuth callback error:', error);
-      goto('/login');
+      goto('/auth/login');
     }
   });
 </script>

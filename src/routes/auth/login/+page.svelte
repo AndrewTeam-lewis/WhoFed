@@ -97,6 +97,6 @@
   </div>
 
   <p class="mt-4 text-center text-sm text-gray-600">
-    Don't have an account? <a href="/register" class="text-indigo-600 hover:text-indigo-800 font-medium">Register</a>
+    Don't have an account? <a href="/auth/register" class="text-indigo-600 hover:text-indigo-800 font-medium">Register</a>
   </p>
 </div>

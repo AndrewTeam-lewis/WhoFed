@@ -22,21 +22,28 @@
     envCheck.urlPresent = !!import.meta.env.VITE_SUPABASE_URL;
 
     // Get local Dexie users
-    dbUsers = await db.users.toArray();
+    try {
+      dbUsers = await db.profiles.toArray();
+    } catch (e: any) {
+      error = `Dexie error: ${e.message}`;
+    }
 
     // Try to get Supabase users
     try {
       const { data, error: supaError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*');
       
       if (supaError) {
-        error = `Supabase error: ${supaError.message}`;
+        // Only show error if we expected to connect, but for offline shell it might be expected to fail if not config'd
+        console.warn('Supabase error:', supaError);
+        // error = `Supabase error: ${supaError.message}`; 
       } else {
         supabaseUsers = data || [];
       }
     } catch (e: any) {
-      error = `Connection error: ${e.message}`;
+      // error = `Connection error: ${e.message}`;
+      console.warn('Supabase connection error:', e);
     }
   });
 
@@ -47,7 +54,7 @@
       syncLog += 'Sync completed! Check console for details.\n';
       
       // Refresh data
-      const { data } = await supabase.from('users').select('*');
+      const { data } = await supabase.from('profiles').select('*');
       supabaseUsers = data || [];
     } catch (e: any) {
       syncLog += `Sync failed: ${e.message}\n`;
@@ -72,9 +79,9 @@
   {/if}
 
   <div class="bg-gray-50 border border-gray-200 p-4 rounded">
-    <h2 class="text-xl font-semibold mb-2">Local Dexie Users ({dbUsers.length})</h2>
+    <h2 class="text-xl font-semibold mb-2">Local Dexie Profiles ({dbUsers.length})</h2>
     {#if dbUsers.length === 0}
-      <p class="text-gray-500">No users in local database</p>
+      <p class="text-gray-500">No profiles in local database</p>
     {:else}
       <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
@@ -82,8 +89,7 @@
             <tr class="bg-gray-200">
               <th class="p-2 text-left">ID</th>
               <th class="p-2 text-left">Username</th>
-              <th class="p-2 text-left">Email</th>
-              <th class="p-2 text-left">Synced</th>
+              <th class="p-2 text-left">First Name</th>
             </tr>
           </thead>
           <tbody>
@@ -91,8 +97,7 @@
               <tr class="border-t">
                 <td class="p-2">{user.id}</td>
                 <td class="p-2">{user.username}</td>
-                <td class="p-2">{user.email}</td>
-                <td class="p-2">{user.synced === 1 ? '✅' : '⚠️'}</td>
+                <td class="p-2">{user.first_name}</td>
               </tr>
             {/each}
           </tbody>
@@ -102,9 +107,9 @@
   </div>
 
   <div class="bg-green-50 border border-green-200 p-4 rounded">
-    <h2 class="text-xl font-semibold mb-2">Supabase Users ({supabaseUsers.length})</h2>
+    <h2 class="text-xl font-semibold mb-2">Supabase Profiles ({supabaseUsers.length})</h2>
     {#if supabaseUsers.length === 0}
-      <p class="text-gray-500">No users in Supabase (or connection failed)</p>
+      <p class="text-gray-500">No profiles in Supabase (or connection failed)</p>
     {:else}
       <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
@@ -112,7 +117,7 @@
             <tr class="bg-green-200">
               <th class="p-2 text-left">ID</th>
               <th class="p-2 text-left">Username</th>
-              <th class="p-2 text-left">Email</th>
+              <th class="p-2 text-left">First Name</th>
             </tr>
           </thead>
           <tbody>
@@ -120,7 +125,7 @@
               <tr class="border-t">
                 <td class="p-2">{user.id}</td>
                 <td class="p-2">{user.username}</td>
-                <td class="p-2">{user.email}</td>
+                <td class="p-2">{user.first_name}</td>
               </tr>
             {/each}
           </tbody>

@@ -56,14 +56,14 @@
   <nav class="bg-white shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16 items-center">
-        <a href="/" class="text-xl font-bold text-indigo-600">Na Régua</a>
+        <a href="/" class="text-xl font-bold text-indigo-600">WhoFed</a>
         
         <div class="flex gap-4">
           {#if $currentUser}
             <a href="/profile" class="text-gray-700 hover:text-indigo-600">Profile</a>
           {:else}
-            <a href="/login" class="text-gray-700 hover:text-indigo-600">Login</a>
-            <a href="/register" class="text-indigo-600 hover:text-indigo-800 font-medium">Register</a>
+            <a href="/auth/login" class="text-gray-700 hover:text-indigo-600">Login</a>
+            <a href="/auth/register" class="text-indigo-600 hover:text-indigo-800 font-medium">Register</a>
           {/if}
         </div>
       </div>

@@ -201,6 +201,6 @@
   </div>
 
   <p class="mt-4 text-center text-sm text-gray-600">
-    Already have an account? <a href="/login" class="text-indigo-600 hover:text-indigo-800 font-medium">Login</a>
+    Already have an account? <a href="/auth/login" class="text-indigo-600 hover:text-indigo-800 font-medium">Login</a>
   </p>
 </div>
