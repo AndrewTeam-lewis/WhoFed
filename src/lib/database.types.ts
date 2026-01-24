@@ -17,6 +17,7 @@ export interface Database {
           user_id: string
           action_type: string
           performed_at: string
+          task_id: string | null
         }
         Insert: {
           id?: string
@@ -25,6 +26,7 @@ export interface Database {
           user_id: string
           action_type: string
           performed_at?: string
+          task_id?: string | null
         }
         Update: {
           id?: string
@@ -33,6 +35,7 @@ export interface Database {
           user_id?: string
           action_type?: string
           performed_at?: string
+          task_id?: string | null
         }
         Relationships: [
           {
@@ -51,6 +54,67 @@ export interface Database {
             foreignKeyName: "activity_log_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      daily_tasks: {
+        Row: {
+          id: string
+          pet_id: string
+          schedule_id: string
+          household_id: string
+          user_id: string | null
+          label: string
+          task_type: string
+          status: string
+          due_at: string
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          pet_id: string
+          schedule_id: string
+          household_id: string
+          user_id?: string | null
+          label: string
+          task_type: string
+          status?: string
+          due_at: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          pet_id?: string
+          schedule_id?: string
+          household_id?: string
+          user_id?: string | null
+          label?: string
+          task_type?: string
+          status?: string
+          due_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_tasks_pet_id_fkey"
+            columns: ["pet_id"]
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_tasks_schedule_id_fkey"
+            columns: ["schedule_id"]
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_tasks_household_id_fkey"
+            columns: ["household_id"]
+            referencedRelation: "households"
             referencedColumns: ["id"]
           }
         ]

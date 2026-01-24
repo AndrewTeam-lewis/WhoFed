@@ -2,139 +2,62 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
+  import { generateTasksForDate } from '$lib/taskUtils';
   import type { Database } from '$lib/database.types';
 
   type Pet = Database['public']['Tables']['pets']['Row'];
-  type ActivityLog = Database['public']['Tables']['activity_log']['Row'] & {
-    profiles: { first_name: string | null } | null
+  type DailyTask = Database['public']['Tables']['daily_tasks']['Row'] & {
+      schedule_id?: string // Optional just for type safety if needed, but row has it
   };
-  type Schedule = Database['public']['Tables']['schedules']['Row'];
+  type ActivityLog = Database['public']['Tables']['activity_log']['Row'] & {
+    profiles: { first_name: string | null } | null;
+    schedules: { label: string | null, task_type: string } | null;
+  };
   
   let pets: Pet[] = [];
-  let schedules: Schedule[] = [];
+  let dailyTasks: DailyTask[] = [];
   let recentActivity: ActivityLog[] = [];
   let loading = true;
   let currentUser: any = null;
 
-  // Derived state to track today's completion
-  type TaskItem = {
-      scheduleId: string;
-      label: string;
-      subLabel: string;
-      type: 'feeding' | 'medication';
-      isDone: boolean;
-      time?: string;
-      dueLabel?: string; // e.g. "Due in 2h"
-      dueDiff?: number; // ms diff from now
-      isOverdue?: boolean;
-  };
+  // Helper to split tasks by pet
+  function getTasksForPet(petId: string, currentTasks: DailyTask[]): DailyTask[] {
+      return currentTasks
+          .filter(t => t.pet_id === petId)
+          .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+  }
 
-  function getTasksForPet(petId: string): TaskItem[] {
-      const petSchedules = schedules.filter(s => s.pet_id === petId && s.is_enabled);
-      const tasks: TaskItem[] = [];
+  // Visual Helper
+  function getTaskVisuals(task: DailyTask) {
       const now = new Date();
-      const todayDateString = now.toISOString().split('T')[0];
-      const todayDayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon
-      const todayDayOfMonth = now.getDate(); // 1-31
+      const due = new Date(task.due_at);
+      const isDone = task.status === 'completed';
+      
+      const dueDiff = due.getTime() - now.getTime();
+      const hoursDiff = Math.ceil(dueDiff / (1000 * 60 * 60));
+      const minsDiff = Math.ceil(dueDiff / (1000 * 60));
 
-      petSchedules.forEach(schedule => {
-          // Get logs for this schedule today
-          const todayStr = now.toDateString();
-          const logsToday = recentActivity.filter(log => 
-              log.schedule_id === schedule.id && 
-              new Date(log.performed_at).toDateString() === todayStr
-          );
-          const completionCount = logsToday.length;
+      const isUrgent = !isDone && (dueDiff <= 7200000); // 2 hours
+      const isOverdue = !isDone && dueDiff < 0;
 
-          // Parse target_times
-          if (schedule.target_times && schedule.target_times.length > 0) {
-              const activeTimes: string[] = [];
+      const timeFormatted = due.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      
+      let dueLabel = 'Due';
+      if (isDone) {
+          dueLabel = 'Done';
+      } else if (isOverdue) {
+           const absHours = Math.abs(Math.floor(dueDiff / (1000 * 60 * 60)));
+           if (absHours === 0) dueLabel = `Due now`; 
+           else dueLabel = `${absHours}h overdue`;
+      } else if (dueDiff > 0) {
+           if (hoursDiff <= 1) {
+               dueLabel = `Due in ${minsDiff}m`;
+           } else {
+               dueLabel = `Due in ${hoursDiff}h`;
+           }
+      }
 
-              schedule.target_times.forEach(encodedTime => {
-                  const parts = encodedTime.split(':');
-                  
-                  if (parts.length >= 3) {
-                      // Encoded format
-                      const prefix = parts[0];
-                      
-                      if (prefix === 'W') {
-                          // Weekly: W:Day:HH:MM
-                          const day = parseInt(parts[1]);
-                          const time = `${parts[2]}:${parts[3]}`;
-                          if (day === todayDayOfWeek) activeTimes.push(time);
-                      } else if (prefix === 'M') {
-                          // Monthly: M:Day:HH:MM
-                          const day = parseInt(parts[1]);
-                          const time = `${parts[2]}:${parts[3]}`;
-                          if (day === todayDayOfMonth) activeTimes.push(time);
-                      } else if (prefix === 'C') {
-                          // Custom: C:YYYY-MM-DD:HH:MM
-                          // Re-join date parts if needed or just slice
-                          // C:2025-01-01:08:00 -> parts[1] is 2025-01-01 maybe? Split depends on separators.
-                          // Date string has hyphens, split by colon safe.
-                          const date = parts[1];
-                          const time = `${parts[2]}:${parts[3]}`;
-                          if (date === todayDateString) activeTimes.push(time);
-                      }
-                  } else {
-                      // Daily: HH:MM
-                      activeTimes.push(encodedTime);
-                  }
-              });
-
-              // Create a task for each ACTIVE time slot
-              activeTimes.sort().forEach((time, index) => {
-                  // If logs >= index + 1, this slot is done
-                  const isDone = completionCount > index;
-                  
-                  // Format time (HH:MM to 12h)
-                  const [h, m] = time.split(':');
-                  const taskDate = new Date();
-                  taskDate.setHours(parseInt(h), parseInt(m), 0, 0);
-                  
-                  const dueDiff = taskDate.getTime() - now.getTime(); // + = future, - = past
-                  const hoursDiff = Math.ceil(dueDiff / (1000 * 60 * 60)); 
-                  const minsDiff = Math.ceil(dueDiff / (1000 * 60));
-
-                  const timeFormatted = taskDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-                  let dueLabel = 'Due';
-                  if (isDone) {
-                      dueLabel = 'Done';
-                  } else if (dueDiff > 0) {
-                       if (hoursDiff <= 1) {
-                           dueLabel = `Due in ${minsDiff}m`;
-                       } else {
-                           dueLabel = `Due in ${hoursDiff}h`;
-                       }
-                  } else {
-                       // Overdue
-                       const absHours = Math.abs(Math.floor(dueDiff / (1000 * 60 * 60)));
-                       if (absHours === 0) dueLabel = `Due now`; 
-                       else dueLabel = `${absHours}h overdue`;
-                  }
-
-                  tasks.push({
-                      scheduleId: schedule.id,
-                      label: schedule.label || (schedule.task_type === 'feeding' ? 'Feeding' : 'Medication'),
-                      subLabel: timeFormatted,
-                      type: schedule.task_type as any,
-                      isDone: isDone,
-                      time: time,
-                      dueLabel: dueLabel,
-                      dueDiff: dueDiff,
-                      isOverdue: !isDone && dueDiff < 0
-                  });
-              });
-          }
-      });
-
-      // Sort tasks by time
-      return tasks.sort((a, b) => {
-          if (!a.time) return 1;
-          if (!b.time) return -1;
-          return a.time.localeCompare(b.time);
-      });
+      return { isUrgent, isOverdue, timeFormatted, dueLabel };
   }
 
   onMount(async () => {
@@ -166,33 +89,58 @@
         const householdId = members[0].household_id;
 
         // 2. Get pets
-        const { data: petData, error: petError } = await supabase
+        const { data: petData } = await supabase
           .from('pets')
           .select('*')
           .eq('household_id', householdId)
           .order('name');
         
-        if (petError) throw petError;
         pets = petData || [];
 
-        // 3. Get Schedules
-        const { data: schedData, error: schedError } = await supabase
-            .from('schedules')
-            .select('*')
-            .in('pet_id', pets.map(p => p.id));
-        
-        if (schedError) throw schedError;
-        schedules = schedData || [];
+        // 3. LAZY GENERATION: Check if we have tasks for today
+        const startOfDay = new Date();
+        startOfDay.setHours(0,0,0,0);
+        const startOfDayStr = startOfDay.toISOString();
 
-        // 4. Get recent activity (last 24h for completion check, + history)
-        const { data: logData, error: logError } = await supabase
+        const { data: existingTasks } = await supabase
+            .from('daily_tasks')
+            .select('*')
+            .eq('household_id', householdId)
+            .gte('due_at', startOfDayStr); // Simple check for "today and future"
+
+        if (!existingTasks || existingTasks.length === 0) {
+            // GENERATE TASKS
+            const { data: activeSchedules } = await supabase
+                .from('schedules')
+                .select('*')
+                .eq('is_enabled', true)
+                .in('pet_id', pets.map(p => p.id));
+            
+            if (activeSchedules && activeSchedules.length > 0) {
+                const newTasks = generateTasksForDate(activeSchedules, new Date(), householdId);
+                
+                if (newTasks.length > 0) {
+                    const { data: insertedTasks, error: insertError } = await supabase
+                        .from('daily_tasks')
+                        .insert(newTasks)
+                        .select();
+                    
+                    if (insertError) console.error("Error generating tasks", insertError);
+                    dailyTasks = insertedTasks || [];
+                }
+            }
+        } else {
+            dailyTasks = existingTasks;
+        }
+
+        // 4. Get recent activity (purely for history log now)
+        const { data: logData } = await supabase
           .from('activity_log')
-          .select('*, profiles(first_name)')
+          .select('*, profiles(first_name), schedules(label, task_type)')
           .in('pet_id', pets.map(p => p.id))
           .order('performed_at', { ascending: false })
           .limit(50);
-
-        if (logError) throw logError;
+        
         recentActivity = logData || [];
       }
 
@@ -203,29 +151,90 @@
     }
   }
 
-  async function handleLogAction(petId: string, task: TaskItem) {
-    // If it's already done, maybe we shouldn't allow clicking? Or maybe undo?
-    // User didn't ask for undo, so let's allow "complete" action.
-    if (task.isDone) return; 
-
-    try {
-      const { error } = await supabase
+  async function fetchLogs() {
+      if (pets.length === 0) return;
+      const { data: logData } = await supabase
         .from('activity_log')
-        .insert({
-          pet_id: petId,
-          schedule_id: task.scheduleId,
-          user_id: currentUser.id,
-          action_type: task.type,
-          performed_at: new Date().toISOString()
-        });
+        .select('*, profiles(first_name), schedules(label, task_type)')
+        .in('pet_id', pets.map(p => p.id))
+        .order('performed_at', { ascending: false })
+        .limit(50);
+      recentActivity = logData || [];
+  }
 
-      if (error) throw error;
+  async function handleLogAction(task: DailyTask) {
+    try {
+      const nowFn = new Date();
+      const nowISO = nowFn.toISOString();
 
-      // Refresh activity logic locally or fetch
-      await fetchDashboardData();
+      if (task.status === 'completed') {
+           // UNDO -> LOG "UN-FED" / "UN-GAVE"
+           const undoActionType = task.task_type === 'feeding' ? 'unfed' : 'unmedicated';
+
+           await supabase
+            .from('activity_log')
+            .insert({
+              pet_id: task.pet_id,
+              schedule_id: task.schedule_id, 
+              user_id: currentUser.id,
+              action_type: undoActionType,
+              performed_at: nowISO,
+              task_id: task.id 
+            });
+
+           // Reset the task status
+           const { error } = await supabase
+            .from('daily_tasks')
+            .update({ status: 'pending', completed_at: null, user_id: null })
+            .eq('id', task.id);
+           
+           if (error) throw error;
+           
+           // Optimistic Update for Task Button
+           dailyTasks = dailyTasks.map(t => 
+             t.id === task.id ? { ...t, status: 'pending', completed_at: null } : t
+           );
+
+           // RE-FETCH LOGS
+           await fetchLogs();
+           
+      } else {
+           // COMPLETE
+           // 1. Update task
+           const { error } = await supabase
+            .from('daily_tasks')
+            .update({ 
+                status: 'completed', 
+                completed_at: nowISO,
+                user_id: currentUser.id
+            })
+            .eq('id', task.id);
+
+           if (error) throw error;
+
+           // 2. Insert log with TASK ID
+           await supabase
+            .from('activity_log')
+            .insert({
+              pet_id: task.pet_id,
+              schedule_id: task.schedule_id, 
+              user_id: currentUser.id,
+              action_type: task.task_type,
+              performed_at: nowISO,
+              task_id: task.id 
+            });
+
+            // Optimistic Update for Task List
+           dailyTasks = dailyTasks.map(t => 
+             t.id === task.id ? { ...t, status: 'completed', completed_at: nowISO } : t
+           );
+
+            // Fetch latest logs
+            await fetchLogs();
+      }
     } catch (error) {
-      console.error('Error logging action:', error);
-      alert('Failed to log action');
+      console.error('Error updating task:', error);
+      alert('Failed to update task');
     }
   }
 
@@ -244,16 +253,13 @@
     if (diffHours < 24) return `${diffHours}h ago`;
     return date.toLocaleDateString();
   }
+  
   let activeDropdownId: string | null = null;
-  let petToDelete: string | null = null; // ID of pet pending deletion
+  let petToDelete: string | null = null; 
 
   function toggleDropdown(id: string, event: MouseEvent) {
     event.stopPropagation();
-    if (activeDropdownId === id) {
-      activeDropdownId = null;
-    } else {
-      activeDropdownId = id;
-    }
+    activeDropdownId = activeDropdownId === id ? null : id;
   }
 
   function closeDropdown() {
@@ -262,20 +268,14 @@
 
   function promptDelete(petId: string) {
       petToDelete = petId;
-      activeDropdownId = null; // Close dropdown
+      activeDropdownId = null; 
   }
 
   async function confirmDelete() {
       if (!petToDelete) return;
-      
       try {
-          const { error } = await supabase
-              .from('pets')
-              .delete()
-              .eq('id', petToDelete);
-          
+          const { error } = await supabase.from('pets').delete().eq('id', petToDelete);
           if (error) throw error;
-          
           pets = pets.filter(p => p.id !== petToDelete);
           petToDelete = null;
       } catch(e) {
@@ -344,6 +344,7 @@
       <p class="text-sm text-gray-500">Keep them happy & healthy</p>
     </div>
     <a href="/settings" class="p-2 text-gray-400 hover:text-gray-600" aria-label="Settings">
+      <!-- Settings Icon -->
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -367,11 +368,12 @@
       <!-- Pet Cards -->
       <div class="space-y-4">
         {#each pets as pet}
+          {@const tasks = getTasksForPet(pet.id, dailyTasks)}
           <div class="bg-white rounded-[32px] p-5 shadow-sm relative visible overflow-visible">
              <!-- Top Row: Icon, Name, status -->
              <div class="flex items-start justify-between mb-4 relative">
                <div class="flex items-center space-x-4">
-                 <div class="bg-primary-50 p-3 rounded-2xl">
+                 <div class="bg-primary-5 p-3 rounded-2xl">
                    <!-- Placeholder icon based on species -->
                    <span class="text-3xl">
                     {#if pet.species.toLowerCase() === 'cat'}🐱
@@ -400,12 +402,16 @@
                  {#if activeDropdownId === pet.id}
                     <div 
                         class="absolute right-0 top-8 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in"
+                        role="menu"
+                        tabindex="-1"
                         on:click|stopPropagation
+                        on:keydown|stopPropagation
                     >
                         <a 
                             href="/pets/{pet.id}/settings" 
                             class="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
                             on:click={() => activeDropdownId = null}
+                            role="menuitem"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -415,6 +421,7 @@
                         <button 
                             class="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 flex items-center border-t border-gray-50"
                             on:click={() => promptDelete(pet.id)}
+                            role="menuitem"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -426,43 +433,65 @@
                </div>
              </div>
 
-             <!-- Action Buttons (Dynamic) -->
-             <div class="grid grid-cols-1 gap-3 mt-6">
-                {#each getTasksForPet(pet.id) as task}
-                   <button 
-                    on:click={() => handleLogAction(pet.id, task)}
-                    disabled={task.isDone}
-                    class="w-full py-4 px-5 rounded-2xl font-bold flex items-center justify-between text-left transition-all transform active:scale-[0.98]
-                    {task.isDone 
-                        ? 'bg-brand-sage/10 text-brand-sage border-2 border-brand-sage/20 cursor-default opacity-80' 
-                        : 'bg-brand-sage text-white shadow-lg shadow-brand-sage/20 hover:opacity-95'}"
-                   >
-                     <div class="flex items-center space-x-3">
-                         <span class="text-xl">{task.type === 'feeding' ? '🥣' : '💊'}</span>
-                         <div>
-                             <div class="text-sm leading-tight">{task.label}</div>
-                             <div class="text-[10px] uppercase tracking-wide opacity-80">{task.subLabel}</div>
-                         </div>
-                     </div>
-                     
-                     <!-- Checkbox or Time -->
-                     {#if task.isDone}
-                        <div class="bg-brand-sage p-1 rounded-full text-white">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                            </svg>
+             <!-- Action Buttons (Powered by daily_tasks) -->
+             <div class="mt-4 space-y-2">
+                {#each tasks as task}
+                    {@const visuals = getTaskVisuals(task)}
+                    {@const isDone = task.status === 'completed'}
+                    
+                     <button 
+                        on:click={() => handleLogAction(task)}
+                        disabled={false}
+                        class="w-full relative overflow-hidden transition-all duration-300 transform font-bold text-left group flex items-center justify-between p-3.5 rounded-2xl
+                        {isDone 
+                            ? 'bg-transparent text-gray-300 border border-dashed border-gray-200 scale-[0.98]' 
+                            : visuals.isUrgent
+                                ? 'bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage z-10'
+                                : 'bg-brand-sage/10 text-brand-sage border border-brand-sage/30 hover:bg-brand-sage/20'}"
+                    >
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <!-- Icon (Hide if done for slimness) -->
+                            {#if !isDone}
+                                <span class="text-xl filter {visuals.isUrgent ? 'drop-shadow-sm' : 'grayscale opacity-60'}">
+                                    {task.task_type === 'feeding' ? '🥣' : '💊'}
+                                </span>
+                            {/if}
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center text-sm leading-tight truncate {isDone ? 'text-xs line-through decoration-gray-300' : ''}">
+                                    <span>{task.label}</span>
+                                    {#if isDone}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 ml-2 text-brand-sage/50" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    {/if}
+                                </div>
+                                {#if !isDone}
+                                    <div class="text-[10px] uppercase tracking-wide opacity-80">{visuals.timeFormatted}</div>
+                                {/if}
+                            </div>
                         </div>
-                     {:else}
-                        <div class="text-xs font-bold bg-white/20 px-2 py-1 rounded-lg whitespace-nowrap">
-                            {task.dueLabel}
-                        </div>
-                     {/if}
-                   </button>
-                {:else}
-                    <div class="text-center py-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100 text-gray-400 text-sm">
+
+                        <!-- Status Label -->
+                        {#if !isDone}
+                            {#if visuals.isUrgent}
+                                <div class="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg text-white whitespace-nowrap animate-pulse ml-2">
+                                    {visuals.dueLabel}
+                                </div>
+                            {:else}
+                                <div class="text-[10px] font-medium px-2 py-1 rounded-lg text-brand-sage/80 ml-2">
+                                    {visuals.dueLabel}
+                                </div>
+                            {/if}
+                        {/if}
+                    </button>
+                {/each}
+
+                {#if tasks.length === 0}
+                    <div class="text-center py-3 bg-gray-50 rounded-xl border border-dashed border-gray-100 text-gray-400 text-xs w-full">
                         No schedules set
                     </div>
-                {/each}
+                {/if}
              </div>
           </div>
         {/each}
@@ -485,23 +514,37 @@
              <div class="flex items-start">
                <!-- Timeline dot -->
                <div class="flex flex-col items-center mr-3 mt-1.5">
-                 <div class="w-3 h-3 rounded-full border-2 border-primary-500 bg-white"></div>
+                 <div class="w-3 h-3 rounded-full border-2 
+                    {log.action_type.startsWith('un') ? 'border-red-300 bg-red-50' : 'border-primary-500 bg-white'}">
+                 </div>
                  {#if log !== recentActivity[recentActivity.length - 1]}
                    <div class="w-0.5 h-full bg-gray-200 my-1"></div>
                  {/if}
                </div>
                
                <div>
-                  <div class="flex items-baseline space-x-2">
-                    <span class="font-semibold text-gray-900 text-sm">
+                  <div class="text-sm">
+                    <span class="font-semibold text-gray-900">
                       {log.profiles?.first_name || 'Unknown'}
                     </span>
-                    <span class="text-gray-500 text-sm">
-                      {#if log.action_type === 'feeding'}fed
-                      {:else}gave meds to{/if}
-                    </span>
-                    <span class="font-semibold text-gray-900 text-sm">
-                      {pets.find(p => p.id === log.pet_id)?.name || 'Pet'}
+                    <span class="text-gray-500 mx-1">
+                      {#if log.action_type === 'feeding'}
+                          fed <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
+                          {#if log.schedules?.label}
+                              <span class="lowercase">{log.schedules.label}</span>
+                          {/if}
+                      {:else if log.action_type === 'unfed'}
+                          <span class="text-red-500 font-bold">un-fed</span> <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
+                      {:else if log.action_type === 'unmedicated'}
+                           <span class="text-red-500 font-bold">un-gave medicine</span> to <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
+                      {:else}
+                          gave <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
+                          {#if log.schedules?.label}
+                              {log.schedules.label}
+                          {:else}
+                              meds
+                          {/if}
+                      {/if}
                     </span>
                   </div>
                   <div class="text-xs text-primary-500 font-medium mt-0.5">
@@ -526,3 +569,4 @@
     </svg>
   </a>
 </div>
+

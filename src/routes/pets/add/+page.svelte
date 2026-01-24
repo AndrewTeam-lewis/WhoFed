@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
+  import { generateTasksForDate } from '$lib/taskUtils';
 
   let loading = false;
   let name = 'Pet Name';
@@ -238,11 +239,28 @@
           });
 
           if (schedulesToInsert.length > 0) {
-              const { error: schedError } = await supabase
+              const { data: insertedSchedules, error: schedError } = await supabase
                 .from('schedules')
-                .insert(schedulesToInsert);
+                .insert(schedulesToInsert)
+                .select();
               
               if (schedError) throw schedError;
+
+              // 3. Generate Daily Tasks for Today immediately
+              // This is critical so they appear on the dashboard instantly
+              if (insertedSchedules && insertedSchedules.length > 0) {
+                 // Import helper at top, but for now assuming it's available or I need to add import
+                 // Generating for "today"
+                 const newTasks = generateTasksForDate(insertedSchedules, new Date(), householdId);
+                 
+                 if (newTasks.length > 0) {
+                     const { error: taskError } = await supabase
+                        .from('daily_tasks')
+                        .insert(newTasks);
+                     
+                     if (taskError) console.error("Error generating initial tasks:", taskError);
+                 }
+              }
           }
           
           goto('/');
@@ -296,7 +314,7 @@
         <section>
             <label class="block text-xs font-bold text-typography-secondary uppercase tracking-widest mb-5 ml-1">SELECT SPECIES</label>
             <div class="grid grid-cols-4 gap-4">
-                {#each ['dog', 'cat', 'other', 'bird'] as type}
+                {#each ['dog', 'cat', 'iguana', 'bird'] as type}
                     <button 
                         type="button"
                         class="flex flex-col items-center justify-center p-4 rounded-[32px] border-2 transition-all aspect-square
@@ -306,7 +324,7 @@
                         <span class="text-3xl mb-2 filter {species !== type ? 'grayscale opacity-50' : ''}">
                             {type === 'dog' ? '🐶' : type === 'cat' ? '🐱' : type === 'bird' ? '🐦' : '🦎'}
                         </span>
-                        <span class="text-xs font-bold capitalize {species === type ? 'text-typography-primary' : 'text-typography-secondary'}">{type === 'other' ? 'Iguana' : type}</span>
+                        <span class="text-xs font-bold capitalize {species === type ? 'text-typography-primary' : 'text-typography-secondary'}">{type}</span>
                     </button>
                 {/each}
             </div>
