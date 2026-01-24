@@ -1,10 +1,33 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: var(--color-indigo-600);
+  /* Strict Design System Palette */
+  --color-brand-sage: #10B981;
+  /* Primary Brand Green (Emerald) */
+  --color-brand-light: #A7F3D0;
+  /* Secondary Emerald (Light) */
+  --color-brand-success: #D1E0D1;
+  /* Soft Success */
+
+  --color-neutral-bg: #F8FAFB;
+  /* Main Background */
+  --color-neutral-surface: #F2F5F2;
+  /* Component Background */
+
+  --color-typography-primary: #3C4759;
+  /* Dark Navy */
+  --color-typography-secondary: #9CA3AF;
+  /* Muted Gray */
+
   --font-family-sans: "Inter", system-ui, sans-serif;
+
+  --radius-4xl: 32px;
+  --radius-5xl: 40px;
+
+  --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.04);
 }
 
 body {
-    background-color: var(--color-gray-50);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-typography-primary);
 }
