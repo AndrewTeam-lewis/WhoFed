@@ -643,7 +643,7 @@
                <!-- Settings Menu Button -->
                <div class="relative">
                  <button 
-                    on:click|stopPropagation={() => toggleDropdown(pet.id)}
+                    on:click={(e) => toggleDropdown(pet.id, e)}
                     class="p-2 text-gray-600 hover:text-gray-800 transition-colors"
                     aria-label="Pet options"
                  >
@@ -755,7 +755,7 @@
   </main>
     
   <!-- Floating Add Button -->
-  <a href="/pets/add" class="fixed bottom-6 right-6 bg-brand-sage text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity transform hover:scale-105 z-20 shadow-brand-sage/30" aria-label="Add Pet">
+  <a href="/pets/add" class="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 bg-brand-sage text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity transform hover:scale-105 z-20 shadow-brand-sage/30" aria-label="Add Pet">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
     </svg>
