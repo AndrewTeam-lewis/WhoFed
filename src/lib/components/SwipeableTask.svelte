@@ -148,7 +148,7 @@
                 {/if}
             {:else if task.completed_at}
                 <div class="text-[10px] font-bold text-gray-400 ml-2 whitespace-nowrap">
-                    {visuals.timeFormatted}
+                    {new Date(task.completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                 </div>
             {/if}
         </button>

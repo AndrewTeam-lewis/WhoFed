@@ -590,7 +590,7 @@
   {/if}
 
   <!-- Header -->
-  <header class="bg-white px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+  <header class="bg-gray-50 px-6 py-4 flex justify-between items-center">
     <div>
       <h1 class="text-2xl font-bold text-gray-900">My Pets</h1>
       <p class="text-sm text-gray-500">Keep them happy & healthy</p>

@@ -23,6 +23,50 @@
   // Invite state
   let showInviteModal = false;
   let inviteEmail = '';
+  
+  // Profile state
+  let showEditProfileModal = false;
+  let profile = {
+      first_name: '',
+      last_name: '',
+      phone: '',
+      username: '',
+      email: ''
+  };
+  let error = '';
+
+  async function saveProfile() {
+      if (!currentUser) return;
+      loading = true;
+      error = '';
+
+      try {
+          const updates = {
+              id: currentUser.id,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              phone: profile.phone,
+              updated_at: new Date().toISOString()
+          };
+
+          const { error: err } = await supabase
+              .from('profiles')
+              .upsert(updates);
+
+          if (err) throw err;
+
+          // Success
+          showEditProfileModal = false;
+          // Reload settings to ensure fresh data
+          await loadSettings();
+          
+      } catch (e: any) {
+          console.error('Error saving profile:', e);
+          error = e.message || 'Failed to save profile';
+      } finally {
+          loading = false;
+      }
+  }
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -38,6 +82,24 @@
   async function loadSettings() {
     loading = true;
     try {
+        // 0. Get My Profile
+        const { data: myProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+            
+        if (profileError) throw profileError;
+        if (myProfile) {
+            profile = {
+                first_name: myProfile.first_name || '',
+                last_name: myProfile.last_name || '',
+                phone: myProfile.phone || '',
+                username: myProfile.username || '',
+                email: myProfile.email || currentUser.email || ''
+            };
+        }
+
         // 1. Get my membership to find household
         const { data: myMember, error: myError } = await supabase
             .from('household_members')
@@ -127,7 +189,7 @@
 
 <div class="min-h-screen bg-gray-50 pb-20">
   <!-- Header -->
-  <header class="bg-white px-6 py-4 flex items-center sticky top-0 z-10 shadow-sm">
+  <header class="bg-gray-50 px-6 py-4 flex items-center">
     <a href="/" class="mr-4 text-gray-500 hover:text-gray-900">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -137,21 +199,106 @@
   </header>
 
   <main class="p-6 max-w-lg mx-auto space-y-6">
-      <!-- Account Settings -->
+      <!-- Profile Settings (Editable via Modal) -->
      <section class="bg-white rounded-2xl p overflow-hidden shadow-sm">
-        <div class="p-4 border-b border-gray-100 font-bold text-gray-900">Account Settings</div>
-        <div class="divide-y divide-gray-100">
-            <button class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                <div class="flex items-center space-x-3 text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    <span>Reset Password</span>
-                </div>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                </svg>
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="font-bold text-gray-900">Profile Settings</div>
+            <button class="text-xs font-bold text-brand-sage bg-brand-sage/10 px-3 py-1.5 rounded-full" on:click={() => showEditProfileModal = true}>
+                Edit
             </button>
+        </div>
+        <div class="p-4 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                   <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">First Name</label>
+                   <div class="text-sm font-medium text-gray-900">{profile.first_name || 'Not set'}</div>
+                </div>
+                <div>
+                   <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Last Name</label>
+                   <div class="text-sm font-medium text-gray-900">{profile.last_name || 'Not set'}</div>
+                </div>
+            </div>
+            <div>
+               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Phone Number</label>
+               <div class="text-sm font-medium text-gray-900">{profile.phone || 'Not set'}</div>
+            </div>
+        </div>
+     </section>
+     
+  <!-- Edit Profile Modal -->
+  {#if showEditProfileModal}
+    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 relative animate-fade-in">
+             <button class="absolute top-4 right-4 text-gray-400" on:click={() => showEditProfileModal = false}>
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+             </button>
+             
+             <h3 class="text-xl font-bold text-gray-900 mb-6">Edit Profile</h3>
+             
+             {#if error}
+               <div class="mb-4 text-sm text-red-500 bg-red-50 p-3 rounded-lg">
+                 {error}
+               </div>
+             {/if}
+
+             <div class="space-y-4">
+                 <div class="grid grid-cols-2 gap-4">
+                     <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="firstName">First Name</label>
+                        <input id="firstName" type="text" bind:value={profile.first_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="First Name" />
+                     </div>
+                     <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="lastName">Last Name</label>
+                        <input id="lastName" type="text" bind:value={profile.last_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="Last Name" />
+                     </div>
+                 </div>
+
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="pfPhone">Phone</label>
+                    <input id="pfPhone" type="tel" bind:value={profile.phone} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="(555) 123-4567" />
+                 </div>
+                 
+                 <button 
+                    class="w-full mt-4 bg-brand-sage text-white font-bold py-3 rounded-xl shadow-lg shadow-brand-sage/20 disabled:opacity-50 flex items-center justify-center transform active:scale-95 transition-all"
+                    disabled={loading}
+                    on:click={saveProfile}
+                 >
+                    {#if loading}
+                      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    {/if}
+                    Save Changes
+                 </button>
+             </div>
+        </div>
+    </div>
+  {/if}
+
+     <!-- Account Information (Read Only) -->
+     <section class="bg-white rounded-2xl p overflow-hidden shadow-sm">
+        <div class="p-4 border-b border-gray-100 font-bold text-gray-900">Account Information</div>
+        <div class="p-4 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Email Address</label>
+                <div class="text-sm font-medium text-gray-900 break-all">{profile.email || 'No email set'}</div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Username</label>
+                <div class="text-sm font-medium text-gray-900">@{profile.username || 'none'}</div>
+            </div>
+            
+            <div class="pt-2 flex flex-col space-y-2">
+                <button class="w-full py-3 border border-gray-200 rounded-xl text-gray-600 font-bold text-xs uppercase tracking-wider hover:bg-gray-50 transition-colors">
+                    Change Username / Email
+                </button>
+                <button class="w-full py-3 border border-gray-200 rounded-xl text-gray-600 font-bold text-xs uppercase tracking-wider hover:bg-gray-50 transition-colors">
+                    Reset Password
+                </button>
+            </div>
         </div>
      </section>
 

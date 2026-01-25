@@ -53,22 +53,7 @@
 </script>
 
 <div class="min-h-screen bg-gray-50">
-  <nav class="bg-white shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-16 items-center">
-        <a href="/" class="text-xl font-bold text-brand-sage">WhoFed</a>
-        
-        <div class="flex gap-4">
-          {#if $currentUser}
-            <a href="/profile" class="text-typography-primary hover:text-brand-sage">Profile</a>
-          {:else}
-            <a href="/auth/login" class="text-typography-primary hover:text-brand-sage">Login</a>
-            <a href="/auth/register" class="text-brand-sage hover:text-brand-sage/80 font-medium">Register</a>
-          {/if}
-        </div>
-      </div>
-    </div>
-  </nav>
+
 
   <main>
     <slot />
