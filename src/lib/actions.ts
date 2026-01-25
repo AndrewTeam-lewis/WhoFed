@@ -5,45 +5,62 @@ export function swipe(node: HTMLElement, { threshold = 100 } = {}) {
     function handlePointerDown(event: PointerEvent) {
         startX = event.clientX;
         startY = event.clientY;
+        // Reset lock state
+        (node as any)._swipeAxis = null; // 'x' or 'y'
 
         node.dispatchEvent(new CustomEvent('panstart', {
             detail: { x: startX, y: startY }
         }));
 
-        // Essential for tracking outside the element
         node.setPointerCapture(event.pointerId);
     }
 
     function handlePointerMove(event: PointerEvent) {
-        if (event.buttons === 0) return; // Only if pressed
+        if (event.buttons === 0) return;
 
         const dx = event.clientX - startX;
         const dy = event.clientY - startY;
+        const absX = Math.abs(dx);
+        const absY = Math.abs(dy);
 
-        // If mostly horizontal
-        if (Math.abs(dx) > Math.abs(dy)) {
-            // Prevent scrolling on supported devices (though touch-action usually handles this)
-            event.preventDefault();
+        // Determine axis if not yet locked
+        if (!(node as any)._swipeAxis) {
+            // Must move at least a tiny bit to decide
+            if (absX > 5 || absY > 5) {
+                if (absX > absY) {
+                    (node as any)._swipeAxis = 'x';
+                } else {
+                    (node as any)._swipeAxis = 'y';
+                }
+            }
+        }
 
+        // Only fire if we are locked to X axis
+        if ((node as any)._swipeAxis === 'x') {
             node.dispatchEvent(new CustomEvent('panmove', {
                 detail: { dx, dy }
             }));
         }
+        // If 'y', we silently ignore (let browser scroll)
     }
 
     function handlePointerUp(event: PointerEvent) {
         const dx = event.clientX - startX;
 
-        node.dispatchEvent(new CustomEvent('panend', {
-            detail: { dx }
-        }));
-
-        if (Math.abs(dx) > threshold) {
-            node.dispatchEvent(new CustomEvent('swipe', {
-                detail: { direction: dx > 0 ? 'right' : 'left' }
+        // Only dispatch end/swipe if we were actually swiping X
+        if ((node as any)._swipeAxis === 'x') {
+            node.dispatchEvent(new CustomEvent('panend', {
+                detail: { dx }
             }));
+
+            if (Math.abs(dx) > threshold) {
+                node.dispatchEvent(new CustomEvent('swipe', {
+                    detail: { direction: dx > 0 ? 'right' : 'left' }
+                }));
+            }
         }
 
+        (node as any)._swipeAxis = null;
         node.releasePointerCapture(event.pointerId);
     }
 

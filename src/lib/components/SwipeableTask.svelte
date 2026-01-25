@@ -22,10 +22,6 @@
 
   function handlePanMove(event: CustomEvent) {
       const { dx } = event.detail;
-      // Limit swipe to left only? Or both? User said "both L and R".
-      // But usually delete is one way.
-      // Let's allow free movement but resistance.
-      
       offsetX = dx;
       isDragging = true;
   }
@@ -34,15 +30,13 @@
       isDragging = false; 
       const { dx } = event.detail;
       
-      // Threshold to trigger delete
-      if (Math.abs(dx) > 100) {
+      // Threshold to trigger delete (Increased to avoid accidental deletes)
+      if (Math.abs(dx) > 120) {
           // Trigger
           dispatch('delete', task);
-          // Snap back visually after a moment or stay? 
-          // Usually stays if deleted, but we prompt modal.
-          // So snap back so it looks normal behind the modal.
           offsetX = 0;
-      // Snap back
+      } else {
+          // Snap back
           offsetX = 0;
       }
   }

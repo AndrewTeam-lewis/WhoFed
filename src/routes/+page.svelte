@@ -643,8 +643,8 @@
                <!-- Settings Menu Button -->
                <div class="relative">
                  <button 
-                    on:click={(e) => toggleDropdown(pet.id, e)}
-                    class="text-gray-300 hover:text-gray-500 p-1"
+                    on:click|stopPropagation={() => toggleDropdown(pet.id)}
+                    class="p-2 text-gray-600 hover:text-gray-800 transition-colors"
                     aria-label="Pet options"
                  >
                    <span class="text-2xl leading-none">⋯</span>
