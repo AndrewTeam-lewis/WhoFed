@@ -4,6 +4,7 @@
   import { supabase } from '$lib/supabase';
   import { generateTasksForDate } from '$lib/taskUtils';
   import type { Database } from '$lib/database.types';
+  import { swipe } from '$lib/actions';
 
   type Pet = Database['public']['Tables']['pets']['Row'];
   type DailyTask = Database['public']['Tables']['daily_tasks']['Row'] & {
@@ -256,6 +257,7 @@
   
   let activeDropdownId: string | null = null;
   let petToDelete: string | null = null; 
+  let taskToDelete: DailyTask | null = null;
 
   function toggleDropdown(id: string, event: MouseEvent) {
     event.stopPropagation();
@@ -288,6 +290,43 @@
   function cancelDelete() {
       petToDelete = null;
   }
+
+  // TASK DELETION LOGIC
+  function promptDeleteTask(task: DailyTask) {
+      taskToDelete = task;
+  }
+
+  async function confirmDeleteTask() {
+      if (!taskToDelete) return;
+      try {
+          // 1. Unlink any logs (to avoid FK issues) - Safe assuming we have ON DELETE SET NULL or we manually unlink
+          await supabase
+            .from('activity_log')
+            .update({ task_id: null })
+            .eq('task_id', taskToDelete.id);
+
+          // 2. Delete the Task
+          const { error } = await supabase
+            .from('daily_tasks')
+            .delete()
+            .eq('id', taskToDelete.id);
+            
+          if (error) throw error;
+
+          // 3. UI Update
+          dailyTasks = dailyTasks.filter(t => t.id !== taskToDelete!.id);
+          taskToDelete = null;
+
+      } catch (e) {
+          console.error("Error deleting task:", e);
+          alert("Failed to delete task");
+          taskToDelete = null;
+      }
+  }
+
+  function cancelDeleteTask() {
+      taskToDelete = null;
+  }
 </script>
 
 <svelte:window on:click={closeDropdown} />
@@ -297,7 +336,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 pb-20 relative">
-  <!-- Delete Confirmation Modal -->
+  <!-- Delete Confirmation Modal (PET) -->
   {#if petToDelete}
       <div 
           class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in"
@@ -329,6 +368,46 @@
                   <button 
                       class="flex-1 py-4 text-white font-bold text-sm bg-red-500 hover:bg-red-600 rounded-2xl shadow-lg shadow-red-500/20 transition-colors"
                       on:click={confirmDelete}
+                  >
+                      Yes, Delete
+                  </button>
+              </div>
+          </div>
+      </div>
+  {/if}
+
+  <!-- Delete Confirmation Modal (TASK) -->
+  {#if taskToDelete}
+      <div 
+          class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in"
+          role="button"
+          tabindex="0"
+          on:click|self={cancelDeleteTask}
+          on:keydown={(e) => e.key === 'Escape' && cancelDeleteTask()}
+      >
+          <div class="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl scale-100 transform transition-all">
+              <div class="mb-6 text-center">
+                  <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-900 mb-2">Delete this task?</h3>
+                  <p class="text-gray-500 text-sm">
+                      Remove <span class="font-bold text-gray-800">{taskToDelete.label}</span> for today? This will remove it from your dashboard.
+                  </p>
+              </div>
+
+              <div class="flex space-x-3">
+                  <button 
+                      class="flex-1 py-4 text-gray-600 font-bold text-sm bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors"
+                      on:click={cancelDeleteTask}
+                  >
+                      Cancel
+                  </button>
+                  <button 
+                      class="flex-1 py-4 text-white font-bold text-sm bg-red-500 hover:bg-red-600 rounded-2xl shadow-lg shadow-red-500/20 transition-colors"
+                      on:click={confirmDeleteTask}
                   >
                       Yes, Delete
                   </button>
@@ -418,6 +497,18 @@
                             </svg>
                             Edit Profile
                         </a>
+                        <a 
+                            href="/pets/{pet.id}/history" 
+                            class="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
+                            on:click={() => activeDropdownId = null}
+                            role="menuitem"
+                        >
+                            <!-- History Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            History
+                        </a>
                         <button 
                             class="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 flex items-center border-t border-gray-50"
                             on:click={() => promptDelete(pet.id)}
@@ -440,14 +531,16 @@
                     {@const isDone = task.status === 'completed'}
                     
                      <button 
+                        use:swipe={{ threshold: 50 }}
+                        on:swipe={() => promptDeleteTask(task)}
                         on:click={() => handleLogAction(task)}
                         disabled={false}
-                        class="w-full relative overflow-hidden transition-all duration-300 transform font-bold text-left group flex items-center justify-between p-3.5 rounded-2xl
+                        class="w-full relative overflow-hidden transition-all duration-300 transform font-bold text-left group flex items-center justify-between rounded-2xl
                         {isDone 
-                            ? 'bg-transparent text-gray-300 border border-dashed border-gray-200 scale-[0.98]' 
+                            ? 'p-2 bg-transparent text-gray-300 border border-dashed border-gray-200 scale-[0.98]' 
                             : visuals.isUrgent
-                                ? 'bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage z-10'
-                                : 'bg-brand-sage/10 text-brand-sage border border-brand-sage/30 hover:bg-brand-sage/20'}"
+                                ? 'p-3.5 bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage z-10'
+                                : 'p-3.5 bg-brand-sage/10 text-brand-sage border border-brand-sage/30 hover:bg-brand-sage/20'}"
                     >
                         <div class="flex items-center space-x-3 overflow-hidden">
                             <!-- Icon (Hide if done for slimness) -->
@@ -483,7 +576,12 @@
                                     {visuals.dueLabel}
                                 </div>
                             {/if}
+                        {:else if task.completed_at}
+                            <div class="text-[10px] font-bold text-gray-400 ml-2 whitespace-nowrap">
+                                {formatTime(task.completed_at)}
+                            </div>
                         {/if}
+
                     </button>
                 {/each}
 
@@ -497,71 +595,10 @@
         {/each}
       </div>
 
-      <!-- Recent Activity -->
-      <div>
-        <div class="flex justify-between items-center mb-4 mt-8">
-          <h2 class="font-bold text-gray-900 text-lg flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Recent Activity
-          </h2>
-          <a href="/history" class="text-xs font-bold text-primary-500 hover:text-primary-600 uppercase tracking-wide">See All</a>
-        </div>
 
-        <div class="space-y-4">
-          {#each recentActivity as log}
-             <div class="flex items-start">
-               <!-- Timeline dot -->
-               <div class="flex flex-col items-center mr-3 mt-1.5">
-                 <div class="w-3 h-3 rounded-full border-2 
-                    {log.action_type.startsWith('un') ? 'border-red-300 bg-red-50' : 'border-primary-500 bg-white'}">
-                 </div>
-                 {#if log !== recentActivity[recentActivity.length - 1]}
-                   <div class="w-0.5 h-full bg-gray-200 my-1"></div>
-                 {/if}
-               </div>
-               
-               <div>
-                  <div class="text-sm">
-                    <span class="font-semibold text-gray-900">
-                      {log.profiles?.first_name || 'Unknown'}
-                    </span>
-                    <span class="text-gray-500 mx-1">
-                      {#if log.action_type === 'feeding'}
-                          fed <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
-                          {#if log.schedules?.label}
-                              <span class="lowercase">{log.schedules.label}</span>
-                          {/if}
-                      {:else if log.action_type === 'unfed'}
-                          <span class="text-red-500 font-bold">un-fed</span> <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
-                      {:else if log.action_type === 'unmedicated'}
-                           <span class="text-red-500 font-bold">un-gave medicine</span> to <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
-                      {:else}
-                          gave <span class="font-medium text-gray-700">{pets.find(p => p.id === log.pet_id)?.name || 'Pet'}</span>
-                          {#if log.schedules?.label}
-                              {log.schedules.label}
-                          {:else}
-                              meds
-                          {/if}
-                      {/if}
-                    </span>
-                  </div>
-                  <div class="text-xs text-primary-500 font-medium mt-0.5">
-                    {formatTimeAgo(log.performed_at)}
-                  </div>
-               </div>
-             </div>
-          {/each}
-          
-          {#if recentActivity.length === 0}
-            <p class="text-gray-400 text-sm italic pl-6">No recent activity recorded.</p>
-          {/if}
-        </div>
-      </div>
     {/if}
   </main>
-
+    
   <!-- Floating Add Button -->
   <a href="/pets/add" class="fixed bottom-6 right-6 bg-brand-sage text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity transform hover:scale-105 z-20 shadow-brand-sage/30" aria-label="Add Pet">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
