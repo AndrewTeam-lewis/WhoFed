@@ -10,6 +10,9 @@
   export let task: DailyTask;
   export let visuals: any; // Passed from parent for consistency
   export let isDone: boolean;
+  export let isLocked: boolean = false;
+  export let isShaking: boolean = false;
+  export let isPulsing: boolean = false;
 
   const dispatch = createEventDispatcher();
 
@@ -28,7 +31,7 @@
   }
 
   function handlePanEnd(event: CustomEvent) {
-      isDragging = false;
+      isDragging = false; 
       const { dx } = event.detail;
       
       // Threshold to trigger delete
@@ -39,8 +42,7 @@
           // Usually stays if deleted, but we prompt modal.
           // So snap back so it looks normal behind the modal.
           offsetX = 0;
-      } else {
-          // Snap back
+      // Snap back
           offsetX = 0;
       }
   }
@@ -49,9 +51,39 @@
       if (Math.abs(offsetX) > 5) return; // Prevent click if dragging
       dispatch('click', task);
   }
+
+  // Styles dynamically based on state
+  $: containerClass = `
+      relative w-full rounded-2xl overflow-hidden group mb-2
+      ${isShaking ? 'animate-shake' : ''}
+      ${isPulsing ? 'scale-[1.02] ring-2 ring-brand-sage shadow-lg transition-all duration-200' : ''}
+  `;
+
+  $: buttonClass = `
+        w-full relative overflow-hidden transition-all duration-300 transform font-bold text-left flex items-center justify-between rounded-2xl
+        ${isDone 
+            ? 'p-2 bg-transparent text-gray-300 border border-dashed border-gray-200' 
+            : (visuals.isUrgent && !isLocked)
+                ? 'p-3.5 bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage'
+                : 'p-3.5 bg-white text-gray-600 border border-gray-200 shadow-sm hover:border-gray-300'}
+        ${isLocked ? 'cursor-not-allowed bg-gray-50 text-gray-400' : ''}
+  `;
 </script>
 
-<div class="relative w-full rounded-2xl overflow-hidden group mb-2" bind:clientWidth={containerWidth}>
+<style>
+  @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+  }
+  .animate-shake {
+      animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  }
+</style>
+
+<div class={containerClass} bind:clientWidth={containerWidth}>
     <!-- Background Layer (Delete Actions) -->
     <div class="absolute inset-0 flex items-center justify-between px-6 bg-red-500 text-white rounded-2xl">
         <div class="flex items-center space-x-2 font-bold opacity-{Math.min(1, Math.abs(offsetX)/50)} transition-opacity">
@@ -70,20 +102,15 @@
 
     <!-- Foreground Layer (The Task) -->
     <div 
-        class="relative bg-white rounded-2xl transition-transform duration-200 ease-out z-10"
-        style="transform: translateX({offsetX}px); cursor: grab; touch-action: pan-y;"
+        class="relative bg-white rounded-2xl z-10 {isDragging ? '' : 'transition-transform duration-200 ease-out'}"
+        style="transform: translateX({offsetX}px); cursor: {isLocked ? 'not-allowed' : 'grab'}; touch-action: pan-y;"
         use:swipe={{ threshold: 50 }}
         on:panmove={handlePanMove}
         on:panend={handlePanEnd}
     >
         <button 
             on:click={handleClick}
-            class="w-full relative overflow-hidden transition-all duration-300 transform font-bold text-left flex items-center justify-between rounded-2xl
-            {isDone 
-                ? 'p-2 bg-transparent text-gray-300 border border-dashed border-gray-200' 
-                : visuals.isUrgent
-                    ? 'p-3.5 bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage'
-                    : 'p-3.5 bg-brand-sage/10 text-brand-sage border border-brand-sage/30 hover:bg-brand-sage/20'}"
+            class={buttonClass}
         >
             <div class="flex items-center space-x-3 overflow-hidden">
                 <!-- Icon (Hide if done for slimness) -->

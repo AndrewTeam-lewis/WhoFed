@@ -21,12 +21,41 @@
   let recentActivity: ActivityLog[] = [];
   let loading = true;
   let currentUser: any = null;
+  
+  // Animation State
+  let shakingTaskId: string | null = null;
+  let pulsingTaskId: string | null = null;
 
   // Helper to split tasks by pet
   function getTasksForPet(petId: string, currentTasks: DailyTask[]): DailyTask[] {
       return currentTasks
           .filter(t => t.pet_id === petId)
           .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+  }
+  
+  // Constraint Helper
+  function getTaskConstraints(task: DailyTask, allTasksForPet: DailyTask[]) {
+      // Group by distinct Type + Label (e.g. "feeding-Dry Food")
+      // Case insensitive label comparison to be safe
+      const peers = allTasksForPet
+        .filter(t => 
+            t.task_type === task.task_type && 
+            t.label.toLowerCase() === task.label.toLowerCase()
+        )
+        .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+
+      const index = peers.findIndex(t => t.id === task.id);
+      
+      // If it's the first one, it's never locked
+      if (index <= 0) return { isLocked: false, blockerId: null };
+      
+      // Check previous
+      const prev = peers[index - 1];
+      if (prev.status !== 'completed') {
+          return { isLocked: true, blockerId: prev.id };
+      }
+      
+      return { isLocked: false, blockerId: null };
   }
 
   // Visual Helper
@@ -681,12 +710,29 @@
                 {#each tasks as task (task.id)}
                     {@const visuals = getTaskVisuals(task)}
                     {@const isDone = task.status === 'completed'}
+                    {@const { isLocked, blockerId } = getTaskConstraints(task, tasks)}
                     
                     <SwipeableTask 
                         task={task} 
                         visuals={visuals} 
                         isDone={isDone}
-                        on:click={() => handleLogAction(task)}
+                        isLocked={isLocked}
+                        isShaking={shakingTaskId === task.id}
+                        isPulsing={pulsingTaskId === task.id}
+                        on:click={() => {
+                            if (isLocked) {
+                                // Trigger animations
+                                shakingTaskId = task.id;
+                                if (blockerId) pulsingTaskId = blockerId;
+                                
+                                setTimeout(() => {
+                                    shakingTaskId = null;
+                                    pulsingTaskId = null;
+                                }, 600);
+                            } else {
+                                handleLogAction(task);
+                            }
+                        }}
                         on:delete={() => promptDeleteTask(task)}
                     />
                 {/each}
