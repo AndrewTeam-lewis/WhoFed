@@ -8,6 +8,7 @@
   type ActivityLog = Database['public']['Tables']['activity_log']['Row'] & {
     profiles: { first_name: string | null } | null;
     schedules: { label: string | null, task_type: string } | null;
+    daily_tasks: { label: string | null } | null;
   };
 
   let loading = true;
@@ -36,7 +37,7 @@
   async function fetchLogs() {
       const { data } = await supabase
         .from('activity_log')
-        .select('*, profiles(first_name), schedules(label, task_type)')
+        .select('*, profiles(first_name), schedules(label, task_type), daily_tasks(label)')
         .eq('pet_id', petId)
         .order('performed_at', { ascending: false })
         .limit(100);
@@ -97,8 +98,8 @@
                                     
                                     {#if log.action_type === 'feeding'}
                                         fed <span class="font-medium text-gray-600">{petName}</span>
-                                        {#if log.schedules?.label}
-                                            <span class="text-gray-400 text-xs ml-1 uppercase tracking-wide px-1.5 py-0.5 bg-gray-100 rounded-md">{log.schedules.label}</span>
+                                        {#if log.schedules?.label || log.daily_tasks?.label}
+                                            <span class="text-gray-400 text-xs ml-1 uppercase tracking-wide px-1.5 py-0.5 bg-gray-100 rounded-md">{log.schedules?.label ?? log.daily_tasks?.label}</span>
                                         {/if}
                                     {:else if log.action_type === 'unfed'}
                                         <span class="text-red-500 font-bold">un-fed</span> <span class="font-medium text-gray-600">{petName}</span>
@@ -106,8 +107,8 @@
                                         <span class="text-red-500 font-bold">un-gave</span> meds to
                                     {:else}
                                         gave meds
-                                        {#if log.schedules?.label}
-                                            <span class="text-gray-400 text-xs ml-1 uppercase tracking-wide px-1.5 py-0.5 bg-gray-100 rounded-md">{log.schedules.label}</span>
+                                        {#if log.schedules?.label || log.daily_tasks?.label}
+                                            <span class="text-gray-400 text-xs ml-1 uppercase tracking-wide px-1.5 py-0.5 bg-gray-100 rounded-md">{log.schedules?.label ?? log.daily_tasks?.label}</span>
                                         {/if}
                                     {/if}
                                 </div>

@@ -5,6 +5,7 @@
   import { generateTasksForDate } from '$lib/taskUtils';
   import type { Database } from '$lib/database.types';
   import { swipe } from '$lib/actions';
+  import SwipeableTask from '$lib/components/SwipeableTask.svelte';
 
   type Pet = Database['public']['Tables']['pets']['Row'];
   type DailyTask = Database['public']['Tables']['daily_tasks']['Row'] & {
@@ -258,6 +259,14 @@
   let activeDropdownId: string | null = null;
   let petToDelete: string | null = null; 
   let taskToDelete: DailyTask | null = null;
+  
+  // One-Time Task State
+  let petForOneTimeTask: string | null = null;
+  let oneTimeForm = {
+      label: '',
+      time: '',
+      type: 'feeding' as 'feeding' | 'medication'
+  };
 
   function toggleDropdown(id: string, event: MouseEvent) {
     event.stopPropagation();
@@ -299,13 +308,11 @@
   async function confirmDeleteTask() {
       if (!taskToDelete) return;
       try {
-          // 1. Unlink any logs (to avoid FK issues) - Safe assuming we have ON DELETE SET NULL or we manually unlink
           await supabase
             .from('activity_log')
             .update({ task_id: null })
             .eq('task_id', taskToDelete.id);
 
-          // 2. Delete the Task
           const { error } = await supabase
             .from('daily_tasks')
             .delete()
@@ -313,7 +320,6 @@
             
           if (error) throw error;
 
-          // 3. UI Update
           dailyTasks = dailyTasks.filter(t => t.id !== taskToDelete!.id);
           taskToDelete = null;
 
@@ -326,6 +332,66 @@
 
   function cancelDeleteTask() {
       taskToDelete = null;
+  }
+  
+  // ONE TIME TASK LOGIC
+  function openOneTimeTaskModal(petId: string) {
+      petForOneTimeTask = petId;
+      activeDropdownId = null;
+      // Default to next hour? or current time?
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      oneTimeForm = {
+          label: '',
+          time: timeStr,
+          type: 'feeding'
+      };
+  }
+  
+  function closeOneTimeTaskModal() {
+      petForOneTimeTask = null;
+  }
+  
+  async function saveOneTimeTask() {
+      if (!petForOneTimeTask || !oneTimeForm.label || !oneTimeForm.time) return;
+      
+      try {
+          const pet = pets.find(p => p.id === petForOneTimeTask);
+          if (!pet) return;
+
+          // construct timestamp for today + time
+          const [hours, mins] = oneTimeForm.time.split(':').map(Number);
+          const dueAt = new Date();
+          dueAt.setHours(hours, mins, 0, 0);
+          
+          const payload: Database['public']['Tables']['daily_tasks']['Insert'] = {
+              pet_id: pet.id,
+              household_id: pet.household_id,
+              label: oneTimeForm.label,
+              task_type: oneTimeForm.type,
+              status: 'pending',
+              due_at: dueAt.toISOString(),
+              schedule_id: null // Explicitly null
+          };
+          
+          const { data, error } = await supabase
+            .from('daily_tasks')
+            .insert(payload)
+            .select()
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+              dailyTasks = [...dailyTasks, data].sort((a,b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+          }
+          
+          closeOneTimeTaskModal();
+          
+      } catch (e: any) {
+          console.error("Error creating task:", e);
+          alert("Failed to create task: " + e.message);
+      }
   }
 </script>
 
@@ -415,6 +481,81 @@
           </div>
       </div>
   {/if}
+  
+  <!-- Add One-Time Task Modal -->
+  {#if petForOneTimeTask}
+      <div 
+          class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in"
+          role="button"
+          tabindex="0"
+          on:click|self={closeOneTimeTaskModal}
+          on:keydown={(e) => e.key === 'Escape' && closeOneTimeTaskModal()}
+      >
+          <div class="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl scale-100 transform transition-all">
+              <div class="mb-6">
+                  <h3 class="text-xl font-bold text-gray-900 mb-1">Add One-time Task</h3>
+                  <p class="text-gray-500 text-xs">This adds a task for <span class="font-bold text-brand-sage">{pets.find(p => p.id === petForOneTimeTask)?.name}</span>, today only.</p>
+              </div>
+
+              <div class="space-y-4 mb-8">
+                  <!-- Type Toggle -->
+                  <div class="bg-gray-100 p-1 rounded-xl flex">
+                      <button 
+                          class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all {oneTimeForm.type === 'feeding' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400'}"
+                          on:click={() => oneTimeForm.type = 'feeding'}
+                      >
+                          Feeding
+                      </button>
+                      <button 
+                          class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all {oneTimeForm.type === 'medication' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400'}"
+                          on:click={() => oneTimeForm.type = 'medication'}
+                      >
+                          Medication
+                      </button>
+                  </div>
+                  
+                  <!-- Name Input -->
+                  <div>
+                      <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1" for="taskLabel">Task Name</label>
+                      <input 
+                          id="taskLabel"
+                          type="text" 
+                          bind:value={oneTimeForm.label}
+                          on:input={(e) => oneTimeForm.label = e.currentTarget.value.toUpperCase()}
+                          placeholder="e.g. EXTRA SNACK"
+                          class="w-full bg-gray-50 border-transparent focus:border-brand-sage focus:bg-white focus:ring-0 rounded-2xl px-4 py-3 font-bold text-gray-900 placeholder-gray-300 transition-all uppercase"
+                      />
+                  </div>
+                  
+                  <!-- Time Input -->
+                  <div>
+                      <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1" for="taskTime">Time</label>
+                      <input 
+                          id="taskTime"
+                          type="time" 
+                          bind:value={oneTimeForm.time}
+                          class="w-full bg-gray-50 border-transparent focus:border-brand-sage focus:bg-white focus:ring-0 rounded-2xl px-4 py-3 font-bold text-gray-900 transition-all"
+                      />
+                  </div>
+              </div>
+
+              <div class="flex space-x-3">
+                  <button 
+                      class="flex-1 py-4 text-gray-600 font-bold text-sm bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors"
+                      on:click={closeOneTimeTaskModal}
+                  >
+                      Cancel
+                  </button>
+                  <button 
+                      class="flex-1 py-4 text-white font-bold text-sm bg-brand-sage hover:bg-brand-sage/90 rounded-2xl shadow-lg shadow-brand-sage/20 transition-colors"
+                      on:click={saveOneTimeTask}
+                  >
+                      Add Task
+                  </button>
+              </div>
+          </div>
+      </div>
+  {/if}
 
   <!-- Header -->
   <header class="bg-white px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
@@ -486,6 +627,17 @@
                         on:click|stopPropagation
                         on:keydown|stopPropagation
                     >
+                        <button 
+                            class="w-full text-left px-4 py-3 text-sm font-medium text-brand-sage hover:bg-gray-50 flex items-center"
+                            on:click={() => openOneTimeTaskModal(pet.id)}
+                            role="menuitem"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-brand-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add to Today
+                        </button>
+                    
                         <a 
                             href="/pets/{pet.id}/settings" 
                             class="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
@@ -495,7 +647,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
-                            Edit Profile
+                            Edit Pet
                         </a>
                         <a 
                             href="/pets/{pet.id}/history" 
@@ -517,7 +669,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            Delete Pet
+                            Remove Pet
                         </button>
                     </div>
                  {/if}
@@ -526,63 +678,17 @@
 
              <!-- Action Buttons (Powered by daily_tasks) -->
              <div class="mt-4 space-y-2">
-                {#each tasks as task}
+                {#each tasks as task (task.id)}
                     {@const visuals = getTaskVisuals(task)}
                     {@const isDone = task.status === 'completed'}
                     
-                     <button 
-                        use:swipe={{ threshold: 50 }}
-                        on:swipe={() => promptDeleteTask(task)}
+                    <SwipeableTask 
+                        task={task} 
+                        visuals={visuals} 
+                        isDone={isDone}
                         on:click={() => handleLogAction(task)}
-                        disabled={false}
-                        class="w-full relative overflow-hidden transition-all duration-300 transform font-bold text-left group flex items-center justify-between rounded-2xl
-                        {isDone 
-                            ? 'p-2 bg-transparent text-gray-300 border border-dashed border-gray-200 scale-[0.98]' 
-                            : visuals.isUrgent
-                                ? 'p-3.5 bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage z-10'
-                                : 'p-3.5 bg-brand-sage/10 text-brand-sage border border-brand-sage/30 hover:bg-brand-sage/20'}"
-                    >
-                        <div class="flex items-center space-x-3 overflow-hidden">
-                            <!-- Icon (Hide if done for slimness) -->
-                            {#if !isDone}
-                                <span class="text-xl filter {visuals.isUrgent ? 'drop-shadow-sm' : 'grayscale opacity-60'}">
-                                    {task.task_type === 'feeding' ? '🥣' : '💊'}
-                                </span>
-                            {/if}
-
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center text-sm leading-tight truncate {isDone ? 'text-xs line-through decoration-gray-300' : ''}">
-                                    <span>{task.label}</span>
-                                    {#if isDone}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 ml-2 text-brand-sage/50" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                        </svg>
-                                    {/if}
-                                </div>
-                                {#if !isDone}
-                                    <div class="text-[10px] uppercase tracking-wide opacity-80">{visuals.timeFormatted}</div>
-                                {/if}
-                            </div>
-                        </div>
-
-                        <!-- Status Label -->
-                        {#if !isDone}
-                            {#if visuals.isUrgent}
-                                <div class="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg text-white whitespace-nowrap animate-pulse ml-2">
-                                    {visuals.dueLabel}
-                                </div>
-                            {:else}
-                                <div class="text-[10px] font-medium px-2 py-1 rounded-lg text-brand-sage/80 ml-2">
-                                    {visuals.dueLabel}
-                                </div>
-                            {/if}
-                        {:else if task.completed_at}
-                            <div class="text-[10px] font-bold text-gray-400 ml-2 whitespace-nowrap">
-                                {formatTime(task.completed_at)}
-                            </div>
-                        {/if}
-
-                    </button>
+                        on:delete={() => promptDeleteTask(task)}
+                    />
                 {/each}
 
                 {#if tasks.length === 0}

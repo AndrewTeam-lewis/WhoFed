@@ -446,6 +446,7 @@
                                         <input 
                                             type="text" 
                                             bind:value={schedule.label}
+                                            on:input={(e) => schedule.label = e.currentTarget.value.toUpperCase()}
                                             class="font-bold text-typography-primary uppercase text-xs tracking-widest bg-transparent border-b-2 border-transparent focus:border-brand-sage focus:outline-none w-full transition-colors pb-1 placeholder-typography-secondary truncate"
                                             placeholder="NAME"
                                         />

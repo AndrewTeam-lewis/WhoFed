@@ -62,7 +62,7 @@ export interface Database {
         Row: {
           id: string
           pet_id: string
-          schedule_id: string
+          schedule_id: string | null
           household_id: string
           user_id: string | null
           label: string
@@ -75,7 +75,7 @@ export interface Database {
         Insert: {
           id?: string
           pet_id: string
-          schedule_id: string
+          schedule_id?: string | null
           household_id: string
           user_id?: string | null
           label: string

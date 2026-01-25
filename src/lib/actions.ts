@@ -1,36 +1,64 @@
-export function swipe(node: HTMLElement, { threshold = 50 } = {}) {
+export function swipe(node: HTMLElement, { threshold = 100 } = {}) {
     let startX: number;
     let startY: number;
 
-    function handleTouchStart(event: TouchEvent) {
-        const touch = event.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
+    function handlePointerDown(event: PointerEvent) {
+        startX = event.clientX;
+        startY = event.clientY;
+
+        node.dispatchEvent(new CustomEvent('panstart', {
+            detail: { x: startX, y: startY }
+        }));
+
+        // Essential for tracking outside the element
+        node.setPointerCapture(event.pointerId);
     }
 
-    function handleTouchEnd(event: TouchEvent) {
-        const touch = event.changedTouches[0];
-        const endX = touch.clientX;
-        const endY = touch.clientY;
+    function handlePointerMove(event: PointerEvent) {
+        if (event.buttons === 0) return; // Only if pressed
 
-        const deltaX = endX - startX;
-        const deltaY = endY - startY;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
 
-        // Ensure purely horizontal swipe (more horizontal than vertical)
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
-            node.dispatchEvent(new CustomEvent('swipe', {
-                detail: { direction: deltaX > 0 ? 'right' : 'left' }
+        // If mostly horizontal
+        if (Math.abs(dx) > Math.abs(dy)) {
+            // Prevent scrolling on supported devices (though touch-action usually handles this)
+            event.preventDefault();
+
+            node.dispatchEvent(new CustomEvent('panmove', {
+                detail: { dx, dy }
             }));
         }
     }
 
-    node.addEventListener('touchstart', handleTouchStart, { passive: true });
-    node.addEventListener('touchend', handleTouchEnd, { passive: true });
+    function handlePointerUp(event: PointerEvent) {
+        const dx = event.clientX - startX;
+
+        node.dispatchEvent(new CustomEvent('panend', {
+            detail: { dx }
+        }));
+
+        if (Math.abs(dx) > threshold) {
+            node.dispatchEvent(new CustomEvent('swipe', {
+                detail: { direction: dx > 0 ? 'right' : 'left' }
+            }));
+        }
+
+        node.releasePointerCapture(event.pointerId);
+    }
+
+    node.addEventListener('pointerdown', handlePointerDown);
+    node.addEventListener('pointermove', handlePointerMove);
+    node.addEventListener('pointerup', handlePointerUp);
+    // Handle cancel too
+    node.addEventListener('pointercancel', handlePointerUp);
 
     return {
         destroy() {
-            node.removeEventListener('touchstart', handleTouchStart);
-            node.removeEventListener('touchend', handleTouchEnd);
+            node.removeEventListener('pointerdown', handlePointerDown);
+            node.removeEventListener('pointermove', handlePointerMove);
+            node.removeEventListener('pointerup', handlePointerUp);
+            node.removeEventListener('pointercancel', handlePointerUp);
         }
     };
 }
