@@ -62,7 +62,7 @@
 
 <div class="min-h-screen bg-neutral-bg pb-24 font-sans text-typography-primary">
     <!-- Top Nav -->
-    <header class="bg-neutral-bg px-6 py-4 flex items-center">
+    <header class="bg-neutral-bg px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center">
         <button on:click={() => goto('/')} class="p-3 bg-white rounded-full shadow-soft hover:scale-105 transition-transform">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-typography-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />

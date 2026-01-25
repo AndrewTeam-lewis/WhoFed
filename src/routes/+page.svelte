@@ -590,7 +590,7 @@
   {/if}
 
   <!-- Header -->
-  <header class="bg-gray-50 px-6 py-4 flex justify-between items-center">
+  <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex justify-between items-center">
     <div>
       <h1 class="text-2xl font-bold text-gray-900">My Pets</h1>
       <p class="text-sm text-gray-500">Keep them happy & healthy</p>
