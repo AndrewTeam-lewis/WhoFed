@@ -29,7 +29,7 @@
   // Helper to split tasks by pet
   function getTasksForPet(petId: string, currentTasks: DailyTask[]): DailyTask[] {
       return currentTasks
-          .filter(t => t.pet_id === petId)
+          .filter(t => t.pet_id === petId && t.status !== 'archived')
           .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
   }
   
@@ -337,18 +337,21 @@
   async function confirmDeleteTask() {
       if (!taskToDelete) return;
       try {
+          // 1. Unlink from activity log (optional, but good for cleanup if it was completed)
           await supabase
             .from('activity_log')
             .update({ task_id: null })
             .eq('task_id', taskToDelete.id);
 
+          // 2. Soft Delete (Archive) the task
           const { error } = await supabase
             .from('daily_tasks')
-            .delete()
+            .update({ status: 'archived' })
             .eq('id', taskToDelete.id);
             
           if (error) throw error;
 
+          // 3. Remove from UI
           dailyTasks = dailyTasks.filter(t => t.id !== taskToDelete!.id);
           taskToDelete = null;
 
