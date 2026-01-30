@@ -15,3 +15,8 @@
 
 4. **SINGLE TASK FOCUS**
    - Do not bundle multiple tasks. Finish one, ask for the next.
+
+5. **AUTOMATIC VERSION INCREMENT**
+   - **CRITICAL**: You MUST increment the version number in `src/lib/version.ts` after ANY code change or database schema update.
+   - This applies to even small fixes.
+   - The user relies on this version number to verify they are running the latest code on their devices.
