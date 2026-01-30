@@ -22,7 +22,7 @@
   // Dynamic Schedules
   type ScheduleItem = {
       id: string; 
-      type: 'feeding' | 'medication';
+      type: 'feeding' | 'medication' | 'litter';
       label: string;
       isEnabled: boolean;
       frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -39,7 +39,7 @@
           selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: [{ value: '08:00', label: '' }, { value: '18:00', label: '' }] 
       },
       { 
-          id: '2', type: 'medication', label: '', isEnabled: false, frequency: 'monthly', 
+          id: '2', type: 'medication', label: '', isEnabled: false, frequency: 'daily', 
           selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: [{ value: '09:00', label: '' }] 
       }
   ];
@@ -116,7 +116,7 @@
       }
   }
 
-  function addSchedule(type: 'feeding' | 'medication') {
+  function addSchedule(type: 'feeding' | 'medication' | 'litter') {
       const id = Math.random().toString(36).substr(2, 9);
       schedules = [...schedules, {
           id,
@@ -428,10 +428,13 @@
                      <!-- Header -->
                      <div class="flex items-start justify-between mb-6">
                         <div class="flex items-center space-x-4 flex-1">
-                             <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'}">
+                             <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : schedule.type === 'litter' ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-500'}">
                                  {#if schedule.type === 'feeding'}
                                     <!-- Bowl Icon -->
                                     <span class="text-2xl">🥣</span>
+                                 {:else if schedule.type === 'litter'}
+                                    <!-- Litter Icon -->
+                                    <span class="text-2xl">🚽</span>
                                  {:else}
                                     <!-- Pill Icon -->
                                     <span class="text-2xl">💊</span>
@@ -442,7 +445,7 @@
                                     type="text" 
                                     bind:value={schedule.label}
                                     class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1"
-                                    placeholder={schedule.type === 'feeding' ? 'Food Name' : 'Medication Name'}
+                                    placeholder={schedule.type === 'feeding' ? 'Food Name' : schedule.type === 'litter' ? 'Change Litter' : 'Medication Name'}
                                 />
                                 <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -604,7 +607,7 @@
                                 class="w-full py-3 border-2 border-dashed border-brand-sage/40 rounded-2xl text-brand-sage text-xs font-bold uppercase flex items-center justify-center space-x-2 hover:bg-brand-sage/5 transition-colors"
                             >
                                 <span class="text-lg leading-none">+</span>
-                                <span>Add {schedule.type} Time</span>
+                                <span>Add {schedule.type === 'feeding' ? 'Time' : schedule.type === 'litter' ? 'Check' : 'Dose'}</span>
                             </button>
                             {/if}
                         </div>
@@ -613,9 +616,10 @@
             {/each}
             
             <!-- Quick Add Buttons -->
-             <div class="grid grid-cols-2 gap-4 opacity-50 hover:opacity-100 transition-opacity">
+             <div class="grid grid-cols-3 gap-3 opacity-50 hover:opacity-100 transition-opacity">
                  <button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Food</button>
                  <button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Meds</button>
+                 <button on:click={() => addSchedule('litter')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Litter</button>
              </div>
         </div>
  

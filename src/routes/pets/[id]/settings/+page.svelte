@@ -223,6 +223,7 @@
           type,
           label: '',
           isEnabled: true,
+          isEnabled: true,
           frequency: 'daily',
           selectedDays: [], 
           selectedDayOfMonth: 1, 
@@ -738,12 +739,10 @@
                     </div>
                 {/each}
                 
-                <div class="grid grid-cols-2 gap-4 opacity-50 hover:opacity-100 transition-opacity">
+                <div class="grid grid-cols-3 gap-3 opacity-50 hover:opacity-100 transition-opacity">
 			<button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Food</button>
 			<button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Meds</button>
-            {#if (species && species.toLowerCase().includes('cat')) || (species === 'cat')}
-			<button on:click={() => addSchedule('litter')} class="col-span-2 py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Litter</button>
-            {/if}
+			<button on:click={() => addSchedule('litter')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Litter</button>
                 </div>
             </div>
 
