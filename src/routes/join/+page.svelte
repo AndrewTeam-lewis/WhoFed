@@ -39,26 +39,40 @@
   });
 
   async function loadHouseholdInfo() {
+      let step = 'init';
       try {
+        // 2a. Fetch Household (Basic Info)
+        step = 'fetch_household';
         const { data: household, error: hhError } = await supabase
             .from('households')
-            .select(`
-                id,
-                owner_id,
-                profiles:owner_id (first_name, email),
-                household_members (count)
-            `)
+            .select('id, owner_id')
             .eq('id', householdId)
-            .single();
+            .maybeSingle();
 
         if (hhError) throw hhError;
-        
-        const owner = Array.isArray(household.profiles) ? household.profiles[0] : household.profiles;
-        ownerName = owner?.first_name || 'Unknown User';
-        // @ts-ignore
-        memberCount = household.household_members[0]?.count || 0;
+        if (!household) throw new Error('Household not found (or access denied)');
+
+        // 2b. Fetch Owner Profile
+        step = 'fetch_owner';
+        const { data: ownerProfile } = await supabase
+            .from('profiles')
+            .select('first_name, email')
+            .eq('id', household.owner_id)
+            .maybeSingle();
+
+        ownerName = ownerProfile?.first_name || 'Unknown User';
+
+        // 2c. Fetch Member Count
+        step = 'fetch_count';
+        const { count, error: countError } = await supabase
+            .from('household_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('household_id', householdId);
+
+        if (!countError) memberCount = count || 0;
 
         // 3. Check if already a member
+        step = 'check_membership';
         const { data: existingMember } = await supabase
             .from('household_members')
             .select('user_id')
@@ -73,7 +87,7 @@
 
     } catch (err: any) {
         console.error('Error loading invite:', err);
-        error = `Unable to load household details: ${err.message || err.error_description || 'Unknown error'} (${err.code || 'No Code'})`;
+        error = `Step ${step}: ${err.message || err.error_description || 'Unknown error'} (${err.code || 'No Code'})`;
     } finally {
         loading = false;
     }
