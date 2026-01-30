@@ -297,7 +297,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_household_join_info: {
+        Args: {
+          _household_id: string
+        }
+        Returns: {
+          owner_name: string
+          member_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

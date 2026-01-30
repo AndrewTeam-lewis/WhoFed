@@ -41,35 +41,17 @@
   async function loadHouseholdInfo() {
       let step = 'init';
       try {
-        // 2a. Fetch Household (Basic Info)
-        step = 'fetch_household';
-        const { data: household, error: hhError } = await supabase
-            .from('households')
-            .select('id, owner_id')
-            .eq('id', householdId)
+        // 2. Fetch Household Info via Secure RPC
+        step = 'fetch_rpc';
+        const { data: info, error: rpcError } = await supabase
+            .rpc('get_household_join_info', { _household_id: householdId })
             .maybeSingle();
 
-        if (hhError) throw hhError;
-        if (!household) throw new Error('Household not found (or access denied)');
+        if (rpcError) throw rpcError;
+        if (!info) throw new Error('Household not found (invalid ID)');
 
-        // 2b. Fetch Owner Profile
-        step = 'fetch_owner';
-        const { data: ownerProfile } = await supabase
-            .from('profiles')
-            .select('first_name, email')
-            .eq('id', household.owner_id)
-            .maybeSingle();
-
-        ownerName = ownerProfile?.first_name || 'Unknown User';
-
-        // 2c. Fetch Member Count
-        step = 'fetch_count';
-        const { count, error: countError } = await supabase
-            .from('household_members')
-            .select('*', { count: 'exact', head: true })
-            .eq('household_id', householdId);
-
-        if (!countError) memberCount = count || 0;
+        ownerName = info.owner_name;
+        memberCount = info.member_count;
 
         // 3. Check if already a member
         step = 'check_membership';
