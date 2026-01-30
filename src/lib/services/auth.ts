@@ -98,13 +98,14 @@ export const authService = {
         return data;
     },
 
-    // Create profile for OAuth users
+    // Create profile for OAuth users (and auto-create household)
     async createProfile(userId: string, profileData: Omit<Profile, 'id'>) {
+        // 1. Create Profile
         const { data, error } = await supabase
             .from('profiles')
             .insert({
                 id: userId,
-                username: profileData.username,
+                username: profileData.username, // keep username if provided
                 first_name: profileData.first_name,
                 last_name: profileData.last_name,
                 phone: profileData.phone
@@ -113,6 +114,38 @@ export const authService = {
             .single();
 
         if (error) throw error;
+
+        // 2. Create Default Household
+        const { data: household, error: hhError } = await supabase
+            .from('households')
+            .insert({
+                owner_id: userId,
+                subscription_status: 'active'
+            })
+            .select()
+            .single();
+
+        if (hhError) {
+            console.error('Failed to create default household:', hhError);
+            // Don't fail the whole request, but log it. User can create one later.
+            return data;
+        }
+
+        // 3. Add User as Member of their own household
+        const { error: memberError } = await supabase
+            .from('household_members')
+            .insert({
+                household_id: household.id,
+                user_id: userId,
+                is_active: true,
+                can_log: true,
+                can_edit: true
+            });
+
+        if (memberError) {
+            console.error('Failed to add user to their own household:', memberError);
+        }
+
         return data;
     },
 

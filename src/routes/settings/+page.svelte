@@ -197,8 +197,17 @@
       }
   }
 
-  function handleLogout() {
-      supabase.auth.signOut().then(() => goto('/auth/login'));
+  async function handleLogout() {
+      try {
+          console.log('Logging out...');
+          await supabase.auth.signOut();
+          console.log('Signed out, redirecting...');
+          goto('/auth/login');
+      } catch (e) {
+          console.error('Logout failed:', e);
+          // Force redirect anyway
+          goto('/auth/login');
+      }
   }
 </script>
 
