@@ -344,12 +344,12 @@
                   // Update primary
                   activeIds.add(primaryId);
                   upsertPromises.push(
-                      supabase.from('schedules').update(payload).eq('id', primaryId)
+                      supabase.from('schedules').update(payload).eq('id', primaryId).select()
                   );
               } else {
                   // Insert new
                   upsertPromises.push(
-                      supabase.from('schedules').insert(payload)
+                      supabase.from('schedules').insert(payload).select()
                   );
               }
           });
@@ -372,63 +372,65 @@
           }
 
           // 3. Execute Upserts
-          await Promise.all(upsertPromises);
+          // 3. Execute Upserts and Capture Results
+          const results = await Promise.all(upsertPromises);
+          
+          // Flatten results (each result is { data, error })
+          // We need to handle potential errors here too, but simplified for now
+          // Supabase v2 returns { data: T[] | null, error }
+          const freshSchedules = results
+              .map(r => r.data)
+              .flat()
+              .filter(Boolean); // Filter out nulls
 
-          // 4. Force Task Sync for Today
-          const { data: freshSchedules } = await supabase.from('schedules').select('*').eq('pet_id', petId);
-          if (freshSchedules) {
-              const newTasks = generateTasksForDate(freshSchedules, new Date(), householdId!);
+          if (freshSchedules.length > 0) {
+              const activeSchedIds = freshSchedules.map(s => s.id);
+              const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+
+              // 1. DELETE ALL PENDING tasks for these schedules (Clean Slate)
+              const { error: delError, count: delCount } = await supabase
+                  .from('daily_tasks')
+                  .delete({ count: 'exact' }) // Request exact count
+                  .in('schedule_id', activeSchedIds)
+                  .eq('status', 'pending')
+                  .gte('due_at', startOfDay.toISOString());
               
-              if (newTasks.length > 0) {
-                  const activeSchedIds = freshSchedules.map(s => s.id);
-                  const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+              if (delError) console.error('Delete Error:', delError);
+              console.log(`Cleared ${delCount} pending tasks for updated schedules.`);
+
+              // 2. Fetch COMPLETED tasks (So we don't double-book)
+              const { data: completedTasks } = await supabase
+                  .from('daily_tasks')
+                  .select('schedule_id, due_at')
+                  .in('schedule_id', activeSchedIds)
+                  .eq('status', 'completed')
+                  .gte('due_at', startOfDay.toISOString());
                   
-                  // 1. Fetch Existing Pending Tasks (to diff against)
-                  const { data: existingPending } = await supabase
-                      .from('daily_tasks')
-                      .select('id, schedule_id, due_at')
-                      .in('schedule_id', activeSchedIds)
-                      .eq('status', 'pending')
-                      .gte('due_at', startOfDay.toISOString());
+              // Helper to generate consistent keys
+              // Even though we wiped pending, we still need to match against completed
+              // using the same strategy to be safe.
+              const getKey = (scheduleId: string, dueAt: string) => {
+                  return `${scheduleId}-${new Date(dueAt).toISOString()}`;
+              };
 
-                  const existingPendingMap = new Map();
-                  existingPending?.forEach(t => existingPendingMap.set(`${t.schedule_id}-${t.due_at}`, t.id));
+              const completedMap = new Set();
+              completedTasks?.forEach(t => {
+                  completedMap.add(getKey(t.schedule_id, t.due_at));
+              });
 
-                  // 2. Calculate Expected Tasks
-                  // newTasks is already generated below (but we need to move it up or re-use)
-                  // reuse `newTasks` from line 382
-                  
-                  const toInsert: any[] = [];
-                  const validKeys = new Set<string>();
+              // 3. Generate POTENTIAL tasks from fresh schedule
+              const potentialTasks = generateTasksForDate(freshSchedules, new Date(), householdId!);
+              
+              // 4. Filter: Only keep tasks that are NOT in the "Completed" set
+              const toInsert = potentialTasks.filter(t => {
+                  const key = getKey(t.schedule_id, t.due_at);
+                  return !completedMap.has(key);
+              });
 
-                  newTasks.forEach(t => {
-                      const key = `${t.schedule_id}-${t.due_at}`;
-                      validKeys.add(key);
-                      
-                      if (!existingPendingMap.has(key)) {
-                          toInsert.push(t);
-                      }
-                  });
-
-                  // 3. Calculate Tasks to Delete (Existing but not in Valid)
-                  const idsToDelete: string[] = [];
-                  existingPending?.forEach(t => {
-                      const key = `${t.schedule_id}-${t.due_at}`;
-                      if (!validKeys.has(key)) {
-                          idsToDelete.push(t.id);
-                      }
-                  });
-
-                  // 4. Execute Sync (DELETE ONLY)
-                  // We only remove obsolete tasks here. We rely on ensureDailyTasks to generate new ones.
-                  if (idsToDelete.length > 0) {
-                      await supabase.from('daily_tasks').delete().in('id', idsToDelete);
-                  }
-                  
-                  // 5. Generate New Tasks via Service (Single Source of Truth)
-                  if (householdId) {
-                      await ensureDailyTasks(householdId);
-                  }
+              // 5. Insert
+              if (toInsert.length > 0) {
+                  console.log('Inserting regenerated tasks:', toInsert);
+                  await supabase.from('daily_tasks').insert(toInsert);
               }
           }
 

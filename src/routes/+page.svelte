@@ -142,13 +142,21 @@
     await fetchDashboardData();
   });
 
+  let isPremium = false;
+  let showPremiumModal = false;
+
   async function fetchDashboardData() {
     loading = true;
     try {
-      // 1. Get user's household
+      // 1. Get user's household AND subscription status
       const { data: members, error: memberError } = await supabase
         .from('household_members')
-        .select('household_id')
+        .select(`
+            household_id,
+            households (
+                subscription_status
+            )
+        `)
         .eq('user_id', currentUser.id)
         .eq('is_active', true)
         .limit(1);
@@ -157,6 +165,8 @@
 
       if (members && members.length > 0) {
         const householdId = members[0].household_id;
+        const subStatus = members[0].households?.subscription_status;
+        isPremium = subStatus === 'active';
 
         // 2. Get pets
         const { data: petData } = await supabase
@@ -203,6 +213,15 @@
     } finally {
       loading = false;
     }
+  }
+
+  function handleAddPet() {
+      // Free Limit = 2 Pets
+      if (!isPremium && pets.length >= 2) {
+          showPremiumModal = true;
+      } else {
+          goto('/pets/add');
+      }
   }
 
   async function fetchLogs() {
@@ -778,10 +797,62 @@
   </main>
     
   <!-- Floating Add Button -->
-  <a href="/pets/add" class="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 bg-brand-sage text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity transform hover:scale-105 z-20 shadow-brand-sage/30" aria-label="Add Pet">
+  <!-- Floating Add Button -->
+  <button 
+      on:click={handleAddPet}
+      class="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 bg-brand-sage text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity transform hover:scale-105 z-20 shadow-brand-sage/30" 
+      aria-label="Add Pet"
+  >
     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
     </svg>
-  </a>
+  </button>
 </div>
+
+    <!-- PREMIUM UPSELL MODAL -->
+    {#if showPremiumModal}
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showPremiumModal = false}></button>
+        
+        <!-- Modal -->
+        <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
+            <!-- Header Image/Pattern -->
+            <div class="h-32 bg-brand-sage flex items-center justify-center relative overflow-hidden">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+                <!-- Diamond Icon -->
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-lg relative z-10">
+                    💎
+                </div>
+            </div>
+            
+            <div class="p-8 text-center">
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">Upgrade to Premium</h3>
+                <p class="text-gray-500 mb-6 leading-relaxed">
+                    You've reached the limit of the Free plan.
+                    <br>
+                    <span class="font-bold text-gray-800">Unlock unlimited pets, members & history!</span>
+                </p>
+                
+                <div class="space-y-3">
+                    <button 
+                        class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95"
+                        on:click={() => {
+                            alert('Payment Flow would start here!');
+                            showPremiumModal = false;
+                        }}
+                    >
+                        Check Pricing
+                    </button>
+                    <button 
+                        class="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600"
+                        on:click={() => showPremiumModal = false}
+                    >
+                        Maybe Later
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {/if}
 

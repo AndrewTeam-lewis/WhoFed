@@ -20,6 +20,8 @@
   let currentUser: any = null;
   let householdId: string | null = null;
   let isOwner = false;
+  let isPremium = false;
+  let canInvite = false;
 
   // Invite state
   let showInviteModal = false;
@@ -111,15 +113,16 @@
         if (myError) throw myError;
         householdId = myMember.household_id;
 
-        // 2. Check if I am owner
+        // 2. Check if I am owner AND get subscription status
         const { data: household, error: hhError } = await supabase
             .from('households')
-            .select('owner_id')
+            .select('owner_id, subscription_status')
             .eq('id', householdId)
             .single();
             
         if (hhError) throw hhError;
         isOwner = household.owner_id === currentUser.id;
+        isPremium = household.subscription_status === 'active';
 
         // 3. Get all members
         const { data: memberData, error: memberError } = await supabase
@@ -144,7 +147,14 @@
             can_edit: m.can_edit,
             is_active: m.is_active
         }));
-
+        
+        // Monetization Check: Free tier limit is 2 members
+        const MEMBER_LIMIT = 2;
+        
+        // Update component state
+        isPremium = household.subscription_status === 'active';
+        canInvite = isPremium || members.length < MEMBER_LIMIT;
+        
     } catch (error) {
         console.error('Error loading settings:', error);
         // alert('Failed to load settings');
@@ -185,15 +195,56 @@
   let qrCodeDataUrl = '';
   let inviteUrl = '';
 
-  async function generateQRCode() {
+  async function generateInvite() {
       if (!householdId) return;
+      
+      // Monetization Gate
+      if (!canInvite) {
+          alert('Free Limit Reached (2 Members). Upgrade to Premium to invite more family members!'); 
+          return;
+      }
+      
       try {
-          // Check if we are in a browser environment to get the origin
+          // Check if key exists
+          const { data: existingKey } = await supabase
+             .from('household_keys')
+             .select('key_value')
+             .eq('household_id', householdId)
+             .maybeSingle();
+
+          let inviteKey = existingKey?.key_value;
+
+          if (!inviteKey) {
+             // Create new key
+             inviteKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+             const { error: createError } = await supabase
+                 .from('household_keys')
+                 .insert({
+                     household_id: householdId,
+                     key_value: inviteKey,
+                     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+                 });
+             if (createError) throw createError;
+          }
+
+          // Generate URL
           const origin = window.location.origin;
-          inviteUrl = `${origin}/join?householdId=${householdId}`;
-          qrCodeDataUrl = await QRCode.toDataURL(inviteUrl, { width: 200, margin: 2, color: { dark: '#5C7F67', light: '#FFFFFF' } });
-      } catch (err) {
-          console.error(err);
+          const url = `${origin}/join?k=${inviteKey}`;
+          inviteUrl = url;
+          qrCodeDataUrl = await QRCode.toDataURL(url, {
+              width: 256,
+              margin: 2,
+              color: {
+                  dark: '#2f4f4f', // Brand Sage Darker
+                  light: '#ffffff'
+              }
+          });
+          
+          showInviteModal = true;
+
+      } catch (err: any) {
+          console.error('Error generating invite:', err);
+          alert('Failed to generate invite');
       }
   }
 
@@ -258,7 +309,7 @@
              </div>
              <button 
                 class="bg-brand-sage/10 text-brand-sage p-2 rounded-full hover:bg-brand-sage/20 transition-colors"
-                on:click={() => { showInviteModal = true; generateQRCode(); }}
+                on:click={generateInvite}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
@@ -319,32 +370,85 @@
          </div>
       </section>
 
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-         <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-              <div class="flex items-center space-x-3 text-gray-700">
-                 <div class="p-2 bg-blue-50 text-blue-500 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+         <div class="p-4">
+             <div class="font-bold text-gray-900 mb-2">Subscription</div>
+             <div class="flex items-center justify-between">
+                 <div>
+                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {isPremium ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-600'}">
+                        {isPremium ? 'PREMIUM HOUSEHOLD' : 'FREE TIER'}
+                     </span>
+                 </div>
+                 <!-- DEV ONLY: Toggle -->
+                 <button 
+                    class="text-xs text-blue-500 hover:underline"
+                    on:click={async () => {
+                        try {
+                            const newStatus = isPremium ? 'free' : 'active';
+                            console.log('Toggling subscription to:', newStatus);
+                            
+                            const { data: updatedRows, error: updateError } = await supabase
+                                .from('households')
+                                .update({ subscription_status: newStatus })
+                                .eq('id', householdId)
+                                .select();
+
+                            if (updateError) {
+                                console.error('Toggle failed:', updateError);
+                                alert('Failed to toggle status: ' + updateError.message);
+                            } else if (!updatedRows || updatedRows.length === 0) {
+                                console.error('Toggle updated 0 rows.');
+                                alert('Toggle failed: No rows updated. Permission blocked?');
+                            } else {
+                                const row = updatedRows[0];
+                                if (row.subscription_status !== newStatus) {
+                                    alert(`Update IGNORED by Database!\nWe sent: '${newStatus}'\nDB kept: '${row.subscription_status}'\n\nThis confirms RLS policies prevent client-side billing updates (Security!).\n\nTo test: Create a NEW account (defaults to Free) or edit the DB manually.`);
+                                } else {
+                                    console.log('Toggle success, reloading...');
+                                    window.location.reload();
+                                }
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            alert('Error: ' + e.message);
+                        }
+                    }}
+                 >
+                    [Dev: Toggle]
+                 </button>
+             </div>
+             {#if !isPremium}
+                <p class="text-xs text-gray-400 mt-2">Limits: 1 Pet, 2 Members, 3 History Items</p>
+             {/if}
+         </div>
+       </section>
+       
+       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+               <div class="flex items-center space-x-3 text-gray-700">
+                  <div class="p-2 bg-blue-50 text-blue-500 rounded-lg">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                     </svg>
+                  </div>
+                  <span class="font-medium text-sm">Notifications</span>
+              </div>
+              <div class="w-10 h-6 bg-brand-sage rounded-full relative">
+                  <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 shadow-sm"></div>
+              </div>
+          </div>
+          
+          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleLogout}>
+             <div class="flex items-center space-x-3 text-red-600">
+                <div class="p-2 bg-red-50 rounded-lg">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                  </div>
-                 <span class="font-medium text-sm">Notifications</span>
-             </div>
-             <div class="w-10 h-6 bg-brand-sage rounded-full relative">
-                 <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 shadow-sm"></div>
+                 <span class="font-medium text-sm">Log Out</span>
              </div>
          </div>
-         
-         <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleLogout}>
-            <div class="flex items-center space-x-3 text-red-600">
-               <div class="p-2 bg-red-50 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                   </svg>
-                </div>
-                <span class="font-medium text-sm">Log Out</span>
-            </div>
-        </div>
-       </section>
+        </section>
 
        <!-- Version Display -->
        <div class="text-center pb-8">

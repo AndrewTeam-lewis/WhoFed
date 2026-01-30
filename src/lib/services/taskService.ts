@@ -59,7 +59,7 @@ export const ensureDailyTasks = async (householdId: string) => {
                 console.log(`Successfully generated ${toInsert.length} new tasks.`);
             }
         } else {
-            console.log("All schedules have tasks generated for today.");
+            // console.log("All schedules have tasks generated for today.");
         }
 
     } catch (e) {

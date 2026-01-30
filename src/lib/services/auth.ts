@@ -120,7 +120,7 @@ export const authService = {
             .from('households')
             .insert({
                 owner_id: userId,
-                subscription_status: 'active'
+                subscription_status: 'free'
             })
             .select()
             .single();

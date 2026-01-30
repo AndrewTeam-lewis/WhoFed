@@ -24,23 +24,42 @@
     loading = false;
   });
 
+  let isPremium = false;
+  let isLocked = false;
+
   async function fetchPetDetails() {
+      // Get Pet & Household Info
       const { data } = await supabase
         .from('pets')
-        .select('name')
+        .select(`
+            name,
+            household_id,
+            households (
+                subscription_status
+            )
+        `)
         .eq('id', petId)
         .single();
       
-      if (data) petName = data.name;
+      if (data) {
+          petName = data.name;
+          const status = data.households?.subscription_status;
+          isPremium = status === 'active';
+      }
   }
 
   async function fetchLogs() {
+      // History Check: Free tier limit is 3 events
+      const limit = isPremium ? 100 : 3;
+      
+      if (!isPremium) isLocked = true;
+
       const { data } = await supabase
         .from('activity_log')
         .select('*, profiles(first_name), schedules(label, task_type), daily_tasks(label)')
         .eq('pet_id', petId)
         .order('performed_at', { ascending: false })
-        .limit(100);
+        .limit(limit);
         
       logs = data || [];
   }
@@ -108,6 +127,30 @@
                         </li>
                     {/each}
                 </ul>
+                
+                {#if isLocked}
+                    <!-- Premium Lock Upsell -->
+                    <div class="relative">
+                        <!-- Blur Overlay -->
+                        <div class="absolute -top-10 left-0 right-0 h-10 bg-gradient-to-b from-transparent to-white/90 pointer-events-none"></div>
+                        
+                        <div class="bg-gray-50 p-6 text-center border-t border-gray-100 flex flex-col items-center justify-center">
+                            <div class="bg-gray-200 rounded-full p-3 mb-3 text-gray-500">
+                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                 </svg>
+                            </div>
+                            <h3 class="font-bold text-gray-900 mb-1">Unlock Full History</h3>
+                            <p class="text-xs text-gray-500 mb-4 max-w-[200px]">Upgrade to Premium to see unlimited medication and feeding history. Great for vet visits!</p>
+                            <button 
+                                class="bg-brand-sage text-white text-sm font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-brand-sage/90 transition-all"
+                                on:click={() => alert('Premium Upgrade coming soon!')}
+                            >
+                                Upgrade Now
+                            </button>
+                        </div>
+                    </div>
+                {/if}
              </div>
         {/if}
     </main>
