@@ -59,7 +59,7 @@
     try {
       await authService.register(formData);
       success = 'Registration successful! Redirecting...';
-      setTimeout(() => goto('/profile'), 1500);
+      setTimeout(() => goto('/'), 1500);
     } catch (e: any) {
       error = e.message || 'Registration failed';
     }

@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
-  import { generateTasksForDate } from '$lib/taskUtils';
   import type { Database } from '$lib/database.types';
   import { swipe } from '$lib/actions';
   import SwipeableTask from '$lib/components/SwipeableTask.svelte';
@@ -64,28 +63,68 @@
       const due = new Date(task.due_at);
       const isDone = task.status === 'completed';
       
+      // Robust check for schedule_mode (handle array or object return from Supabase)
+      const schedule = Array.isArray(task.schedules) ? task.schedules[0] : task.schedules;
+      const isMonthly = schedule?.schedule_mode === 'monthly';
+
       const dueDiff = due.getTime() - now.getTime();
-      const hoursDiff = Math.ceil(dueDiff / (1000 * 60 * 60));
-      const minsDiff = Math.ceil(dueDiff / (1000 * 60));
+      const hoursDiff = Math.round(dueDiff / (1000 * 60 * 60)); 
+      const minsDiff = Math.floor(dueDiff / (1000 * 60));
 
-      const isUrgent = !isDone && (dueDiff <= 7200000); // 2 hours
-      const isOverdue = !isDone && dueDiff < 0;
-
-      const timeFormatted = due.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      // Monthly: Show date (Feb 29). Daily: Show time (8:00 AM).
+      const timeFormatted = isMonthly 
+          ? due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) 
+          : due.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       
       let dueLabel = 'Due';
-      if (isDone) {
-          dueLabel = 'Done';
-      } else if (isOverdue) {
-           const absHours = Math.abs(Math.floor(dueDiff / (1000 * 60 * 60)));
-           if (absHours === 0) dueLabel = `Due now`; 
-           else dueLabel = `${absHours}h overdue`;
-      } else if (dueDiff > 0) {
-           if (hoursDiff <= 1) {
-               dueLabel = `Due in ${minsDiff}m`;
-           } else {
-               dueLabel = `Due in ${hoursDiff}h`;
-           }
+      let isUrgent = false;
+      let isOverdue = false;
+
+      if (isMonthly) {
+          // Special Monthly Logic
+          const today = new Date();
+          const dueDay = new Date(task.due_at);
+          
+          // Reset times to compare dates specifically
+          today.setHours(0,0,0,0);
+          dueDay.setHours(0,0,0,0);
+          
+          const dayDiff = Math.floor((dueDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Overdue only if strictly yesterday or earlier
+          isOverdue = !isDone && dayDiff < 0; 
+          
+          if (isDone) {
+              dueLabel = 'Done';
+          } else if (isOverdue) {
+              dueLabel = 'Overdue';
+          } else if (dayDiff === 0) {
+              dueLabel = 'Due today';
+              isUrgent = true; 
+          } else if (dayDiff === 1) {
+              dueLabel = 'Due tomorrow';
+          } else {
+              dueLabel = `Due in ${dayDiff} days`;
+          }
+
+      } else {
+          // Standard Logic
+          isUrgent = !isDone && (dueDiff <= 7200000); 
+          isOverdue = !isDone && dueDiff < 0;
+
+          if (isDone) {
+              dueLabel = 'Done';
+          } else if (isOverdue) {
+               dueLabel = 'Overdue';
+          } else if (dueDiff > 0) {
+               if (minsDiff < 30) {
+                   dueLabel = 'Due soon';
+               } else if (hoursDiff < 1) {
+                   dueLabel = 'Due in 1h';
+               } else {
+                   dueLabel = `Due in ${hoursDiff}h`;
+               }
+          }
       }
 
       return { isUrgent, isOverdue, timeFormatted, dueLabel };
@@ -128,41 +167,25 @@
         
         pets = petData || [];
 
-        // 3. LAZY GENERATION: Check if we have tasks for today
+        // 3. Simple Display: Fetch Tasks for Today (Local Date)
         const startOfDay = new Date();
-        startOfDay.setHours(0,0,0,0);
-        const startOfDayStr = startOfDay.toISOString();
-
-        const { data: existingTasks } = await supabase
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const { data: existingTasks, error: fetchError } = await supabase
             .from('daily_tasks')
-            .select('*')
+            .select('*, schedules(schedule_mode)')
             .eq('household_id', householdId)
-            .gte('due_at', startOfDayStr); // Simple check for "today and future"
+            // Use ISO strings to match timestamptz correctly in UTC
+            .gte('due_at', startOfDay.toISOString())
+            .lte('due_at', endOfDay.toISOString());
 
-        if (!existingTasks || existingTasks.length === 0) {
-            // GENERATE TASKS
-            const { data: activeSchedules } = await supabase
-                .from('schedules')
-                .select('*')
-                .eq('is_enabled', true)
-                .in('pet_id', pets.map(p => p.id));
-            
-            if (activeSchedules && activeSchedules.length > 0) {
-                const newTasks = generateTasksForDate(activeSchedules, new Date(), householdId);
-                
-                if (newTasks.length > 0) {
-                    const { data: insertedTasks, error: insertError } = await supabase
-                        .from('daily_tasks')
-                        .insert(newTasks)
-                        .select();
-                    
-                    if (insertError) console.error("Error generating tasks", insertError);
-                    dailyTasks = insertedTasks || [];
-                }
-            }
-        } else {
-            dailyTasks = existingTasks;
-        }
+        if (fetchError) console.error("Error fetching dashboard tasks:", fetchError);
+        console.log('Dashboard fetched tasks:', existingTasks);
+
+        dailyTasks = existingTasks || [];
 
         // 4. Get recent activity (purely for history log now)
         const { data: logData } = await supabase
@@ -636,7 +659,7 @@
                  </div>
                  <div>
                    <h3 class="font-bold text-xl text-gray-900 leading-tight">{pet.name}</h3>
-                   <span class="inline-block bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider mt-1">{pet.species}</span>
+
                  </div>
                </div>
                

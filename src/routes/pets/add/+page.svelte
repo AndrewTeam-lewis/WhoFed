@@ -5,10 +5,11 @@
   import { generateTasksForDate } from '$lib/taskUtils';
 
   let loading = false;
-  let name = 'Pet Name';
+  let name = '';
   let species = 'dog';
   let householdId: string | null = null;
   let currentUser: any = null;
+  let showSpeciesModal = false;
 
   // Reminders
   let pushReminders = true;
@@ -29,23 +30,38 @@
       selectedDays: number[]; // 0-6 for Weekly (0=Sun)
       selectedDayOfMonth: number; // 1-31 for Monthly
       customDates: string[]; // YYYY-MM-DD strings for Custom
-      times: string[];
+      times: { value: string, label: string }[];
   };
 
   let schedules: ScheduleItem[] = [
       { 
-          id: '1', type: 'feeding', label: 'DRY FOOD', isEnabled: true, frequency: 'daily', 
-          selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: ['08:00', '18:00'] 
+          id: '1', type: 'feeding', label: '', isEnabled: false, frequency: 'daily', 
+          selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: [{ value: '08:00', label: '' }, { value: '18:00', label: '' }] 
       },
       { 
-          id: '2', type: 'medication', label: 'HEARTWORM', isEnabled: false, frequency: 'monthly', 
-          selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: ['09:00'] 
+          id: '2', type: 'medication', label: '', isEnabled: false, frequency: 'monthly', 
+          selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: [{ value: '09:00', label: '' }] 
       }
   ];
 
   const DAYS_OF_WEEK = [
       { val: 1, label: 'M' }, { val: 2, label: 'T' }, { val: 3, label: 'W' },
       { val: 4, label: 'T' }, { val: 5, label: 'F' }, { val: 6, label: 'S' }, { val: 0, label: 'S' }
+  ];
+
+  const SPECIES_OPTIONS = [
+    { id: 'dog', icon: '🐶', label: 'Dog' },
+    { id: 'dog-2', icon: '🐕', label: 'Dog 2' },
+    { id: 'cat', icon: '🐱', label: 'Cat' },
+    { id: 'cat-2', icon: '🐈', label: 'Cat 2' },
+    { id: 'cat-3', icon: '🐈‍⬛', label: 'Cat 3' },
+    { id: 'bird', icon: '🐦', label: 'Bird' },
+    { id: 'hamster', icon: '🐹', label: 'Hamster' },
+    { id: 'rabbit', icon: '🐰', label: 'Rabbit' },
+    { id: 'fish', icon: '🐠', label: 'Fish' },
+    { id: 'iguana', icon: '🦎', label: 'Lizard' },
+    { id: 'snake', icon: '🐍', label: 'Snake' },
+    { id: 'turtle', icon: '🐢', label: 'Turtle' },
   ];
 
   let scheduleNameEditingId: string | null = null;
@@ -105,13 +121,13 @@
       schedules = [...schedules, {
           id,
           type,
-          label: type === 'feeding' ? 'NEW FOOD' : 'NEW MEDICATION',
+          label: '',
           isEnabled: true,
           frequency: 'daily',
           selectedDays: [], 
           selectedDayOfMonth: 1, 
           customDates: [],
-          times: ['08:00']
+          times: [{ value: '08:00', label: '' }]
       }];
   }
 
@@ -122,7 +138,7 @@
   function addTime(scheduleId: string) {
       schedules = schedules.map(s => {
           if (s.id === scheduleId) {
-              return { ...s, times: [...s.times, '12:00'] };
+              return { ...s, times: [...s.times, { value: '12:00', label: '' }] };
           }
           return s;
       });
@@ -183,7 +199,7 @@
   }
 
   async function handleSubmit() {
-      if (!name || name === 'Pet Name' || !householdId) {
+      if (!name || !householdId) {
           alert('Please enter a valid pet name.');
           return;
       }
@@ -191,11 +207,16 @@
 
       try {
           // 1. Create Pet
+          // Map UI species to DB species
+          let dbSpecies = species;
+          if (species.startsWith('dog')) dbSpecies = 'dog';
+          else if (species.startsWith('cat')) dbSpecies = 'cat';
+
           const { data: pet, error: petError } = await supabase
             .from('pets')
             .insert({
                 name,
-                species,
+                species: dbSpecies,
                 household_id: householdId
             })
             .select()
@@ -203,46 +224,72 @@
 
           if (petError) throw petError;
           
-          // 2. Create Schedules
+
+          // 2. Validate Schedules
+          for (const s of schedules) {
+              if (s.isEnabled) {
+                  if (s.frequency === 'weekly' && s.selectedDays.length === 0) {
+                      loading = false;
+                      alert(`Please select at least one day for schedule: ${s.label || s.type}`);
+                      return;
+                  }
+                  if (s.frequency === 'custom' && s.customDates.length === 0) {
+                      loading = false;
+                      alert(`Please select at least one date for schedule: ${s.label || s.type}`);
+                      return;
+                  }
+                  if (s.times.length === 0 && s.frequency !== 'monthly') {
+                      loading = false;
+                      alert(`Please add at least one time for schedule: ${s.label || s.type}`);
+                      return;
+                  }
+              }
+          }
+
           const schedulesToInsert = schedules.filter(s => s.isEnabled).map(s => {
               let encodedTimes: string[] = [];
 
               if (s.frequency === 'daily') {
-                  encodedTimes = s.times;
+                  encodedTimes = s.times.map(t => t.label ? `${t.value}|${t.label}` : t.value);
               } else if (s.frequency === 'weekly') {
                   s.selectedDays.forEach(day => {
                        s.times.forEach(time => {
-                           encodedTimes.push(`W:${day}:${time}`);
+                           const timeStr = time.label ? `${time.value}|${time.label}` : time.value;
+                           encodedTimes.push(`W:${day}:${timeStr}`);
                        });
                   });
               } else if (s.frequency === 'monthly') {
-                  s.times.forEach(time => {
-                      encodedTimes.push(`M:${s.selectedDayOfMonth}:${time}`);
-                  });
-              } else if (s.frequency === 'custom') {
+                   // Monthly frequency defaults to 1 AM per requirements
+                   encodedTimes.push(`M:${s.selectedDayOfMonth}:01:00`);
+               } else if (s.frequency === 'custom') {
                   s.customDates.forEach(date => {
                        s.times.forEach(time => {
-                           encodedTimes.push(`C:${date}:${time}`);
+                           const timeStr = time.label ? `${time.value}|${time.label}` : time.value;
+                           encodedTimes.push(`C:${date}:${timeStr}`);
                        });
                   });
               }
+              
+              console.log(`Preparing schedule ${s.type} (${s.frequency}):`, encodedTimes);
 
               return {
                   pet_id: pet.id,
                   task_type: s.type,
                   label: s.label,
                   target_times: encodedTimes,
-                  interval_hours: null, // Not using interval logic anymore
+                  interval_hours: null, 
                   is_enabled: true,
-                  schedule_mode: 'interval' // ALWAYS 'interval' per constraint
+                  schedule_mode: String(s.frequency).toLowerCase() 
               };
           });
 
           if (schedulesToInsert.length > 0) {
+              console.log('Inserting schedules:', schedulesToInsert);
               const { data: insertedSchedules, error: schedError } = await supabase
                 .from('schedules')
                 .insert(schedulesToInsert)
                 .select();
+
               
               if (schedError) throw schedError;
 
@@ -274,268 +321,352 @@
 </script>
 
 <svelte:head>
-  <title>Add Pet - WhoFed</title>
+  <title>New Pet - WhoFed</title>
 </svelte:head>
 
-<div class="min-h-screen bg-neutral-bg pb-24 font-sans text-typography-primary">
+<div class="min-h-screen bg-[#FDFDFD] pb-32 font-sans text-typography-primary">
     <!-- Top Nav -->
-    <header class="bg-neutral-bg px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between">
-        <button on:click={() => goto('/')} class="p-3 bg-white rounded-full shadow-soft hover:scale-105 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-typography-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <h1 class="text-base font-bold text-typography-primary">Pet Settings</h1>
+    <header class="bg-[#FDFDFD] px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between">
+        <div class="flex items-center">
+            <button on:click={() => goto('/')} class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <h1 class="text-xl font-bold text-typography-primary">New Pet</h1>
+        </div>
         <button class="p-2 text-typography-secondary hover:text-brand-sage transition-colors">
              <span class="text-2xl leading-none mb-3 block">...</span>
         </button>
     </header>
 
-    <main class="p-6 max-w-lg mx-auto space-y-10">
-        <!-- Pet Name Section -->
-        <section>
+    <main class="p-6 max-w-lg mx-auto space-y-8">
+        
+        <!-- Avatar Section -->
+        <section class="flex flex-col items-center justify-center mb-8 relative z-10">
             <div class="relative group">
-                <input 
-                    type="text" 
-                    bind:value={name} 
-                    class="text-4xl font-extrabold tracking-tight text-typography-primary bg-transparent border-none focus:ring-0 p-0 w-full placeholder-typography-secondary/50"
-                    placeholder="Pet Name"
-                />
-                <button class="absolute right-0 top-2 text-typography-secondary hover:text-brand-sage transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button 
+                    type="button"
+                    on:click={() => showSpeciesModal = true}
+                    class="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center relative transition-transform active:scale-95"
+                >
+                    <span class="text-5xl">
+                        {SPECIES_OPTIONS.find(s => s.id === species)?.icon || '🐶'}
+                    </span>
+                    
+                    <!-- Edit Overlay - Always visible on Hover but we have a dedicated button now too -->
+                    <div class="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    </div>
+                </button>
+                
+                <!-- Quick Edit Button -->
+                <button 
+                    type="button"
+                    on:click={() => showSpeciesModal = true}
+                    class="absolute bottom-1 right-1 w-8 h-8 bg-brand-sage rounded-full flex items-center justify-center text-white shadow-md hover:bg-brand-sage/90 transition-colors"
+                >
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
                 </button>
             </div>
-            <p class="text-xs font-bold text-typography-secondary uppercase tracking-widest mt-3 ml-1">PET NAME</p>
-        </section>
 
-        <!-- Species Selector -->
-        <section>
-            <label class="block text-xs font-bold text-typography-secondary uppercase tracking-widest mb-5 ml-1">SELECT SPECIES</label>
-            <div class="grid grid-cols-4 gap-4">
-                {#each ['dog', 'cat', 'iguana', 'bird'] as type}
-                    <button 
-                        type="button"
-                        class="flex flex-col items-center justify-center p-4 rounded-[32px] border-2 transition-all aspect-square
-                        {species === type ? 'border-brand-sage bg-white shadow-soft scale-105' : 'border-transparent bg-white shadow-soft text-typography-secondary hover:bg-neutral-surface'}"
-                        on:click={() => species = type}
-                    >
-                        <span class="text-3xl mb-2 filter {species !== type ? 'grayscale opacity-50' : ''}">
-                            {type === 'dog' ? '🐶' : type === 'cat' ? '🐱' : type === 'bird' ? '🐦' : '🦎'}
-                        </span>
-                        <span class="text-xs font-bold capitalize {species === type ? 'text-typography-primary' : 'text-typography-secondary'}">{type}</span>
-                    </button>
-                {/each}
+            <!-- Explicit Change Label -->
+            <button 
+                type="button"
+                on:click={() => showSpeciesModal = true}
+                class="mt-3 text-xs font-bold text-brand-sage uppercase tracking-wider hover:underline"
+            >
+                Change Icon
+            </button>
+            
+            <div class="mt-4 w-full max-w-xs text-center">
+                <input 
+                    type="text" 
+                    bind:value={name} 
+                    class="block w-full text-center text-2xl font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 placeholder-gray-300 focus:placeholder-gray-200"
+                    placeholder="Name your pet..."
+                />
             </div>
         </section>
 
-        <!-- Schedules Card -->
-        <section class="bg-white rounded-[40px] p-8 shadow-soft">
-            <div class="flex items-center space-x-3 mb-8">
-                <div class="text-typography-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+        <!-- Species Selection Modal -->
+        {#if showSpeciesModal}
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <!-- Backdrop -->
+                <button type="button" class="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" on:click={() => showSpeciesModal = false}></button>
+                
+                <!-- Modal -->
+                <div class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl relative z-10 animate-scale-in max-h-[80vh] overflow-y-auto">
+                    <h3 class="text-center text-lg font-bold text-typography-primary mb-6">Choose Icon</h3>
+                    
+                    <div class="grid grid-cols-3 gap-4">
+                        {#each SPECIES_OPTIONS as opt}
+                            <button 
+                                type="button"
+                                class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all aspect-square
+                                {species === opt.id ? 'border-brand-sage bg-brand-sage/5 text-brand-sage shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-brand-sage/30'}"
+                                on:click={() => { species = opt.id; showSpeciesModal = false; }}
+                            >
+                                <span class="text-3xl mb-1 filter {species !== opt.id ? 'grayscale opacity-70' : ''}">
+                                    {opt.icon}
+                                </span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-center leading-tight">{opt.label}</span>
+                            </button>
+                        {/each}
+                    </div>
                 </div>
-                <h3 class="font-extrabold text-typography-primary text-xl tracking-tight">Schedules</h3>
             </div>
+        {/if}
 
-            <div class="space-y-10">
-                {#each schedules as schedule (schedule.id)}
-                    <div class="animate-fade-in">
-                        <!-- Header Row -->
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center space-x-4 w-full">
-                                <!-- Custom Toggle -->
-                                <button 
-                                    type="button"
-                                    class="w-14 h-8 rounded-full transition-all relative flex-shrink-0 {schedule.isEnabled ? 'bg-brand-sage' : 'bg-gray-200'}"
-                                    on:click={() => schedule.isEnabled = !schedule.isEnabled}
-                                >
-                                    <div class="{schedule.isEnabled ? 'translate-x-[26px]' : 'translate-x-1'} absolute top-1 left-0 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-300 ease-spring"></div>
-                                </button>
-                                
-                                <!-- Editable Label -->
-                                <div class="relative group flex-1">
-                                    <input 
-                                        type="text" 
-                                        bind:value={schedule.label}
-                                        on:input={(e) => schedule.label = e.currentTarget.value.toUpperCase()}
-                                        class="font-bold text-typography-primary uppercase text-xs tracking-widest bg-transparent border-b-2 border-transparent focus:border-brand-sage focus:outline-none w-full transition-colors pb-1 placeholder-typography-secondary truncate"
-                                        placeholder="NAME"
-                                    />
-                                    <span class="absolute right-0 top-0 text-typography-secondary opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-[10px]">✎</span>
+        <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8">Care Schedules</h3>
+
+        <!-- Schedules List -->
+        <div class="space-y-6">
+            {#each schedules as schedule (schedule.id)}
+                <div class="bg-white rounded-[32px] p-6 shadow-card animate-fade-in transition-all duration-300 border border-transparent {schedule.isEnabled ? 'border-brand-sage/20' : ''}">
+                     <!-- Header -->
+                     <div class="flex items-start justify-between mb-6">
+                        <div class="flex items-center space-x-4 flex-1">
+                             <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'}">
+                                 {#if schedule.type === 'feeding'}
+                                    <!-- Bowl Icon -->
+                                    <span class="text-2xl">🥣</span>
+                                 {:else}
+                                    <!-- Pill Icon -->
+                                    <span class="text-2xl">💊</span>
+                                 {/if}
+                             </div>
+                             <div class="flex-1 relative group">
+                                 <input 
+                                    type="text" 
+                                    bind:value={schedule.label}
+                                    class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1"
+                                    placeholder={schedule.type === 'feeding' ? 'Food Name' : 'Medication Name'}
+                                />
+                                <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
                                 </div>
+                             </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3 ml-2">
+                             <button 
+                                type="button"
+                                class="w-14 h-8 rounded-full transition-all relative flex-shrink-0 {schedule.isEnabled ? 'bg-brand-sage' : 'bg-gray-200'}"
+                                on:click={() => schedule.isEnabled = !schedule.isEnabled}
+                            >
+                                <div class="{schedule.isEnabled ? 'translate-x-[26px]' : 'translate-x-1'} absolute top-1 left-0 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-300 ease-spring"></div>
+                            </button>
+                         </div>
+                     </div>
+
+                     {#if schedule.isEnabled}
+                        <div class="mt-4 animate-fade-in">
+                            <!-- Switcher -->
+                            <div class="flex bg-gray-50 rounded-xl p-1 mb-6">
+                                {#each ['daily', 'weekly', 'monthly', 'custom'] as freq}
+                                    <button type="button" 
+                                        class="flex-1 py-2 text-[10px] font-bold uppercase rounded-lg transition-all {schedule.frequency === freq ? 'bg-brand-sage text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}" 
+                                        on:click={() => schedule.frequency = freq as any}>{freq}</button>
+                                {/each}
                             </div>
-                        </div>
 
-                        <!-- Switcher -->
-                        <div class="flex bg-neutral-surface rounded-2xl p-1 shadow-inner mb-6 overflow-x-auto no-scrollbar">
-                            {#each ['daily', 'weekly', 'monthly', 'custom'] as freq}
-                                <button type="button" 
-                                    class="flex-1 py-2 px-3 text-[10px] font-bold uppercase rounded-xl transition-all whitespace-nowrap {schedule.frequency === freq ? 'bg-white shadow-sm text-typography-primary' : 'text-typography-secondary hover:text-typography-primary'}" 
-                                    on:click={() => schedule.frequency = freq as any}>{freq}</button>
-                            {/each}
-                        </div>
-
-                        {#if schedule.isEnabled}
-                            <div class="space-y-5 animate-fade-in-down">
-                                <!-- Configuration based on Frequency -->
-                                
-                                {#if schedule.frequency === 'weekly'}
-                                    <div class="flex justify-between mb-2 px-1">
+                            <!-- Frequency Specific Controls -->
+                            {#if schedule.frequency === 'weekly'}
+                                <div class="mb-6">
+                                    <label class="block text-sm font-bold text-typography-secondary mb-2">Select Days</label>
+                                    <div class="flex justify-between">
                                         {#each DAYS_OF_WEEK as day}
                                             <button 
                                                 type="button"
-                                                class="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold transition-all border-2
-                                                {schedule.selectedDays.includes(day.val) ? 'bg-brand-sage/10 border-brand-sage text-brand-sage' : 'bg-transparent border-transparent text-typography-secondary hover:bg-neutral-surface'}"
-                                                on:click={() => toggleDay(schedule, day.val)}
+                                                class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border {schedule.selectedDays.includes(day.val) ? 'bg-brand-sage text-white border-brand-sage' : 'bg-white text-gray-400 border-gray-200 hover:border-brand-sage/50'}"
+                                                on:click={() => {
+                                                    if (schedule.selectedDays.includes(day.val)) {
+                                                        schedule.selectedDays = schedule.selectedDays.filter(d => d !== day.val);
+                                                    } else {
+                                                        schedule.selectedDays = [...schedule.selectedDays, day.val];
+                                                    }
+                                                }}
                                             >
                                                 {day.label}
                                             </button>
                                         {/each}
                                     </div>
-                                {:else if schedule.frequency === 'monthly'}
-                                    <div class="bg-neutral-surface rounded-2xl px-5 py-3 flex items-center justify-between">
-                                        <span class="text-xs font-bold text-typography-secondary uppercase tracking-wider">Day of Month</span>
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-xl font-black text-brand-sage">{schedule.selectedDayOfMonth}</span>
-                                            <input 
-                                                type="range" 
-                                                min="1" 
-                                                max="31" 
-                                                bind:value={schedule.selectedDayOfMonth}
-                                                class="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-sage"
-                                            />
-                                        </div>
-                                    </div>
-                                {:else if schedule.frequency === 'custom'}
-                                    <div class="bg-neutral-surface rounded-[24px] p-4">
-                                        <!-- Calendar Header -->
-                                        <div class="flex items-center justify-between mb-4">
-                                            <button on:click={() => toggleCalendarMonth(-1)} class="p-1 hover:bg-gray-100 rounded-lg">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                                                </svg>
-                                            </button>
-                                            <span class="font-bold text-sm text-typography-primary">{getMonthName(calendarMonth)} {calendarYear}</span>
-                                            <button on:click={() => toggleCalendarMonth(1)} class="p-1 hover:bg-gray-100 rounded-lg">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </button>
-                                        </div>
-
-                                        <!-- Calendar Grid -->
-                                        <div class="grid grid-cols-7 gap-1 text-center mb-2">
-                                            {#each ['S','M','T','W','T','F','S'] as d}
-                                                <span class="text-[10px] font-bold text-typography-secondary">{d}</span>
-                                            {/each}
-                                        </div>
-                                        <div class="grid grid-cols-7 gap-1">
-                                            <!-- Empty slots -->
-                                            {#each Array(new Date(calendarYear, calendarMonth, 1).getDay()) as _}
-                                                <div></div>
-                                            {/each}
-                                            <!-- Days -->
-                                            {#each Array(getDaysInMonth(calendarMonth, calendarYear)) as _, i}
-                                                <button 
-                                                    type="button" 
-                                                    class="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
-                                                    {isDateSelected(schedule, i+1) ? 'bg-brand-sage text-white' : 'hover:bg-gray-100 text-gray-700'}"
-                                                    on:click={() => toggleCustomDate(schedule, i+1)}
-                                                >
-                                                    {i + 1}
-                                                </button>
-                                            {/each}
-                                        </div>
-                                        
-                                        <!-- Selected Dates Summary -->
-                                        {#if schedule.customDates.length > 0}
-                                            <div class="mt-4 flex flex-wrap gap-2">
-                                                {#each schedule.customDates as date}
-                                                    <span class="inline-flex items-center px-2 py-1 bg-brand-sage/10 rounded-lg text-[10px] font-bold text-brand-sage">
-                                                        {date}
-                                                    </span>
-                                                {/each}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                {/if}
-
-                                <!-- Time List (1 col on mobile, 2 on larger) -->
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {#each schedule.times as time, i}
-                                        <div class="flex items-center justify-between bg-neutral-surface rounded-2xl px-4 py-3 group focus-within:ring-2 focus-within:ring-brand-sage/50 transition-all border border-transparent hover:border-brand-sage/20">
-                                            <div class="flex items-center flex-1">
-                                                <span class="text-typography-secondary mr-3 text-lg">
-                                                    ⏰
-                                                </span>
-                                                <input 
-                                                    type="time" 
-                                                    bind:value={schedule.times[i]}
-                                                    class="bg-transparent border-none text-typography-primary font-bold focus:ring-0 p-0 w-full text-base"
-                                                />
-                                            </div>
-                                            <button 
-                                                type="button"
-                                                on:click={() => removeTime(schedule.id, i)}
-                                                class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 hover:shadow-sm transition-all"
-                                                aria-label="Remove Time"
-                                            >
-                                                <span class="text-sm font-bold">✕</span>
-                                            </button>
-                                        </div>
-                                    {/each}
                                 </div>
-                                <button 
-                                    type="button"
-                                    on:click={() => addTime(schedule.id)}
-                                    class="w-full py-3.5 border-2 border-dashed border-brand-sage/30 rounded-2xl text-brand-sage text-[10px] font-bold uppercase tracking-widest hover:bg-brand-sage/5 hover:border-brand-sage transition-all flex items-center justify-center space-x-2"
-                                >
-                                    <span>+ Add time</span>
-                                </button>
-                        
-                            </div>
-                        {/if}
-                        
-                        <!-- Separator Line if not last? Logic simplified -->
-                        <div class="h-px bg-neutral-surface my-10 w-full"></div>
-                    </div>
-                {/each}
+                            {:else if schedule.frequency === 'monthly'}
+                                <div class="mb-6">
+                                    <label class="block text-sm font-bold text-typography-secondary mb-2">Day of Month</label>
+                                    <div class="flex items-center bg-neutral-surface rounded-2xl px-4 py-3 border border-transparent focus-within:border-brand-sage/50">
+                                        <span class="text-sm font-bold text-typography-secondary mr-2">Every</span>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            max="31"
+                                            bind:value={schedule.selectedDayOfMonth}
+                                            class="bg-transparent border-none text-typography-primary font-bold focus:ring-0 p-0 text-base w-12 text-center"
+                                        />
+                                        <span class="text-sm font-bold text-typography-secondary ml-1">of the month</span>
+                                    </div>
+                                </div>
+                            {:else if schedule.frequency === 'custom'}
+                                <div class="mb-6">
+                                    <label class="block text-sm font-bold text-typography-secondary mb-2">Specific Dates</label>
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <input 
+                                            type="date" 
+                                            id="date-picker-{schedule.id}"
+                                            class="flex-1 bg-neutral-surface rounded-xl px-4 py-2 border-none text-sm font-bold text-typography-primary focus:ring-2 focus:ring-brand-sage/20 cursor-pointer accent-brand-sage"
+                                        />
+                                        <button 
+                                            type="button"
+                                            class="bg-brand-sage text-white rounded-xl px-4 py-2 text-sm font-bold shadow-sm hover:bg-brand-sage/90"
+                                            on:click={() => {
+                                                const el = document.getElementById(`date-picker-${schedule.id}`) as HTMLInputElement;
+                                                if (el && el.value && !schedule.customDates.includes(el.value)) {
+                                                    schedule.customDates = [...schedule.customDates, el.value];
+                                                    el.value = '';
+                                                }
+                                            }}
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    
+                                    {#if schedule.customDates.length > 0}
+                                        <div class="flex flex-wrap gap-2">
+                                            {#each schedule.customDates as date}
+                                                <div class="bg-brand-sage/10 text-brand-sage px-3 py-1 rounded-full text-xs font-bold flex items-center">
+                                                    {new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    <button 
+                                                        type="button" 
+                                                        class="ml-2 hover:text-red-500"
+                                                        on:click={() => schedule.customDates = schedule.customDates.filter(d => d !== date)}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    {:else}
+                                        <p class="text-xs text-gray-400 italic">No dates selected</p>
+                                    {/if}
+                                </div>
+                            {/if}
 
-                <!-- Add Schedule Buttons -->
-                <div class="flex space-x-4">
-                    <button 
-                        type="button" 
-                        class="flex-1 py-4 border-[1.5px] border-dashed border-brand-sage rounded-[24px] text-brand-sage text-xs font-bold uppercase tracking-wide hover:bg-neutral-surface transition-colors"
-                        on:click={() => addSchedule('feeding')}
-                    >
-                        + Add Feeding
-                    </button>
-                    <button 
-                        type="button" 
-                        class="flex-1 py-4 border-[1.5px] border-dashed border-brand-sage/50 text-brand-sage/70 text-xs font-bold uppercase tracking-wide hover:border-brand-sage hover:text-brand-sage transition-colors rounded-[24px]"
-                        on:click={() => addSchedule('medication')}
-                    >
-                        + Add Medication
-                    </button>
+                            <!-- Time Rows -->
+                            {#if schedule.frequency !== 'monthly'}
+                            <div class="space-y-3 mb-6">
+                                <label class="block text-sm font-bold text-typography-secondary mb-2">At these times</label>
+                                {#each schedule.times as time, i}
+                                    <div class="flex items-center space-x-3 bg-neutral-surface rounded-2xl px-4 py-3 group focus-within:ring-2 focus-within:ring-brand-sage/50 transition-all border border-transparent hover:border-brand-sage/20">
+                                         <!-- Label Input (Left) -->
+                                         <div class="flex-1">
+                                             <input 
+                                                type="text" 
+                                                bind:value={schedule.times[i].label}
+                                                class="font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 w-full placeholder-gray-400 text-sm"
+                                                placeholder={i === 0 ? 'Breakfast' : i === 1 ? 'Dinner' : 'Label'}
+                                            />
+                                         </div>
+
+                                         <!-- Vertical Divider -->
+                                         <div class="w-px h-6 bg-gray-200"></div>
+
+                                         <!-- Time Input (Right) -->
+                                         <div class="relative">
+                                             <input 
+                                                type="time" 
+                                                bind:value={schedule.times[i].value}
+                                                class="bg-white rounded-lg px-3 py-1.5 border border-gray-100 text-typography-primary font-bold focus:ring-2 focus:ring-brand-sage/20 p-0 text-base w-36 text-center shadow-sm cursor-pointer accent-brand-sage"
+                                            />
+                                         </div>
+                                         
+                                         <!-- Delete Button (Far Right) -->
+                                         <button 
+                                            type="button"
+                                            on:click={() => removeTime(schedule.id, i)}
+                                            class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 hover:shadow-sm transition-all flex-shrink-0"
+                                            aria-label="Remove Time"
+                                        >
+                                            <span class="text-sm font-bold">✕</span>
+                                        </button>
+                                    </div>
+                                {/each}
+                            </div>
+
+                            <!-- Dashed Add Button -->
+                            <button 
+                                type="button"
+                                on:click={() => addTime(schedule.id)}
+                                class="w-full py-3 border-2 border-dashed border-brand-sage/40 rounded-2xl text-brand-sage text-xs font-bold uppercase flex items-center justify-center space-x-2 hover:bg-brand-sage/5 transition-colors"
+                            >
+                                <span class="text-lg leading-none">+</span>
+                                <span>Add {schedule.type} Time</span>
+                            </button>
+                            {/if}
+                        </div>
+                     {/if}
                 </div>
+            {/each}
+            
+            <!-- Quick Add Buttons -->
+             <div class="grid grid-cols-2 gap-4 opacity-50 hover:opacity-100 transition-opacity">
+                 <button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Food</button>
+                 <button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Meds</button>
+             </div>
+        </div>
+ 
+        <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8">Preferences</h3>
+        
+        <!-- Preferences Card -->
+        <section class="bg-white rounded-[32px] p-2 shadow-card">
+            <div class="flex items-center p-4">
+               <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 mr-4">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                   </svg>
+               </div>
+               <div class="flex-1">
+                    <div class="text-base font-bold text-typography-primary">Alerts & Reminders</div>
+                    <div class="text-sm font-bold text-typography-secondary">Push notifications enabled</div>
+               </div>
+               <button 
+                   type="button"
+                   class="w-12 h-7 rounded-full transition-all relative {pushReminders ? 'bg-brand-sage' : 'bg-gray-200'}"
+                   on:click={() => pushReminders = !pushReminders}
+               >
+                   <div class="{pushReminders ? 'translate-x-[22px]' : 'translate-x-1'} absolute top-1 left-0 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300"></div>
+               </button>
             </div>
         </section>
 
-        <button 
-            type="submit"
-            on:click={handleSubmit}
-            disabled={loading}
-            class="w-full h-16 bg-brand-sage text-white font-bold text-lg rounded-3xl shadow-lg shadow-brand-sage/20 hover:bg-brand-sage/90 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.01] active:scale-[0.99]"
-        >
-            {#if loading}
-                <div class="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div>
-            {:else}
-                Save All Changes
-            {/if}
-        </button>
+        <!-- Save Button -->
+        <div class="pt-6 relative z-10">
+            <button 
+                type="submit"
+                on:click={handleSubmit}
+                disabled={loading}
+                class="w-full h-14 bg-brand-sage text-white font-bold text-base rounded-2xl shadow-lg hover:bg-brand-sage/90 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {#if loading}
+                    <div class="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div>
+                {:else}
+                    Save Changes
+                {/if}
+            </button>
+            
+            <div class="mt-6 flex justify-center">
+                 <button class="text-red-500 text-xs font-bold uppercase tracking-widest hover:underline flex items-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>
+                     Cancel Setup
+                 </button>
+            </div>
+        </div>
+
     </main>
 </div>

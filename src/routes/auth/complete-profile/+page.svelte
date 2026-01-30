@@ -81,7 +81,7 @@
         phone: formData.phone || undefined
       });
 
-      goto('/profile');
+      goto('/');
     } catch (e: any) {
       error = e.message || 'Failed to create profile';
     } finally {

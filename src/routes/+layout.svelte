@@ -4,6 +4,8 @@
   import { authService } from '$lib/services/auth';
   import { currentUser, currentSession, currentProfile } from '$lib/stores/user';
   import { db } from '$lib/db';
+  import { ensureDailyTasks } from '$lib/services/taskService';
+  import { supabase } from '$lib/supabase';
   import '../app.css';
 
   onMount(async () => {
@@ -20,6 +22,20 @@
         currentProfile.set(profile);
         // Cache profile locally for offline access
         await db.profiles.put(profile);
+        
+        // Check/Generate Tasks for Today (Option A)
+        // We need household_id. Profile might have it? Or fetching it.
+        // Let's quickly fetch household_id if not on profile type.
+        // Actually, household_members table links user to household.
+        const { data: members } = await supabase
+            .from('household_members')
+            .select('household_id')
+            .eq('user_id', session.user.id)
+            .limit(1);
+            
+        if (members && members.length > 0) {
+            ensureDailyTasks(members[0].household_id);
+        }
       }
     } else {
       // Try to load from local cache for offline access

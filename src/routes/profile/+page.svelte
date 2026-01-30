@@ -17,7 +17,7 @@ firstName: '',
 
   onMount(async () => {
     if (!$currentUser) {
-      goto('/login');
+      goto('/auth/login');
       return;
     }
 
@@ -84,7 +84,7 @@ firstName: '',
   async function handleLogout() {
     try {
       await authService.logout();
-      goto('/login');
+      goto('/auth/login');
     } catch (e: any) {
       error = e.message || 'Logout failed';
     }

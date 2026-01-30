@@ -190,41 +190,137 @@
 <div class="min-h-screen bg-gray-50 pb-20">
   <!-- Header -->
   <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center">
-    <a href="/" class="mr-4 text-gray-500 hover:text-gray-900">
+    <button on:click={() => goto('/')} class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
       </svg>
-    </a>
+    </button>
     <h1 class="text-xl font-bold text-gray-900">Settings</h1>
   </header>
 
   <main class="p-6 max-w-lg mx-auto space-y-6">
       <!-- Profile Settings (Editable via Modal) -->
-     <section class="bg-white rounded-2xl p overflow-hidden shadow-sm">
-        <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-            <div class="font-bold text-gray-900">Profile Settings</div>
-            <button class="text-xs font-bold text-brand-sage bg-brand-sage/10 px-3 py-1.5 rounded-full" on:click={() => showEditProfileModal = true}>
-                Edit
+      <!-- Profile Card -->
+     <section class="bg-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
+        <div class="flex items-center space-x-4">
+            <div class="w-16 h-16 rounded-full bg-brand-sage/10 text-brand-sage flex items-center justify-center text-2xl font-bold">
+                {profile.first_name ? profile.first_name[0] : '?'}
+            </div>
+            <div class="flex-1">
+                <h2 class="text-xl font-bold text-gray-900">{profile.first_name} {profile.last_name}</h2>
+                <p class="text-sm text-gray-500">{profile.phone || 'No phone set'}</p>
+            </div>
+            <button 
+                class="p-2 text-gray-400 hover:text-brand-sage transition-colors rounded-full hover:bg-gray-50"
+                on:click={() => showEditProfileModal = true}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
             </button>
         </div>
-        <div class="p-4 space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                   <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">First Name</label>
-                   <div class="text-sm font-medium text-gray-900">{profile.first_name || 'Not set'}</div>
-                </div>
-                <div>
-                   <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Last Name</label>
-                   <div class="text-sm font-medium text-gray-900">{profile.last_name || 'Not set'}</div>
-                </div>
-            </div>
-            <div>
-               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Phone Number</label>
-               <div class="text-sm font-medium text-gray-900">{profile.phone || 'Not set'}</div>
-            </div>
-        </div>
      </section>
-     
+
+      <!-- Family Sharing -->
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+         <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+             <div>
+                <div class="font-bold text-gray-900">Family & Access</div>
+                <p class="text-xs text-gray-500">Manage who can access this home.</p>
+             </div>
+             <button 
+                class="bg-brand-sage/10 text-brand-sage p-2 rounded-full hover:bg-brand-sage/20 transition-colors"
+                on:click={() => showInviteModal = true}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+            </button>
+         </div>
+
+         {#if loading}
+              <div class="p-4 text-center text-gray-400">Loading members...</div>
+         {:else}
+              <div class="divide-y divide-gray-100">
+                  {#each members as member}
+                     <div class="p-4 flex items-center justify-between">
+                         <div class="flex items-center space-x-3">
+                             <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm">
+                                 {member.first_name ? member.first_name[0] : '?'}
+                             </div>
+                             <div>
+                                 <div class="font-medium text-gray-900 text-sm">{member.first_name} {member.user_id === currentUser?.id ? '(You)' : ''}</div>
+                                 <div class="text-xs text-brand-sage font-medium">{member.role === 'owner' ? 'Owner' : 'Member'}</div>
+                             </div>
+                         </div>
+ 
+                         <!-- Permissions (Only show for non-owners, logic simplified) -->
+                         {#if member.role !== 'owner' && isOwner}
+                             <div class="flex items-center space-x-2">
+                                 <button 
+                                     class="w-10 h-6 rounded-full transition-colors relative {member.can_log ? 'bg-brand-sage' : 'bg-gray-200'}"
+                                     on:click={() => togglePermission(member.user_id, 'can_log')}
+                                 >
+                                     <div class="w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm {member.can_log ? 'left-5' : 'left-1'}"></div>
+                                 </button>
+                             </div>
+                         {/if}
+                     </div>
+                  {/each}
+              </div>
+         {/if}
+      </section>
+
+      <!-- Account & General -->
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+         <!-- Account Info -->
+         <div class="p-4">
+             <div class="font-bold text-gray-900 mb-4">Account</div>
+             <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-gray-500">Email</div>
+                    <div class="text-sm font-medium text-gray-900">{profile.email || 'No email set'}</div>
+                </div>
+                <!-- Username removed as it's less critical for settings view, kept in edit modal if needed or just rely on profile -->
+             </div>
+             <div class="mt-6 space-y-2">
+                <button class="w-full py-3 bg-gray-50 rounded-xl text-gray-600 font-bold text-xs uppercase tracking-wider hover:bg-gray-100 transition-colors">
+                    Reset Password
+                </button>
+             </div>
+         </div>
+      </section>
+
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+         <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+              <div class="flex items-center space-x-3 text-gray-700">
+                 <div class="p-2 bg-blue-50 text-blue-500 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                 </div>
+                 <span class="font-medium text-sm">Notifications</span>
+             </div>
+             <div class="w-10 h-6 bg-brand-sage rounded-full relative">
+                 <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 shadow-sm"></div>
+             </div>
+         </div>
+         
+         <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleLogout}>
+            <div class="flex items-center space-x-3 text-red-600">
+               <div class="p-2 bg-red-50 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+               </div>
+               <span class="font-medium text-sm">Log Out</span>
+           </div>
+       </div>
+      </section>
+
+
+  </main>
+  
   <!-- Edit Profile Modal -->
   {#if showEditProfileModal}
     <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -278,122 +374,6 @@
     </div>
   {/if}
 
-     <!-- Account Information (Read Only) -->
-     <section class="bg-white rounded-2xl p overflow-hidden shadow-sm">
-        <div class="p-4 border-b border-gray-100 font-bold text-gray-900">Account Information</div>
-        <div class="p-4 space-y-4">
-            <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Email Address</label>
-                <div class="text-sm font-medium text-gray-900 break-all">{profile.email || 'No email set'}</div>
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Username</label>
-                <div class="text-sm font-medium text-gray-900">@{profile.username || 'none'}</div>
-            </div>
-            
-            <div class="pt-2 flex flex-col space-y-2">
-                <button class="w-full py-3 border border-gray-200 rounded-xl text-gray-600 font-bold text-xs uppercase tracking-wider hover:bg-gray-50 transition-colors">
-                    Change Username / Email
-                </button>
-                <button class="w-full py-3 border border-gray-200 rounded-xl text-gray-600 font-bold text-xs uppercase tracking-wider hover:bg-gray-50 transition-colors">
-                    Reset Password
-                </button>
-            </div>
-        </div>
-     </section>
-
-     <!-- Family Sharing -->
-     <section class="bg-white rounded-2xl p overflow-hidden shadow-sm">
-        <div class="p-4 border-b border-gray-100">
-            <div class="font-bold text-gray-900">Family Sharing</div>
-            <p class="text-xs text-gray-500 mt-1">Share pet profiles, invite family or sitters.</p>
-        </div>
-        
-        <div class="p-4">
-             <button 
-                class="bg-primary-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors shadow-sm"
-                on:click={() => showInviteModal = true}
-            >
-                Invite Member
-            </button>
-        </div>
-
-        {#if loading}
-             <div class="p-4 text-center text-gray-400">Loading members...</div>
-        {:else}
-             <div class="divide-y divide-gray-100 border-t border-gray-100">
-                 {#each members as member}
-                    <div class="p-4 flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold">
-                                {member.first_name ? member.first_name[0] : '?'}
-                            </div>
-                            <div>
-                                <div class="font-medium text-gray-900">{member.first_name} {member.user_id === currentUser?.id ? '(You)' : ''}</div>
-                                <div class="text-xs text-gray-500">{member.role}</div>
-                            </div>
-                        </div>
-
-                        <!-- Permissions (Only show for non-owners, logic simplified) -->
-                        {#if member.role !== 'owner' && isOwner}
-                            <div class="flex items-center space-x-2">
-                                <span class="text-xs text-gray-400 mr-1">Can Log</span>
-                                <button 
-                                    class="w-10 h-5 rounded-full transition-colors relative {member.can_log ? 'bg-primary-500' : 'bg-gray-200'}"
-                                    on:click={() => togglePermission(member.user_id, 'can_log')}
-                                >
-                                    <div class="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all {member.can_log ? 'left-5.5' : 'left-1'}"></div>
-                                </button>
-                            </div>
-                        {:else if member.role === 'owner'}
-                            <span class="text-xs font-bold text-primary-500 bg-primary-50 px-2 py-1 rounded">Owner</span>
-                        {/if}
-                    </div>
-                 {/each}
-             </div>
-        {/if}
-     </section>
-
-     <!-- General -->
-     <section class="bg-white rounded-2xl p overflow-hidden shadow-sm">
-        <div class="p-4 border-b border-gray-100 font-bold text-gray-900">General</div>
-        <div class="divide-y divide-gray-100">
-            <div class="flex items-center justify-between p-4">
-                 <div class="flex items-center space-x-3 text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Language</span>
-                </div>
-                <select class="text-sm bg-transparent text-gray-500 focus:outline-none">
-                    <option>English</option>
-                    <option>Spanish</option>
-                    <option>Portuguese</option>
-                </select>
-            </div>
-             <div class="flex items-center justify-between p-4">
-                 <div class="flex items-center space-x-3 text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    <span>Notifications</span>
-                </div>
-                <div class="w-10 h-5 bg-primary-500 rounded-full relative">
-                    <div class="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 right-1"></div>
-                </div>
-            </div>
-        </div>
-     </section>
-
-     <div class="pt-4 text-center cursor-pointer" on:click={handleLogout}>
-         <span class="text-red-500 font-medium">Log Out</span>
-     </div>
-
-     <div class="text-center text-xs text-gray-400 pb-6">
-         Version 2.4.0 (PetCore Pro)
-     </div>
-  </main>
-  
   <!-- Invite Modal (Placeholder) -->
   {#if showInviteModal}
     <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

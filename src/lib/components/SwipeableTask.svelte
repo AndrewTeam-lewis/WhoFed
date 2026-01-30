@@ -124,7 +124,7 @@
                        {/if}
                     </div>
                     {#if !isDone}
-                       <div class="text-[10px] uppercase tracking-wide opacity-80">{visuals.timeFormatted}</div>
+                       <div class="text-[10px] tracking-wide opacity-80">{visuals.timeFormatted}</div>
                     {/if}
                 </div>
             </div>
@@ -132,7 +132,7 @@
             <!-- Status Label -->
             {#if !isDone}
                 {#if visuals.isUrgent}
-                    <div class="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg text-white whitespace-nowrap animate-pulse ml-2">
+                    <div class="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg text-white whitespace-nowrap ml-2 {visuals.dueLabel === 'Due soon' ? 'animate-pulse' : ''}">
                         {visuals.dueLabel}
                     </div>
                 {:else}

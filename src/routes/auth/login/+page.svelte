@@ -14,7 +14,7 @@
 
     try {
       await authService.login(usernameOrEmail, password);
-      goto('/profile');
+      goto('/');
     } catch (e: any) {
       error = e.message || 'Login failed';
     } finally {
