@@ -49,19 +49,44 @@
   }
 
   async function fetchLogs() {
-      // History Check: Free tier limit is 3 events
-      const limit = isPremium ? 100 : 3;
-      
-      if (!isPremium) isLocked = true;
+      const now = new Date();
+      let startTime = new Date();
 
+      if (isPremium) {
+          // Premium: 1 Year History
+          startTime.setFullYear(now.getFullYear() - 1);
+      } else {
+          // Free: 3 Days History
+          startTime.setDate(now.getDate() - 3);
+      }
+
+      // 1. Fetch Visible Logs
       const { data } = await supabase
         .from('activity_log')
         .select('*, profiles(first_name), schedules(label, task_type), daily_tasks(label)')
         .eq('pet_id', petId)
+        .gte('performed_at', startTime.toISOString())
         .order('performed_at', { ascending: false })
-        .limit(limit);
+        .limit(100); // Sanity limit
         
       logs = data || [];
+
+      // 2. Check if we should show the "Unlock" banner
+      if (!isPremium) {
+          // Check if ANY records exist older than our start time
+          const { count } = await supabase
+              .from('activity_log')
+              .select('id', { count: 'exact', head: true })
+              .eq('pet_id', petId)
+              .lt('performed_at', startTime.toISOString());
+              
+          // If there are older records, or if the list is empty (marketing), show lock
+          // Actually, only show lock if there IS history hidden, or maybe always at bottom?
+          // Let's show it if we found hidden records.
+          isLocked = (count || 0) > 0;
+      } else {
+          isLocked = false;
+      }
   }
 
   function formatTimeAgo(isoString: string) {
