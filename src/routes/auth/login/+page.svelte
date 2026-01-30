@@ -7,6 +7,8 @@
   let error = '';
   let loading = false;
 
+  import { page } from '$app/stores';
+
   async function handleLogin(e: Event) {
     e.preventDefault();
     error = '';
@@ -14,7 +16,8 @@
 
     try {
       await authService.login(usernameOrEmail, password);
-      goto('/');
+      const redirectTo = $page.url.searchParams.get('redirectTo');
+      goto(redirectTo ? decodeURIComponent(redirectTo) : '/');
     } catch (e: any) {
       error = e.message || 'Login failed';
     } finally {

@@ -178,6 +178,23 @@
       }
   }
 
+
+
+  import QRCode from 'qrcode';
+  let qrCodeDataUrl = '';
+
+  async function generateQRCode() {
+      if (!householdId) return;
+      try {
+          // Check if we are in a browser environment to get the origin
+          const origin = window.location.origin;
+          const joinUrl = `${origin}/join?householdId=${householdId}`;
+          qrCodeDataUrl = await QRCode.toDataURL(joinUrl, { width: 200, margin: 2, color: { dark: '#5C7F67', light: '#FFFFFF' } });
+      } catch (err) {
+          console.error(err);
+      }
+  }
+
   function handleLogout() {
       supabase.auth.signOut().then(() => goto('/auth/login'));
   }
@@ -230,7 +247,7 @@
              </div>
              <button 
                 class="bg-brand-sage/10 text-brand-sage p-2 rounded-full hover:bg-brand-sage/20 transition-colors"
-                on:click={() => showInviteModal = true}
+                on:click={() => { showInviteModal = true; generateQRCode(); }}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
@@ -402,10 +419,14 @@
              </div>
              
              <div class="flex justify-center py-4">
-                 <div class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <div class="w-48 h-48 bg-white rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200">
+                    {#if qrCodeDataUrl}
+                        <img src={qrCodeDataUrl} alt="Invite QR Code" class="w-full h-full object-contain" />
+                    {:else}
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                      </svg>
+                    {/if}
                  </div>
              </div>
              
