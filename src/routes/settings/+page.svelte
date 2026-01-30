@@ -1,3 +1,4 @@
+<script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
@@ -338,7 +339,7 @@
 
        <!-- Version Display -->
        <div class="text-center pb-8">
-           <p class="text-xs text-brand-sage/40 font-mono">v{APP_VERSION}</p>
+           <p class="text-xs text-gray-400 font-mono">v{APP_VERSION}</p>
        </div>
    </main>
   
