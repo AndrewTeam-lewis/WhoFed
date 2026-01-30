@@ -61,10 +61,10 @@
         // 3. Check if already a member
         const { data: existingMember } = await supabase
             .from('household_members')
-            .select('id')
+            .select('user_id')
             .eq('household_id', householdId)
             .eq('user_id', currentUser.id)
-            .single();
+            .maybeSingle();
 
         if (existingMember) {
             goto('/');
@@ -73,7 +73,7 @@
 
     } catch (err: any) {
         console.error('Error loading invite:', err);
-        error = 'Unable to load household details. The invite may be invalid.';
+        error = `Unable to load household details: ${err.message || err.error_description || 'Unknown error'} (${err.code || 'No Code'})`;
     } finally {
         loading = false;
     }
@@ -88,13 +88,19 @@
             .insert({
                 household_id: householdId,
                 user_id: currentUser.id,
-                role: 'member',
                 is_active: true,
                 can_log: true,
                 can_edit: false
             });
 
-            if (joinError) throw joinError;
+            if (joinError) {
+                // Ignore unique constraint violation (already a member)
+                if (joinError.code === '23505') {
+                    goto('/');
+                    return;
+                }
+                throw joinError;
+            }
             goto('/');
 
       } catch (err: any) {

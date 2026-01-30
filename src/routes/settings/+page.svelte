@@ -182,14 +182,15 @@
 
   import QRCode from 'qrcode';
   let qrCodeDataUrl = '';
+  let inviteUrl = '';
 
   async function generateQRCode() {
       if (!householdId) return;
       try {
           // Check if we are in a browser environment to get the origin
           const origin = window.location.origin;
-          const joinUrl = `${origin}/join?householdId=${householdId}`;
-          qrCodeDataUrl = await QRCode.toDataURL(joinUrl, { width: 200, margin: 2, color: { dark: '#5C7F67', light: '#FFFFFF' } });
+          inviteUrl = `${origin}/join?householdId=${householdId}`;
+          qrCodeDataUrl = await QRCode.toDataURL(inviteUrl, { width: 200, margin: 2, color: { dark: '#5C7F67', light: '#FFFFFF' } });
       } catch (err) {
           console.error(err);
       }
@@ -418,7 +419,7 @@
                  </div>
              </div>
              
-             <div class="flex justify-center py-4">
+             <div class="flex flex-col items-center justify-center py-4 space-y-4">
                  <div class="w-48 h-48 bg-white rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200">
                     {#if qrCodeDataUrl}
                         <img src={qrCodeDataUrl} alt="Invite QR Code" class="w-full h-full object-contain" />
@@ -428,6 +429,12 @@
                      </svg>
                     {/if}
                  </div>
+                 
+                 {#if inviteUrl}
+                    <a href={inviteUrl} target="_blank" class="text-brand-sage text-sm font-bold hover:underline">
+                        Test Link (Click Me)
+                    </a>
+                 {/if}
              </div>
              
              <button class="w-full mt-4 flex items-center justify-center space-x-2 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">
