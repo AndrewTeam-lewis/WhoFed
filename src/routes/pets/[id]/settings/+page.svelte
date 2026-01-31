@@ -555,7 +555,7 @@
                                         <span class="text-2xl">🥣</span>
                                      {:else if schedule.type === 'litter'}
                                         <!-- Litter Icon -->
-                                        <span class="text-2xl">🚽</span>
+                                        <span class="text-2xl">📥</span>
                                      {:else}
                                         <!-- Pill Icon -->
                                         <span class="text-2xl">💊</span>

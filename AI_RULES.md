@@ -20,3 +20,5 @@
    - **CRITICAL**: You MUST increment the version number in `src/lib/version.ts` after ANY code change or database schema update.
    - This applies to even small fixes.
    - The user relies on this version number to verify they are running the latest code on their devices.
+
+6. Don't run automatic UI testing in your chrome browser. It's not needed.I'll test it myself.

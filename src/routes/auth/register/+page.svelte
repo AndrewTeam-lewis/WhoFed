@@ -169,8 +169,16 @@
         bind:value={formData.phone} 
         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
       />
-      <p class="text-xs text-gray-500 mt-1">Optional - for notifications</p>
+      <p class="text-[10px] text-gray-400 mt-1 leading-tight">
+        By providing your number, you agree to receive SMS feeding reminders. See our <a href="/legal/privacy" class="underline hover:text-gray-600" target="_blank">Privacy Policy</a> for details. Msg & data rates may apply.
+      </p>
     </div>
+
+    <p class="text-xs text-gray-500 text-center">
+      By creating an account, you agree to our 
+      <a href="/legal/tos" class="underline hover:text-gray-800" target="_blank">Terms of Service</a> & 
+      <a href="/legal/privacy" class="underline hover:text-gray-800" target="_blank">Privacy Policy</a>.
+    </p>
 
     <button 
       type="submit" 

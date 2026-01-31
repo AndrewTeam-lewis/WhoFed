@@ -4,15 +4,7 @@
   import { supabase } from '$lib/supabase';
   import { generateTasksForDate } from '$lib/taskUtils';
 
-  let loading = false;
-  let name = '';
-  let species = 'dog';
-  let householdId: string | null = null;
-  let currentUser: any = null;
-  let showSpeciesModal = false;
-  let showPremiumModal = false; // Add this line
-  let isPremium = false; // Track premium status for schedule gating
-  let pushReminders = true;
+
 
   // Calendar State
   const today = new Date();
@@ -49,20 +41,39 @@
       { val: 4, label: 'T' }, { val: 5, label: 'F' }, { val: 6, label: 'S' }, { val: 0, label: 'S' }
   ];
 
-  const SPECIES_OPTIONS = [
-    { id: 'dog', icon: '🐶', label: 'Dog' },
-    { id: 'dog-2', icon: '🐕', label: 'Dog 2' },
-    { id: 'cat', icon: '🐱', label: 'Cat' },
-    { id: 'cat-2', icon: '🐈', label: 'Cat 2' },
-    { id: 'cat-3', icon: '🐈‍⬛', label: 'Cat 3' },
-    { id: 'bird', icon: '🐦', label: 'Bird' },
-    { id: 'hamster', icon: '🐹', label: 'Hamster' },
-    { id: 'rabbit', icon: '🐰', label: 'Rabbit' },
-    { id: 'fish', icon: '🐠', label: 'Fish' },
-    { id: 'iguana', icon: '🦎', label: 'Lizard' },
-    { id: 'snake', icon: '🐍', label: 'Snake' },
-    { id: 'turtle', icon: '🐢', label: 'Turtle' },
+  // Icon Libraries
+  const FREE_ICONS = ['🐶', '🐱', '🐰', '🐦', '🐠', '🐾', '🐕', '🐈', '🐹', '🐢'];
+  const PREMIUM_ICONS = [
+      '🦎', '🐍', '🦄', '🦖', '🦕', '🦂', '🕷️', '🐙', '🦑', '🦐', '🦞', '🦀', 
+      '🐡', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', 
+      '🦒', '🦘', '🐃', '🐏', '🦙', '🐐', '🦌', '🦇', '🦅', '🦆', '🦢', '🦉', 
+      '🦩', '🦚', '🦜', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿️', '🦔',
+      '🐉', '👽', '🤖', '👻', '🤡', '👹', '👺', '☠️', '💩', '👾', '🎃', '🦴'
   ];
+
+  const QUICK_SPECIES = [
+      { label: 'Dog', icon: '🐶' },
+      { label: 'Cat', icon: '🐱' },
+      { label: 'Bird', icon: '🐦' },
+      { label: 'Hamster', icon: '🐹' },
+      { label: 'Rabbit', icon: '🐰' },
+      { label: 'Fish', icon: '🐠' },
+      { label: 'Lizard', icon: '🦎' },
+      { label: 'Snake', icon: '🐍' },
+      { label: 'Turtle', icon: '🐢' }
+  ];
+
+  // State
+  let loading = false;
+  let name = '';
+  let species = ''; // Now a text input
+  let icon = '🐶'; // Default icon
+  let householdId: string | null = null;
+  let currentUser: any = null;
+  let showIconModal = false; // Renamed from showSpeciesModal
+  let showPremiumModal = false; 
+  let isPremium = false; 
+  let pushReminders = true;
 
   let scheduleNameEditingId: string | null = null;
 
@@ -238,15 +249,14 @@
 
           // 1. Create Pet
           // Map UI species to DB species
-          let dbSpecies = species;
-          if (species.startsWith('dog')) dbSpecies = 'dog';
-          else if (species.startsWith('cat')) dbSpecies = 'cat';
+          const finalSpecies = species.trim() || 'Pet';
 
           const { data: pet, error: petError } = await supabase
             .from('pets')
             .insert({
                 name,
-                species: dbSpecies,
+                species: finalSpecies,
+                icon,
                 household_id: householdId
             })
             .select()
@@ -394,14 +404,12 @@
             <div class="relative group">
                 <button 
                     type="button"
-                    on:click={() => showSpeciesModal = true}
+                    on:click={() => showIconModal = true}
                     class="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center relative transition-transform active:scale-95"
                 >
-                    <span class="text-5xl">
-                        {SPECIES_OPTIONS.find(s => s.id === species)?.icon || '🐶'}
-                    </span>
+                    <span class="text-6xl">{icon}</span>
                     
-                    <!-- Edit Overlay - Always visible on Hover but we have a dedicated button now too -->
+                    <!-- Edit Overlay -->
                     <div class="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     </div>
                 </button>
@@ -409,7 +417,7 @@
                 <!-- Quick Edit Button -->
                 <button 
                     type="button"
-                    on:click={() => showSpeciesModal = true}
+                    on:click={() => showIconModal = true}
                     class="absolute bottom-1 right-1 w-8 h-8 bg-brand-sage rounded-full flex items-center justify-center text-white shadow-md hover:bg-brand-sage/90 transition-colors"
                 >
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -418,47 +426,111 @@
                 </button>
             </div>
 
-            <!-- Explicit Change Label -->
             <button 
                 type="button"
-                on:click={() => showSpeciesModal = true}
+                on:click={() => showIconModal = true}
                 class="mt-3 text-xs font-bold text-brand-sage uppercase tracking-wider hover:underline"
             >
                 Change Icon
             </button>
             
-            <div class="mt-4 w-full max-w-xs text-center">
+            <div class="mt-4 w-full max-w-xs space-y-4">
+                <!-- Name Input -->
                 <input 
                     type="text" 
                     bind:value={name} 
+                    data-tour="pet-name-input"
                     class="block w-full text-center text-2xl font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 placeholder-gray-300 focus:placeholder-gray-200"
                     placeholder="Name your pet..."
                 />
+
+                <!-- Species Input & Chips -->
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        bind:value={species}
+                        class="block w-full text-center text-sm font-bold text-typography-secondary bg-transparent border-b border-gray-200 focus:border-brand-sage pb-2 focus:ring-0 placeholder-gray-300"
+                        placeholder="Type or select species (e.g. Dog)"
+                    />
+                    
+                    <!-- Chips -->
+                    <div class="flex flex-wrap justify-center gap-2 mt-3">
+                        {#each QUICK_SPECIES as qs}
+                            <button 
+                                type="button"
+                                class="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-500 hover:border-brand-sage hover:text-brand-sage transition-colors shadow-sm"
+                                on:click={() => {
+                                    species = qs.label;
+                                    // If user hasn't manually picked a premium icon (or if current icon is generic/free),
+                                    // strictly speaking, we could auto-update the icon. 
+                                    // But let's only do it if the icon is presently the default '🐶' or matches another default.
+                                    // Simpler: Just set it. If they want a weird combo (Dog named 'Cat'), they can fix it.
+                                    icon = qs.icon; 
+                                }}
+                            >
+                                {qs.label}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Species Selection Modal -->
-        {#if showSpeciesModal}
+        <!-- Icon Selection Modal -->
+        {#if showIconModal}
             <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <!-- Backdrop -->
-                <button type="button" class="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" on:click={() => showSpeciesModal = false}></button>
+                <button type="button" class="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" on:click={() => showIconModal = false}></button>
                 
                 <!-- Modal -->
                 <div class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl relative z-10 animate-scale-in max-h-[80vh] overflow-y-auto">
                     <h3 class="text-center text-lg font-bold text-typography-primary mb-6">Choose Icon</h3>
                     
-                    <div class="grid grid-cols-3 gap-4">
-                        {#each SPECIES_OPTIONS as opt}
+                    <!-- Free Icons -->
+                    <div class="grid grid-cols-5 gap-3 mb-8">
+                        {#each FREE_ICONS as freeIcon}
                             <button 
                                 type="button"
-                                class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all aspect-square
-                                {species === opt.id ? 'border-brand-sage bg-brand-sage/5 text-brand-sage shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-brand-sage/30'}"
-                                on:click={() => { species = opt.id; showSpeciesModal = false; }}
+                                class="flex items-center justify-center p-2 rounded-xl transition-all aspect-square border-2
+                                {icon === freeIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
+                                on:click={() => { icon = freeIcon; showIconModal = false; }}
                             >
-                                <span class="text-3xl mb-1 filter {species !== opt.id ? 'grayscale opacity-70' : ''}">
-                                    {opt.icon}
-                                </span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-center leading-tight">{opt.label}</span>
+                                <span class="text-3xl">{freeIcon}</span>
+                            </button>
+                        {/each}
+                    </div>
+
+                    <!-- Premium Divider -->
+                    <div class="flex items-center space-x-2 mb-6">
+                        <div class="h-px bg-gray-100 flex-1"></div>
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
+                            💎 Premium Icons
+                        </span>
+                        <div class="h-px bg-gray-100 flex-1"></div>
+                    </div>
+
+                    <!-- Premium Icons -->
+                    <div class="grid grid-cols-5 gap-3">
+                        {#each PREMIUM_ICONS as premIcon}
+                            <button 
+                                type="button"
+                                class="flex items-center justify-center p-2 rounded-xl transition-all aspect-square border-2 relative group
+                                {icon === premIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
+                                on:click={() => { 
+                                    if (isPremium) {
+                                        icon = premIcon; 
+                                        showIconModal = false; 
+                                    } else {
+                                        showPremiumModal = true;
+                                    }
+                                }}
+                            >
+                                <span class="text-3xl {isPremium ? '' : 'filter grayscale opacity-50'}">{premIcon}</span>
+                                {#if !isPremium}
+                                    <div class="absolute -top-1 -right-1">
+                                        <span class="text-[10px]">🔒</span>
+                                    </div>
+                                {/if}
                             </button>
                         {/each}
                     </div>
@@ -466,7 +538,7 @@
             </div>
         {/if}
 
-        <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8">Care Schedules</h3>
+        <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8" data-tour="pet-schedules">Care Schedules</h3>
 
         <!-- Schedules List -->
         <div class="space-y-6">
@@ -481,7 +553,7 @@
                                     <span class="text-2xl">🥣</span>
                                  {:else if schedule.type === 'litter'}
                                     <!-- Litter Icon -->
-                                    <span class="text-2xl">🚽</span>
+                                    <span class="text-2xl">📥</span>
                                  {:else}
                                     <!-- Pill Icon -->
                                     <span class="text-2xl">💊</span>

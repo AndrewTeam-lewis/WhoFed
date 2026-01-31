@@ -6,6 +6,7 @@
   import { db } from '$lib/db';
   import { ensureDailyTasks } from '$lib/services/taskService';
   import { supabase } from '$lib/supabase';
+  import Walkthrough from '$lib/components/Walkthrough.svelte';
   import '../app.css';
 
   onMount(async () => {
@@ -74,4 +75,6 @@
   <main>
     <slot />
   </main>
+  
+  <Walkthrough />
 </div>

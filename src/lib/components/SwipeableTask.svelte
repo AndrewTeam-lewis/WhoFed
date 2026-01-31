@@ -110,7 +110,7 @@
                 <!-- Icon (Hide if done for slimness) -->
                 {#if !isDone}
                     <span class="text-xl filter {visuals.isUrgent ? 'drop-shadow-sm' : 'grayscale opacity-60'}">
-                        {task.task_type === 'feeding' ? '🥣' : '💊'}
+                        {task.task_type === 'feeding' ? '🥣' : task.task_type === 'litter' ? '📥' : '💊'}
                     </span>
                 {/if}
 

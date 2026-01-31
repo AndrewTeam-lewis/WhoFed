@@ -187,6 +187,7 @@ export interface Database {
           household_id: string
           name: string
           species: string
+          icon: string
           pet_timezone: string | null
         }
         Insert: {
@@ -194,6 +195,7 @@ export interface Database {
           household_id: string
           name: string
           species: string
+          icon?: string
           pet_timezone?: string | null
         }
         Update: {
@@ -201,6 +203,7 @@ export interface Database {
           household_id?: string
           name?: string
           species?: string
+          icon?: string
           pet_timezone?: string | null
         }
         Relationships: [

@@ -27,7 +27,6 @@
   let showInviteModal = false;
   let inviteEmail = '';
   
-  // Profile state
   let showEditProfileModal = false;
   let profile = {
       first_name: '',
@@ -37,6 +36,52 @@
       email: ''
   };
   let error = '';
+
+  // Pets State
+  let pets: any[] = [];
+  let showEditPetModal = false;
+  let showPetIconModal = false; // Nested modal for picking icon
+  let editingPet: any = { id: '', name: '', species: '', icon: '' };
+  
+  // Icon Constants (Shared with Add Page)
+  const FREE_ICONS = ['🐶', '🐱', '🐰', '🐦', '🐠', '🐾', '🐕', '🐈', '🐹', '🐢'];
+  const PREMIUM_ICONS = [
+      '🦎', '🐍', '🦄', '🦖', '🦕', '🦂', '🕷️', '🐙', '🦑', '🦐', '🦞', '🦀', 
+      '🐡', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', 
+      '🦒', '🦘', '🐃', '🐏', '🦙', '🐐', '🦌', '🦇', '🦅', '🦆', '🦢', '🦉', 
+      '🦩', '🦚', '🦜', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿️', '🦔',
+      '🐉', '👽', '🤖', '👻', '🤡', '👹', '👺', '☠️', '💩', '👾', '🎃', '🦴'
+  ];
+  const QUICK_SPECIES_LABELS = ['Dog', 'Cat', 'Bird', 'Hamster', 'Rabbit', 'Fish', 'Lizard', 'Snake', 'Turtle'];
+
+  async function savePet() {
+      loading = true;
+      try {
+          const { error } = await supabase
+            .from('pets')
+            .update({
+                name: editingPet.name,
+                species: editingPet.species,
+                icon: editingPet.icon
+            })
+            .eq('id', editingPet.id);
+
+          if (error) throw error;
+          
+          showEditPetModal = false;
+          await loadSettings(); // Reload to refresh list
+      } catch (e: any) {
+          console.error('Error saving pet:', e);
+          alert('Failed to save pet: ' + e.message);
+      } finally {
+          loading = false;
+      }
+  }
+
+  function openEditPet(pet: any) {
+      editingPet = { ...pet, icon: pet.icon || '🐾', species: pet.species || '' };
+      showEditPetModal = true;
+  }
 
   async function saveProfile() {
       if (!currentUser) return;
@@ -138,6 +183,16 @@
 
         if (memberError) throw memberError;
 
+        // 4. Get Pets
+        const { data: petData, error: petError } = await supabase
+            .from('pets')
+            .select('*')
+            .eq('household_id', householdId)
+            .order('name');
+            
+        if (petError) throw petError;
+        pets = petData || [];
+
         members = (memberData || []).map((m: any) => ({
             user_id: m.user_id,
             role: m.user_id === household.owner_id ? 'owner' : 'member',
@@ -195,6 +250,7 @@
   let qrCodeDataUrl = '';
   let inviteUrl = '';
   let showPremiumModal = false;
+  let showDeleteAccountModal = false;
 
   async function generateInvite() {
       if (!householdId) return;
@@ -407,10 +463,20 @@
      </section>
 
       <!-- Family Sharing -->
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm" data-tour="settings-family">
          <div class="p-4 border-b border-gray-100 flex items-center justify-between">
              <div>
-                <div class="font-bold text-gray-900">Family & Access</div>
+                <div class="flex items-center space-x-2">
+                    <div class="font-bold text-gray-900">Family & Access</div>
+                    <button 
+                        class="text-gray-400 hover:text-brand-sage transition-colors"
+                        on:click={() => onboarding.showTooltip('add-family')}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
+                </div>
                 <p class="text-xs text-gray-500">Manage who can access this home.</p>
              </div>
              <button 
@@ -456,8 +522,59 @@
          {/if}
       </section>
 
+      <!-- Pets Section -->
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+         <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+             <div>
+                <div class="font-bold text-gray-900">My Pets</div>
+                <p class="text-xs text-gray-500">Manage names, icons & details.</p>
+             </div>
+             {#if isPremium || pets.length < 2}
+                 <!-- Add Pet Button (Navigates to Add Page) -->
+                 <button 
+                    class="bg-brand-sage/10 text-brand-sage p-2 rounded-full hover:bg-brand-sage/20 transition-colors"
+                    on:click={() => goto('/pets/add')}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+             {/if}
+         </div>
+
+         {#if loading}
+              <div class="p-4 text-center text-gray-400">Loading pets...</div>
+         {:else}
+              <div class="divide-y divide-gray-100">
+                  {#each pets as pet}
+                     <div class="p-4 flex items-center justify-between">
+                         <div class="flex items-center space-x-3">
+                             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-3xl shadow-sm border-2 border-white">
+                                 {pet.icon || '🐾'}
+                             </div>
+                             <div>
+                                 <div class="font-bold text-gray-900 text-base">{pet.name}</div>
+                                 <div class="text-xs text-brand-sage font-bold uppercase tracking-wide">{pet.species}</div>
+                             </div>
+                         </div>
+ 
+                         <!-- Edit Button -->
+                         <button 
+                             class="p-2 text-gray-300 hover:text-brand-sage transition-colors rounded-full hover:bg-gray-50"
+                             on:click={() => openEditPet(pet)}
+                         >
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                             </svg>
+                         </button>
+                     </div>
+                  {/each}
+              </div>
+         {/if}
+      </section>
+
       <!-- Account & General -->
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100" data-tour="settings-preferences">
          <!-- Account Info -->
          <div class="p-4">
              <div class="font-bold text-gray-900 mb-4">Account</div>
@@ -476,7 +593,7 @@
          </div>
       </section>
 
-       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100" data-tour="settings-premium">
          <div class="p-4">
              <div class="font-bold text-gray-900 mb-2">Subscription</div>
              <div class="flex items-center justify-between">
@@ -530,6 +647,31 @@
        </section>
        
        <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+          <div class="p-4">
+              <div class="font-bold text-gray-900 mb-2">About</div>
+              <div class="space-y-1">
+                  <a href="/legal/privacy" class="flex items-center justify-between py-2 text-sm text-gray-500 hover:text-brand-sage transition-colors">
+                      <span>Privacy Policy</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                  </a>
+                  <a href="/legal/tos" class="flex items-center justify-between py-2 text-sm text-gray-500 hover:text-brand-sage transition-colors">
+                      <span>Terms of Service</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                  </a>
+              </div>
+              <div class="mt-4 pt-4 border-t border-gray-50">
+                  <p class="text-[10px] text-center text-gray-400">
+                      Made with ❤️ for Pets everywhere.
+                  </p>
+              </div>
+          </div>
+       </section>
+
+       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
           <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
                <div class="flex items-center space-x-3 text-gray-700">
                   <div class="p-2 bg-blue-50 text-blue-500 rounded-lg">
@@ -561,8 +703,8 @@
           </div>
           
           <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100" on:click={handleLogout}>
-             <div class="flex items-center space-x-3 text-red-600">
-                <div class="p-2 bg-red-50 rounded-lg">
+             <div class="flex items-center space-x-3 text-gray-600">
+                <div class="p-2 bg-gray-100 rounded-lg">
                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
@@ -570,6 +712,20 @@
                  <span class="font-medium text-sm">Log Out</span>
              </div>
          </div>
+
+         <!-- Danger Zone: Delete Account -->
+         <div class="flex items-center justify-between p-4 hover:bg-red-50 transition-colors cursor-pointer border-t border-gray-100" 
+            on:click={() => showDeleteAccountModal = true}
+         >
+            <div class="flex items-center space-x-3 text-red-600">
+               <div class="p-2 bg-red-100 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                   </svg>
+                </div>
+                <span class="font-medium text-sm">Delete Account</span>
+            </div>
+        </div>
         </section>
 
        <!-- Version Display -->
@@ -611,6 +767,9 @@
                  <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="pfPhone">Phone</label>
                     <input id="pfPhone" type="tel" bind:value={profile.phone} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="(555) 123-4567" />
+                    <p class="text-[10px] text-gray-400 mt-1 leading-tight">
+                       By providing your number, you agree to receive SMS feeding reminders. See our <a href="/legal/privacy" class="underline hover:text-gray-600" target="_blank">Privacy Policy</a>. Msg & data rates may apply.
+                    </p>
                  </div>
                  
                  <button 
@@ -727,6 +886,61 @@
                       on:click={() => showPremiumModal = false}
                   >
                       Maybe Later
+                  </button>
+              </div>
+          </div>
+      </div>
+  </div>
+  {/if}
+
+  <!-- DELETE ACCOUNT MODAL -->
+  {#if showDeleteAccountModal}
+  <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <!-- Backdrop -->
+      <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showDeleteAccountModal = false}></button>
+      
+      <!-- Modal -->
+      <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
+          <!-- Header Image/Pattern -->
+          <div class="h-24 bg-red-50 flex items-center justify-center relative overflow-hidden">
+              <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+              <!-- Warning Icon -->
+              <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 shadow-sm relative z-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+              </div>
+          </div>
+          
+          <div class="p-6 text-center">
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Account?</h3>
+              <p class="text-gray-500 mb-6 text-sm leading-relaxed">
+                  This action is <span class="font-bold text-red-600">permanent</span> and cannot be undone.<br>All your pets, logs, and data will be erased immediately.
+              </p>
+              
+              <div class="space-y-3">
+                  <button 
+                      class="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg hover:bg-red-700 transition-all transform hover:scale-[1.02] active:scale-95"
+                      on:click={async () => {
+                          try {
+                              showDeleteAccountModal = false;
+                              const { error } = await supabase.from('profiles').delete().eq('id', currentUser.id);
+                              if (error) throw error;
+                              await supabase.auth.signOut();
+                              window.location.href = '/auth/login';
+                          } catch(err) {
+                              alert('Error deleting account: ' + err.message);
+                              showDeleteAccountModal = false;
+                          }
+                      }}
+                  >
+                      Yes, Delete Everything
+                  </button>
+                  <button 
+                      class="w-full py-3 text-gray-500 font-medium text-sm hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                      on:click={() => showDeleteAccountModal = false}
+                  >
+                      Cancel
                   </button>
               </div>
           </div>

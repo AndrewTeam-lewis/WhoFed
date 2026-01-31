@@ -21,6 +21,8 @@
   let loading = true;
   let currentUser: any = null;
   
+  import { onboarding } from '$lib/stores/onboarding';
+
   // Animation State
   let shakingTaskId: string | null = null;
   let pulsingTaskId: string | null = null;
@@ -141,6 +143,8 @@
 
     await fetchDashboardData();
   });
+  
+  // Onboarding Logic is handled inside fetchDashboardData after pets are loaded
 
   let isPremium = false;
   let showPremiumModal = false;
@@ -174,6 +178,13 @@
           .select('*')
           .eq('household_id', householdId)
           .order('name');
+          
+        pets = petData || [];
+
+        // Onboarding Trigger
+        if (pets.length === 0) {
+            onboarding.checkWelcome();
+        }
         
         pets = petData || [];
 
@@ -654,9 +665,22 @@
     {:else if pets.length === 0}
       <div class="text-center py-10 bg-white rounded-2xl p-6 shadow-sm">
         <p class="text-gray-500 mb-4">You haven't added any pets yet.</p>
-        <a href="/pets/add" class="bg-primary-500 text-white px-6 py-2 rounded-full font-medium hover:bg-primary-600 transition-colors inline-block">
+        <button 
+           data-tour="add-pet-btn"
+           class="bg-brand-sage text-white px-6 py-2 rounded-full font-medium hover:bg-brand-sage/90 transition-colors inline-block"
+           on:click={() => goto('/pets/add')}
+        >
           Add Your First Pet
-        </a>
+        </button>
+        
+        <div class="mt-4">
+            <button 
+                class="text-sm text-gray-400 hover:text-brand-sage font-medium underline"
+                on:click={() => onboarding.showWelcome()}
+            >
+                Show me around
+            </button>
+        </div>
       </div>
     {:else}
       <!-- Pet Cards -->
@@ -668,13 +692,12 @@
              <div class="flex items-start justify-between mb-4 relative">
                <div class="flex items-center space-x-4">
                  <div class="bg-primary-5 p-3 rounded-2xl">
-                   <!-- Placeholder icon based on species -->
-                   <span class="text-3xl">
-                    {#if pet.species.toLowerCase() === 'cat'}🐱
-                    {:else if pet.species.toLowerCase() === 'bird'}🐦
-                    {:else if pet.species.toLowerCase() === 'iguana'}🦎
-                    {:else}🐶{/if}
-                   </span>
+                  <div class="bg-primary-5 p-3 rounded-2xl border-2 border-white shadow-sm">
+                    <!-- Icon from DB -->
+                    <span class="text-3xl">
+                        {pet.icon || '🐾'}
+                    </span>
+                  </div>
                  </div>
                  <div>
                    <h3 class="font-bold text-xl text-gray-900 leading-tight">{pet.name}</h3>
