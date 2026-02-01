@@ -5,6 +5,8 @@
   import { supabase } from '$lib/supabase';
   import { generateTasksForDate } from '$lib/taskUtils';
   import { ensureDailyTasks } from '$lib/services/taskService';
+  import { availableHouseholds } from '$lib/stores/appState';
+  import PetIcon from '$lib/components/PetIcon.svelte';
 
   let loading = true;
   let saving = false;
@@ -15,6 +17,8 @@
   let species = '';
   let householdId: string | null = null;
   let currentUser: any = null;
+  let isOwner = false;
+  let showDeleteModal = false;
 
   // Calendar State
   const today = new Date();
@@ -96,6 +100,15 @@
           name = pet.name;
           species = pet.species;
           householdId = pet.household_id;
+          
+          // Check if current user is household owner
+          const { data: household } = await supabase
+              .from('households')
+              .select('owner_id')
+              .eq('id', pet.household_id)
+              .single();
+          
+          isOwner = household?.owner_id === currentUser?.id;
 
           const { data: dbSchedules, error: schedError } = await supabase
             .from('schedules')
@@ -327,7 +340,7 @@
           // If the DB only supports 'dog'/'cat', we lose the icon variant unless we store it elsewhere.
           // For now, to fix the error, we MUST send a valid constraint value.
           
-          await supabase.from('pets').update({ name, species: dbSpecies }).eq('id', petId);
+          await supabase.from('pets').update({ name, species: dbSpecies, household_id: householdId }).eq('id', petId);
 
           // 1. Calculate active IDs from UI state
           const activeIds = new Set<string>();
@@ -336,13 +349,14 @@
           schedules.forEach(group => {
               const existingIds = group.dbIds || []; 
               const primaryId = existingIds[0];
-              // const idsToDelete = existingIds.slice(1); // REMOVED: Let Step 2 handle deletion to ensure tasks are cleared first
+              
+              // Add ALL existing IDs to activeIds to prevent deletion
+              existingIds.forEach(id => activeIds.add(id));
 
               const payload = formatRowForDb(group, group.times);
 
               if (primaryId) {
                   // Update primary
-                  activeIds.add(primaryId);
                   upsertPromises.push(
                       supabase.from('schedules').update(payload).eq('id', primaryId).select()
                   );
@@ -451,11 +465,11 @@
 <div class="min-h-screen bg-[#FDFDFD] pb-32 font-sans text-typography-primary">
     <!-- Top Nav -->
     <header class="bg-[#FDFDFD] px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center">
-        <button on:click={() => goto('/')} class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all">
+        <a href="/" class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
             </svg>
-        </button>
+        </a>
         <h1 class="text-xl font-bold text-typography-primary">Edit Details</h1>
     </header>
 
@@ -510,6 +524,24 @@
                     />
                 </div>
             </section>
+
+            <!-- Household Section -->
+            {#if $availableHouseholds.length > 1}
+            <section class="bg-white rounded-[24px] p-5 shadow-card">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                    Household
+                </label>
+                <select
+                    bind:value={householdId}
+                    class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-typography-primary font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent"
+                >
+                    {#each $availableHouseholds as hh}
+                        <option value={hh.id}>{hh.name}</option>
+                    {/each}
+                </select>
+                <p class="text-xs text-gray-400 mt-2">Move this pet to a different household</p>
+            </section>
+            {/if}
 
             <!-- Species Selection Modal -->
             {#if showSpeciesModal}

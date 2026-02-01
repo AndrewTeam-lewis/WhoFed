@@ -21,10 +21,15 @@
   let recentActivity: ActivityLog[] = [];
   let loading = true;
   let currentUser: any = null;
+  let authChecked = false;
 
   let isPremium = false;
   let showPremiumModal = false;
   let showHouseholdMenu = false;
+  
+  // Create Household State
+  let showCreateHouseholdModal = false;
+  let newHouseholdName = '';
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -34,6 +39,7 @@
       return;
     }
     currentUser = session.user;
+    authChecked = true;
   });
 
   $: if (currentUser && $activeHousehold) {
@@ -87,6 +93,58 @@
       return { isLocked: false, blockerId: null };
   }
 
+  async function createNewHousehold() {
+      if (!newHouseholdName.trim() || !currentUser) return;
+      
+      try {
+          // 1. Create Household
+          const { data: household, error: hhError } = await supabase
+              .from('households')
+              .insert({
+                  name: newHouseholdName.trim(),
+                  owner_id: currentUser.id,
+                  subscription_status: 'active' // Default to active for now (Free Tier)
+              })
+              .select()
+              .single();
+          
+          if (hhError) throw hhError;
+
+          // 2. Add Owner as Member
+          const { error: memberError } = await supabase
+              .from('household_members')
+              .insert({
+                  household_id: household.id,
+                  user_id: currentUser.id,
+                  // role: 'owner', // Removed: column doesn't exist, inferred from household.owner_id
+                  can_log: true,
+                  can_edit: true,
+                  is_active: true
+              });
+
+          if (memberError) throw memberError;
+
+          // 3. Switch to it (Persist before reload)
+          switchHousehold({ 
+              id: household.id, 
+              name: household.name, 
+              role: 'owner', 
+              subscription_status: household.subscription_status 
+          });
+
+          showCreateHouseholdModal = false;
+          newHouseholdName = '';
+          showHouseholdMenu = false;
+          
+          // Reload page to refresh dashboard with new context
+          window.location.reload(); 
+
+      } catch (e: any) {
+          console.error('Error creating household:', e);
+          alert('Failed to create household: ' + e.message);
+      }
+  }
+  
   // Visual Helper
   function getTaskVisuals(task: DailyTask) {
       const now = new Date();
@@ -480,6 +538,11 @@
   <title>Dashboard - WhoFed</title>
 </svelte:head>
 
+{#if !authChecked}
+  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-sage"></div>
+  </div>
+{:else}
 <div class="min-h-screen bg-gray-50 pb-20 relative">
   <!-- Delete Confirmation Modal (PET) -->
   {#if petToDelete}
@@ -636,6 +699,42 @@
       </div>
   {/if}
 
+  <!-- Create Household Modal -->
+  {#if showCreateHouseholdModal}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showCreateHouseholdModal = false}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
+          <div class="text-center mb-6">
+              <div class="w-16 h-16 bg-brand-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-brand-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900">Create New Household</h3>
+          </div>
+          
+          <div class="mb-6">
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Household Name</label>
+              <input 
+                  type="text" 
+                  bind:value={newHouseholdName}
+                  placeholder="e.g., Beach House, Mom's Place..."
+                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent"
+              />
+          </div>
+          
+          <div class="flex space-x-3">
+              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showCreateHouseholdModal = false}>Cancel</button>
+              <button 
+                  class="flex-1 py-3 bg-brand-sage text-white rounded-xl font-semibold hover:bg-brand-sage/90 disabled:opacity-50" 
+                  on:click={createNewHousehold}
+                  disabled={!newHouseholdName.trim()}
+              >Create</button>
+          </div>
+      </div>
+  </div>
+  {/if}
+
   <!-- Header -->
   <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex justify-between items-center relative z-30">
     <div>
@@ -679,13 +778,16 @@
                        
                        <!-- Join/Create Option -->
                        <div class="border-t border-gray-100 mt-1 pt-1">
-                            <a href="/settings" class="block w-full text-left px-4 py-3 text-xs font-bold text-gray-500 hover:text-brand-sage hover:bg-gray-50 flex items-center">
-                               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                               </svg>
-                               Manage Households
-                            </a>
-                       </div>
+                             <button 
+                                class="block w-full text-left px-4 py-3 text-xs font-bold text-gray-500 hover:text-brand-sage hover:bg-gray-50 flex items-center"
+                                on:click={() => { showCreateHouseholdModal = true; showHouseholdMenu = false; }}
+                             >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                New Household
+                             </button>
+                        </div>
                    </div>
                </div>
            {/if}
@@ -922,4 +1024,5 @@
         </div>
     </div>
     {/if}
+{/if}
 

@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
   import { generateTasksForDate } from '$lib/taskUtils';
+  import { activeHousehold } from '$lib/stores/appState';
 
 
 
@@ -77,6 +78,12 @@
 
   let scheduleNameEditingId: string | null = null;
 
+  // Subscribe to active household
+  $: if ($activeHousehold) {
+      householdId = $activeHousehold.id;
+      isPremium = $activeHousehold.subscription_status === 'active';
+  }
+
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -84,35 +91,6 @@
       return;
     }
     currentUser = session.user;
-    
-    // Get Household & Check Stats
-    const { data: householdInfo, error: hhError } = await supabase
-        .from('household_members')
-        .select(`
-            household_id,
-            households (
-                subscription_status
-            )
-        `)
-        .eq('user_id', currentUser.id)
-        .eq('is_active', true)
-        .limit(1)
-        .single();
-    
-    if (hhError && hhError.code !== 'PGRST116') { // Ignore "not found" so we can create one
-        console.error('Error fetching household:', hhError);
-        return;
-    }
-
-    if (householdInfo) {
-        householdId = householdInfo.household_id;
-        const subscriptionStatus = householdInfo.households?.subscription_status;
-        isPremium = subscriptionStatus === 'active';
-        
-
-    } else {
-        await createHousehold();
-    }
   });
 
   async function createHousehold() {
@@ -137,8 +115,10 @@
 
           if (memError) throw memError;
           householdId = hh.id;
+          return hh;
       } catch (e: any) {
           console.error("Error creating household:", e);
+          return null;
       }
   }
 

@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 
 export interface HouseholdState {
     id: string;
-    name: string; // "My Household" or Owner's name
+    name: string; // Actual name or "My Household" fallback
     role: 'owner' | 'member';
     subscription_status?: string;
 }

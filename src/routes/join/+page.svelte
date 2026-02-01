@@ -17,12 +17,8 @@
   let isGuest = false;
 
   onMount(async () => {
-    householdId = $page.url.searchParams.get('householdId');
-    if (!householdId) {
-        error = 'Invalid invite link: No household ID provided.';
-        loading = false;
-        return;
-    }
+    // householdId check moved to loadHouseholdInfo to support key-based join
+    // if (!householdId) ...
 
     // 1. Check Auth
     const { data: { session } } = await supabase.auth.getSession();
@@ -41,35 +37,58 @@
   async function loadHouseholdInfo() {
       let step = 'init';
       try {
-        // 2. Fetch Household Info via Secure RPC
-        step = 'fetch_rpc';
-        const { data: info, error: rpcError } = await supabase
-            .rpc('get_household_join_info', { _household_id: householdId })
-            .maybeSingle();
+        const key = $page.url.searchParams.get('k');
+        
+        let info: any = null;
 
-        if (rpcError) throw rpcError;
-        if (!info) throw new Error('Household not found (invalid ID)');
+        if (key) {
+            // Path A: Resolve via Key (RPC)
+            step = 'resolve_key';
+            const { data, error: keyError } = await supabase
+                .rpc('get_household_from_key', { lookup_key: key })
+                .maybeSingle();
+            
+            if (keyError) throw keyError;
+            if (!data) throw new Error('Invalid or expired invite link.');
+            
+            info = data;
+            householdId = data.household_id; // Set the ID for the join step
+        } else if (householdId) {
+            // Path B: Legacy/Direct ID (RPC)
+            step = 'fetch_rpc';
+            const { data, error: rpcError } = await supabase
+                .rpc('get_household_join_info', { _household_id: householdId })
+                .maybeSingle();
+
+            if (rpcError) throw rpcError;
+            if (!data) throw new Error('Household not found (invalid ID)');
+            info = data;
+        } else {
+             throw new Error('Invalid link: Missing key or ID.');
+        }
 
         ownerName = info.owner_name;
         memberCount = info.member_count;
 
         // 3. Check if already a member
         step = 'check_membership';
-        const { data: existingMember } = await supabase
-            .from('household_members')
-            .select('user_id')
-            .eq('household_id', householdId)
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
+        if (currentUser && householdId) {
+            const { data: existingMember } = await supabase
+                .from('household_members')
+                .select('user_id')
+                .eq('household_id', householdId)
+                .eq('user_id', currentUser.id)
+                .maybeSingle();
 
-        if (existingMember) {
-            goto('/');
-            return;
+            if (existingMember) {
+                goto('/');
+                return;
+            }
         }
 
     } catch (err: any) {
         console.error('Error loading invite:', err);
-        error = `Step ${step}: ${err.message || err.error_description || 'Unknown error'} (${err.code || 'No Code'})`;
+        error = err.message || 'Unknown error';
     } finally {
         loading = false;
     }

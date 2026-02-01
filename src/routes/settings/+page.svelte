@@ -5,6 +5,8 @@
   import type { Database } from '$lib/database.types';
   import { APP_VERSION } from '$lib/version';
   import { onboarding } from '$lib/stores/onboarding';
+  import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
+  import PetIcon from '$lib/components/PetIcon.svelte';
 
   type MemberProfile = {
       user_id: string;
@@ -37,6 +39,20 @@
       email: ''
   };
   let error = '';
+
+  // Member Management
+  let showRemoveMemberModal = false;
+  let showLeaveHouseholdModal = false;
+  let showDeleteHouseholdModal = false;
+  let showCannotDeleteModal = false;
+  let memberToRemove: { user_id: string, first_name: string } | null = null;
+
+  // Household to switch to or create
+  let showCreateHouseholdModal = false;
+  let newHouseholdName = '';
+  let expandedHouseholdId: string | null = null;
+  let householdMembersCache: Record<string, MemberProfile[]> = {};
+  let householdIdForAction: string | null = null;
 
   // Pets State
   let pets: any[] = [];
@@ -159,15 +175,13 @@
             };
         }
 
-        // 1. Get my membership to find household
-        const { data: myMember, error: myError } = await supabase
-            .from('household_members')
-            .select('household_id')
-            .eq('user_id', currentUser.id)
-            .single();
-            
-        if (myError) throw myError;
-        householdId = myMember.household_id;
+        // 1. Get household from active store (already set by layout)
+        const currentHousehold = $activeHousehold;
+        if (!currentHousehold) {
+            console.error('No active household');
+            return;
+        }
+        householdId = currentHousehold.id;
 
         // 2. Check if I am owner AND get subscription status
         const { data: household, error: hhError } = await supabase
@@ -262,6 +276,48 @@
   let inviteUrl = '';
   let showPremiumModal = false;
   let showDeleteAccountModal = false;
+
+  async function generateInviteForHousehold(hhId: string) {
+      householdIdForAction = hhId;
+      
+      // Monetization Gate
+      if (!canInvite) {
+          showPremiumModal = true;
+          return;
+      }
+      
+      try {
+          // Check if key exists
+          const { data: existingKey } = await supabase
+             .from('household_keys')
+             .select('key_value')
+             .eq('household_id', hhId)
+             .maybeSingle();
+
+          let inviteKey = existingKey?.key_value;
+
+          if (!inviteKey) {
+             // Create new key
+             inviteKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+             const { error: createError } = await supabase
+                 .from('household_keys')
+                 .insert({
+                     household_id: hhId,
+                     key_value: inviteKey,
+                     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+                 });
+             if (createError) throw createError;
+          }
+
+          // Generate URL
+          const baseUrl = window.location.origin;
+          inviteUrl = `${baseUrl}/join/${inviteKey}`;
+          showInviteModal = true;
+      } catch (e) {
+          console.error('Error generating invite:', e);
+          alert('Failed to generate invite link');
+      }
+  }
 
   async function generateInvite() {
       if (!householdId) return;
@@ -433,6 +489,249 @@
           goto('/auth/login');
       }
   }
+
+  // Member Management Functions
+  async function removeMember() {
+      if (!memberToRemove || !householdIdForAction) return;
+      try {
+          const { error } = await supabase
+              .from('household_members')
+              .delete()
+              .eq('household_id', householdIdForAction)
+              .eq('user_id', memberToRemove.user_id);
+          
+          if (error) throw error;
+          
+          showRemoveMemberModal = false;
+          // Refresh cache for this household
+          delete householdMembersCache[householdIdForAction];
+          householdMembersCache = householdMembersCache;
+          await toggleHouseholdAccordion(householdIdForAction); // Re-expand to refetch
+          memberToRemove = null;
+          householdIdForAction = null;
+      } catch (e: any) {
+          console.error('Error removing member:', e);
+          alert('Failed to remove member: ' + e.message);
+      }
+  }
+
+  async function leaveHousehold() {
+      if (!householdIdForAction || !currentUser) return;
+      try {
+          const { error } = await supabase
+              .from('household_members')
+              .delete()
+              .eq('household_id', householdIdForAction)
+              .eq('user_id', currentUser.id);
+          
+          if (error) throw error;
+          
+          showLeaveHouseholdModal = false;
+          householdIdForAction = null;
+          // Redirect to home - they'll need to pick another household or create one
+          goto('/');
+      } catch (e: any) {
+          console.error('Error leaving household:', e);
+          alert('Failed to leave household: ' + e.message);
+      }
+  }
+
+  async function initiateDeleteHousehold(hhId: string) {
+      householdIdForAction = hhId;
+      
+      try {
+          // Check for dependencies (Members/Pets)
+          const { count: memberCount, error: memberError } = await supabase
+              .from('household_members')
+              .select('*', { count: 'exact', head: true })
+              .eq('household_id', hhId);
+          if (memberError) throw memberError;
+
+          const { count: petCount, error: petError } = await supabase
+              .from('pets')
+              .select('*', { count: 'exact', head: true })
+              .eq('household_id', hhId);
+          if (petError) throw petError;
+
+          // If not empty (members > 1 for owner, pets > 0) -> Block
+          if ((memberCount || 0) > 1 || (petCount || 0) > 0) {
+              showCannotDeleteModal = true;
+          } else {
+              showDeleteHouseholdModal = true;
+          }
+      } catch (e) {
+          console.error('Check failed:', e);
+          alert('Error checking household status');
+      }
+  }
+
+  async function deleteHousehold() {
+      console.log('Attempting DELETE:', { householdIdForAction, ownerId: currentUser.id });
+
+      if (!householdIdForAction) return; 
+      try {
+          // Delete household (Safe to delete since it's confirmed empty)
+          const { error, count, data } = await supabase
+              .from('households')
+              .delete({ count: 'exact' })
+              .eq('id', householdIdForAction)
+              .eq('owner_id', currentUser.id)
+              .select(); // Select to see what was deleted
+          
+          console.log('DELETE Result:', { error, count, data });
+
+          if (error) throw error;
+          
+          if (count === 0) {
+              alert(`Delete failed silently. Debug Info:\nTarget ID: ${householdIdForAction}\nOwner Match: ${currentUser.id}\nRLS Policy likely blocking DELETE.`);
+              return;
+          }
+
+          showDeleteHouseholdModal = false;
+          householdIdForAction = null;
+          // Reload page to refresh list and clear invalid state
+          window.location.reload(); 
+      } catch (e: any) {
+          console.error('Error deleting household:', e);
+          alert('Failed to delete household: ' + e.message);
+      }
+  }
+
+  async function toggleHouseholdAccordion(hhId: string) {
+      // Toggle - if already open, close it
+      if (expandedHouseholdId === hhId) {
+          expandedHouseholdId = null;
+          return;
+      }
+      
+      expandedHouseholdId = hhId;
+      
+      // If we already have members cached, don't refetch
+      if (householdMembersCache[hhId]) return;
+      
+      // Fetch members for this household
+      try {
+          const { data: hh } = await supabase
+              .from('households')
+              .select('owner_id')
+              .eq('id', hhId)
+              .single();
+              
+          const { data: memberData, error: memberError } = await supabase
+              .from('household_members')
+              .select(`
+                  user_id,
+                  can_log,
+                  can_edit,
+                  is_active,
+                  profiles (
+                      first_name,
+                      email
+                  )
+              `)
+              .eq('household_id', hhId);
+              
+          if (memberError) throw memberError;
+          
+          const fetchedMembers: MemberProfile[] = (memberData || []).map(m => ({
+              user_id: m.user_id,
+              role: hh?.owner_id === m.user_id ? 'owner' : 'member',
+              first_name: (m.profiles as any)?.first_name || 'Unknown',
+              email: (m.profiles as any)?.email || null,
+              can_log: m.can_log ?? true,
+              can_edit: m.can_edit ?? false
+          }));
+          
+          householdMembersCache[hhId] = fetchedMembers;
+          householdMembersCache = householdMembersCache; // Trigger reactivity
+      } catch (e) {
+          console.error('Error fetching household members:', e);
+      }
+  }
+
+  async function createNewHousehold() {
+      if (!newHouseholdName.trim() || !currentUser) return;
+      try {
+          // 1. Create household
+          const { data: household, error: hhError } = await supabase
+              .from('households')
+              .insert({
+                  owner_id: currentUser.id,
+                  name: newHouseholdName.trim(),
+                  subscription_status: 'free'
+              })
+              .select()
+              .single();
+          
+          if (hhError) throw hhError;
+          
+          // 2. Add user as member
+          const { error: memberError } = await supabase
+              .from('household_members')
+              .insert({
+                  household_id: household.id,
+                  user_id: currentUser.id,
+                  is_active: true,
+                  can_log: true,
+                  can_edit: true
+              });
+          
+          if (memberError) throw memberError;
+          // 3. Switch to it (Store update + Persistence)
+          switchHousehold({ 
+              id: household.id, 
+              name: household.name, 
+              role: 'owner', 
+              subscription_status: household.subscription_status 
+          });
+          
+          showCreateHouseholdModal = false;
+          newHouseholdName = '';
+          
+          // Expand the new household in the list
+          expandedHouseholdId = household.id;
+          
+          // Force refresh of available households
+          const { data: updatedHouseholds } = await supabase
+              .from('households')
+              .select('*')
+              .eq('owner_id', currentUser.id);
+              
+          if (updatedHouseholds) {
+              const mapped = updatedHouseholds.map(h => ({
+                  id: h.id, 
+                  name: h.name, 
+                  role: 'owner' as const, 
+                  subscription_status: h.subscription_status 
+              }));
+              availableHouseholds.set(mapped);
+          }
+      } catch (e: any) {
+          console.error('Error creating household:', e);
+          alert('Failed to create household: ' + e.message);
+      }
+  }
+
+  async function handleShare() {
+      if (!inviteUrl) return;
+      
+      const shareData = {
+          title: 'Join my Household on WhoFed',
+          text: 'Help me take care of the pets! Join my household here:',
+          url: inviteUrl
+      };
+
+      try {
+          if (navigator.share) {
+              await navigator.share(shareData);
+          } else {
+              await navigator.clipboard.writeText(inviteUrl);
+              alert('Link copied to clipboard!');
+          }
+      } catch (err) {
+          console.error('Error sharing:', err);
+      }
+  }
 </script>
 
 <svelte:head>
@@ -442,11 +741,11 @@
 <div class="min-h-screen bg-gray-50 pb-20">
   <!-- Header -->
   <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center">
-    <button on:click={() => goto('/')} class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all">
+    <a href="/" class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
       </svg>
-    </button>
+    </a>
     <h1 class="text-xl font-bold text-gray-900">Settings</h1>
   </header>
 
@@ -473,115 +772,134 @@
         </div>
      </section>
 
-      <!-- Family Sharing -->
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm" data-tour="settings-family">
+      <!-- My Households -->
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
          <div class="p-4 border-b border-gray-100 flex items-center justify-between">
              <div>
-                <div class="flex items-center space-x-2">
-                    <div class="font-bold text-gray-900">Family & Access</div>
-                    <button 
-                        class="text-gray-400 hover:text-brand-sage transition-colors"
-                        on:click={() => onboarding.showTooltip('add-family')}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </button>
-                </div>
-                <p class="text-xs text-gray-500">Manage who can access this home.</p>
+                <div class="font-bold text-gray-900">My Households</div>
+                <p class="text-xs text-gray-500">Switch between or manage your households.</p>
              </div>
              <button 
                 class="bg-brand-sage/10 text-brand-sage p-2 rounded-full hover:bg-brand-sage/20 transition-colors"
-                on:click={generateInvite}
+                on:click={() => showCreateHouseholdModal = true}
+                title="Create new household"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                 </svg>
             </button>
          </div>
+         <div class="divide-y divide-gray-100">
+             {#each $availableHouseholds as hh}
+                <div>
+                    <!-- Accordion Header -->
+                    <button 
+                        class="w-full p-4 flex items-center justify-between text-left"
+                        on:click={() => toggleHouseholdAccordion(hh.id)}
+                    >
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-medium text-gray-900 text-sm">{hh.name}</div>
+                                <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'} font-medium">
+                                    {hh.role === 'owner' ? 'Owner' : 'Member'}
+                                </div>
+                            </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 transition-transform {expandedHouseholdId === hh.id ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
 
-         {#if loading}
-              <div class="p-4 text-center text-gray-400">Loading members...</div>
-         {:else}
-              <div class="divide-y divide-gray-100">
-                  {#each members as member}
-                     <div class="p-4 flex items-center justify-between">
-                         <div class="flex items-center space-x-3">
-                             <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm">
-                                 {member.first_name ? member.first_name[0] : '?'}
-                             </div>
-                             <div>
-                                 <div class="font-medium text-gray-900 text-sm">{member.first_name} {member.user_id === currentUser?.id ? '(You)' : ''}</div>
-                                 <div class="text-xs text-brand-sage font-medium">{member.role === 'owner' ? 'Owner' : 'Member'}</div>
-                             </div>
-                         </div>
- 
-                         <!-- Permissions (Only show for non-owners, logic simplified) -->
-                         {#if member.role !== 'owner' && isOwner}
-                             <div class="flex items-center space-x-2">
-                                 <button 
-                                     class="w-10 h-6 rounded-full transition-colors relative {member.can_log ? 'bg-brand-sage' : 'bg-gray-200'}"
-                                     on:click={() => togglePermission(member.user_id, 'can_log')}
-                                 >
-                                     <div class="w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm {member.can_log ? 'left-5' : 'left-1'}"></div>
-                                 </button>
-                             </div>
-                         {/if}
-                     </div>
-                  {/each}
-              </div>
-         {/if}
-      </section>
-
-      <!-- Pets Section -->
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
-         <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-             <div>
-                <div class="font-bold text-gray-900">My Pets</div>
-                <p class="text-xs text-gray-500">Manage names, icons & details.</p>
-             </div>
-             {#if isPremium || pets.length < 2}
-                 <!-- Add Pet Button (Navigates to Add Page) -->
-                 <button 
-                    class="bg-brand-sage/10 text-brand-sage p-2 rounded-full hover:bg-brand-sage/20 transition-colors"
-                    on:click={() => goto('/pets/add')}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-             {/if}
+                    <!-- Accordion Content: Members -->
+                    {#if expandedHouseholdId === hh.id}
+                        <div class="px-4 pb-4 pt-0">
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <!-- Members Header with Invite Button -->
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="text-xs font-bold text-gray-500 uppercase tracking-wider">Members</div>
+                                    {#if hh.role === 'owner'}
+                                        <button 
+                                            class="text-xs font-medium text-brand-sage hover:underline flex items-center space-x-1"
+                                            on:click={() => generateInviteForHousehold(hh.id)}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                            </svg>
+                                            <span>Invite</span>
+                                        </button>
+                                    {/if}
+                                </div>
+                                
+                                <!-- Members List -->
+                                {#if householdMembersCache[hh.id]}
+                                    <div class="space-y-2">
+                                        {#each householdMembersCache[hh.id] as member}
+                                            <div class="flex items-center justify-between py-2 bg-white rounded-lg px-3 shadow-sm">
+                                                <div class="flex items-center space-x-2">
+                                                    <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs">
+                                                        {member.first_name ? member.first_name[0] : '?'}
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-medium text-gray-900 text-xs">{member.first_name} {member.user_id === currentUser?.id ? '(You)' : ''}</div>
+                                                        <div class="text-xs {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">{member.role === 'owner' ? 'Owner' : 'Member'}</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Actions -->
+                                                <div class="flex items-center space-x-1">
+                                                    <!-- Remove (Owner can remove non-self) -->
+                                                    {#if hh.role === 'owner' && member.user_id !== currentUser?.id}
+                                                        <button 
+                                                            class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                                            on:click={() => { memberToRemove = member; householdIdForAction = hh.id; showRemoveMemberModal = true; }}
+                                                            title="Remove member"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    {/if}
+                                                    
+                                                    <!-- Leave (Non-owner can leave) -->
+                                                    {#if hh.role !== 'owner' && member.user_id === currentUser?.id}
+                                                        <button 
+                                                            class="px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 rounded transition-colors"
+                                                            on:click={() => { householdIdForAction = hh.id; showLeaveHouseholdModal = true; }}
+                                                        >
+                                                            Leave
+                                                        </button>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {:else}
+                                    <div class="text-xs text-gray-400 py-2">Loading members...</div>
+                                {/if}
+                                
+                                <!-- Delete Household (Owner only) -->
+                                {#if hh.role === 'owner'}
+                                    <button 
+                                        class="w-full mt-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center space-x-1"
+                                        on:click={() => initiateDeleteHousehold(hh.id)}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span>Delete Household</span>
+                                    </button>
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+             {/each}
          </div>
-
-         {#if loading}
-              <div class="p-4 text-center text-gray-400">Loading pets...</div>
-         {:else}
-              <div class="divide-y divide-gray-100">
-                  {#each pets as pet}
-                     <div class="p-4 flex items-center justify-between">
-                         <div class="flex items-center space-x-3">
-                             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-3xl shadow-sm border-2 border-white overflow-hidden">
-                                 <PetIcon icon={pet.icon} size="md" />
-                             </div>
-                             <div>
-                                 <div class="font-bold text-gray-900 text-base">{pet.name}</div>
-                                 <div class="text-xs text-brand-sage font-bold uppercase tracking-wide">{pet.species}</div>
-                             </div>
-                         </div>
- 
-                         <!-- Edit Button -->
-                         <button 
-                             class="p-2 text-gray-300 hover:text-brand-sage transition-colors rounded-full hover:bg-gray-50"
-                             on:click={() => openEditPet(pet)}
-                         >
-                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                             </svg>
-                         </button>
-                     </div>
-                  {/each}
-              </div>
-         {/if}
       </section>
 
       <!-- Account & General -->
@@ -827,12 +1145,14 @@
                    Save Changes
                </button>
                
+               {#if isOwner}
                <button 
                    class="w-full mt-2 py-4 text-red-500 font-bold rounded-xl hover:bg-red-50 transition-colors"
                    on:click={deletePet}
                >
                    Delete Pet
                </button>
+               {/if}
           </div>
       </div>
   </div>
@@ -939,11 +1259,14 @@
                  {/if}
              </div>
              
-             <button class="w-full mt-4 flex items-center justify-center space-x-2 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">
+             <button 
+                 class="w-full mt-4 flex items-center justify-center space-x-2 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 active:scale-95 transition-transform"
+                 on:click={handleShare}
+             >
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                  </svg>
-                 <span>Share Invite QR</span>
+                 <span>Share Invite Link</span>
              </button>
         </div>
     </div>
@@ -1052,4 +1375,135 @@
   </div>
   {/if}
 
+  <!-- Remove Member Confirmation Modal -->
+  {#if showRemoveMemberModal && memberToRemove}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => { showRemoveMemberModal = false; memberToRemove = null; }}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10">
+          <div class="text-center">
+              <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+                  </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Remove {memberToRemove.first_name}?</h3>
+              <p class="text-gray-500 text-sm mb-6">They will lose access to this household and its pets.</p>
+              <div class="flex space-x-3">
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => { showRemoveMemberModal = false; memberToRemove = null; }}>Cancel</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={removeMember}>Remove</button>
+              </div>
+          </div>
+      </div>
+  </div>
+  {/if}
+
+  <!-- Leave Household Confirmation Modal -->
+  {#if showLeaveHouseholdModal}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showLeaveHouseholdModal = false}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10">
+          <div class="text-center">
+              <div class="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Leave this household?</h3>
+              <p class="text-gray-500 text-sm mb-6">You will lose access to all pets and schedules in this household.</p>
+              <div class="flex space-x-3">
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showLeaveHouseholdModal = false}>Cancel</button>
+                  <button class="flex-1 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600" on:click={leaveHousehold}>Leave</button>
+              </div>
+          </div>
+      </div>
+  </div>
+  {/if}
+
+  <!-- Delete Household Confirmation Modal -->
+  {#if showDeleteHouseholdModal}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showDeleteHouseholdModal = false}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10">
+          <div class="text-center">
+              <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Household?</h3>
+              <p class="text-gray-500 text-sm mb-6">This will permanently delete all pets, schedules, and history. This action cannot be undone.</p>
+              <div class="flex space-x-3">
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showDeleteHouseholdModal = false}>Cancel</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={deleteHousehold}>Delete</button>
+              </div>
+          </div>
+      </div>
+  </div>
+  {/if}
+
+  <!-- Create Household Modal -->
+  {#if showCreateHouseholdModal}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showCreateHouseholdModal = false}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10">
+          <div class="text-center mb-6">
+              <div class="w-16 h-16 bg-brand-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-brand-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900">Create New Household</h3>
+          </div>
+          
+          <div class="mb-6">
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Household Name</label>
+              <input 
+                  type="text" 
+                  bind:value={newHouseholdName}
+                  placeholder="e.g., Beach House, Mom's Place..."
+                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent"
+              />
+          </div>
+          
+          <div class="flex space-x-3">
+              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showCreateHouseholdModal = false}>Cancel</button>
+              <button 
+                  class="flex-1 py-3 bg-brand-sage text-white rounded-xl font-semibold hover:bg-brand-sage/90 disabled:opacity-50" 
+                  on:click={createNewHousehold}
+                  disabled={!newHouseholdName.trim()}
+              >Create</button>
+          </div>
+      </div>
+  </div>
+  {/if}
+
+  <!-- Cannot Delete Modal -->
+  {#if showCannotDeleteModal}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showCannotDeleteModal = false}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
+          <div class="text-center mb-6">
+              <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900">Cannot Delete Household</h3>
+              <p class="text-gray-500 text-sm mt-2">
+                  Please remove all other <strong>members</strong> and <strong>pets</strong> from this household first.
+              </p>
+          </div>
+          
+          <button 
+              class="w-full py-3 bg-brand-sage text-white rounded-xl font-bold hover:bg-brand-sage/90 transition-colors shadow-lg shadow-brand-sage/20 active:scale-95 transform"
+              on:click={() => showCannotDeleteModal = false}
+          >
+              Got it
+          </button>
+      </div>
+  </div>
+  {/if}
+
 </div>
+
+
