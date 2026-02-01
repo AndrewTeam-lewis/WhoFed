@@ -8,7 +8,8 @@
 
   type Pet = Database['public']['Tables']['pets']['Row'];
   type DailyTask = Database['public']['Tables']['daily_tasks']['Row'] & {
-      schedule_id?: string // Optional just for type safety if needed, but row has it
+      schedule_id?: string;
+      schedules?: { schedule_mode: string } | { schedule_mode: string }[] | null;
   };
   type ActivityLog = Database['public']['Tables']['activity_log']['Row'] & {
     profiles: { first_name: string | null } | null;
@@ -20,12 +21,39 @@
   let recentActivity: ActivityLog[] = [];
   let loading = true;
   let currentUser: any = null;
+
+  let isPremium = false;
+  let showPremiumModal = false;
+  let showHouseholdMenu = false;
+
+  onMount(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      goto('/auth/login');
+      return;
+    }
+    currentUser = session.user;
+  });
+
+  $: if (currentUser && $activeHousehold) {
+      fetchDashboardData();
+  }
   
   import { onboarding } from '$lib/stores/onboarding';
+  import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
+  import PetIcon from '$lib/components/PetIcon.svelte';
 
   // Animation State
   let shakingTaskId: string | null = null;
   let pulsingTaskId: string | null = null;
+
+  // Time of Day Logic
+  let timeOfDay = 'Morning';
+  const hour = new Date().getHours();
+  if (hour < 12) timeOfDay = 'Morning';
+  else if (hour < 18) timeOfDay = 'Afternoon';
+  else timeOfDay = 'Evening';
 
   // Helper to split tasks by pet
   function getTasksForPet(petId: string, currentTasks: DailyTask[]): DailyTask[] {
@@ -66,7 +94,7 @@
       const isDone = task.status === 'completed';
       
       // Robust check for schedule_mode (handle array or object return from Supabase)
-      const schedule = Array.isArray(task.schedules) ? task.schedules[0] : task.schedules;
+      const schedule = Array.isArray(task.schedules) ? task.schedules[0] : (task.schedules as any);
       const isMonthly = schedule?.schedule_mode === 'monthly';
 
       const dueDiff = due.getTime() - now.getTime();
@@ -132,45 +160,13 @@
       return { isUrgent, isOverdue, timeFormatted, dueLabel };
   }
 
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      goto('/auth/login');
-      return;
-    }
-    currentUser = session.user;
-
-    await fetchDashboardData();
-  });
-  
-  // Onboarding Logic is handled inside fetchDashboardData after pets are loaded
-
-  let isPremium = false;
-  let showPremiumModal = false;
-
   async function fetchDashboardData() {
+    if (!$activeHousehold) return;
     loading = true;
+    
     try {
-      // 1. Get user's household AND subscription status
-      const { data: members, error: memberError } = await supabase
-        .from('household_members')
-        .select(`
-            household_id,
-            households (
-                subscription_status
-            )
-        `)
-        .eq('user_id', currentUser.id)
-        .eq('is_active', true)
-        .limit(1);
-
-      if (memberError) throw memberError;
-
-      if (members && members.length > 0) {
-        const householdId = members[0].household_id;
-        const subStatus = members[0].households?.subscription_status;
-        isPremium = subStatus === 'active';
+      const householdId = $activeHousehold.id;
+      isPremium = $activeHousehold.subscription_status === 'active';
 
         // 2. Get pets
         const { data: petData } = await supabase
@@ -185,8 +181,6 @@
         if (pets.length === 0) {
             onboarding.checkWelcome();
         }
-        
-        pets = petData || [];
 
         // 3. Simple Display: Fetch Tasks for Today (Local Date)
         const startOfDay = new Date();
@@ -203,26 +197,26 @@
             .gte('due_at', startOfDay.toISOString())
             .lte('due_at', endOfDay.toISOString());
 
-        if (fetchError) console.error("Error fetching dashboard tasks:", fetchError);
-        console.log('Dashboard fetched tasks:', existingTasks);
+        if (fetchError) throw fetchError;
 
-        dailyTasks = existingTasks || [];
+        dailyTasks = (existingTasks || []) as any; // Cast mainly for schedule_mode join
 
-        // 4. Get recent activity (purely for history log now)
-        const { data: logData } = await supabase
+        // 4. Get recent activity
+        const { data: logData, error: logError } = await supabase
           .from('activity_log')
           .select('*, profiles(first_name), schedules(label, task_type)')
           .in('pet_id', pets.map(p => p.id))
           .order('performed_at', { ascending: false })
           .limit(50);
+
+        if (logError) throw logError;
         
         recentActivity = logData || [];
-      }
 
     } catch (error) {
-      console.error('Error fetching dashboard:', error);
+        console.error('Error fetching dashboard:', error);
     } finally {
-      loading = false;
+        loading = false;
     }
   }
 
@@ -643,10 +637,59 @@
   {/if}
 
   <!-- Header -->
-  <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex justify-between items-center">
+  <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex justify-between items-center relative z-30">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">My Pets</h1>
-      <p class="text-sm text-gray-500">Keep them happy & healthy</p>
+      <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+      
+       <!-- Household Toggle Dropdown -->
+       <div class="relative inline-block">
+            <button 
+               class="flex items-center space-x-1 text-brand-sage font-medium hover:text-brand-sage/80 transition-colors"
+               on:click|stopPropagation={() => showHouseholdMenu = !showHouseholdMenu}
+            >
+                <span class="max-w-[150px] truncate">{$activeHousehold?.name || currentUser?.user_metadata?.first_name || 'My Household'}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform {showHouseholdMenu ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            
+            <!-- Dropdown Menu -->
+           {#if showHouseholdMenu}
+               <div 
+                   class="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-scale-in origin-top-left"
+               >
+                   <div class="py-1">
+                       {#each $availableHouseholds as hh}
+                           <button
+                               class="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 flex items-center justify-between
+                               {$activeHousehold?.id === hh.id ? 'text-brand-sage bg-brand-sage/5' : 'text-gray-700'}"
+                               on:click={() => {
+                                   switchHousehold(hh);
+                                   showHouseholdMenu = false;
+                               }}
+                           >
+                               <span class="truncate">{hh.name}</span>
+                               {#if $activeHousehold?.id === hh.id}
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                   </svg>
+                               {/if}
+                           </button>
+                       {/each}
+                       
+                       <!-- Join/Create Option -->
+                       <div class="border-t border-gray-100 mt-1 pt-1">
+                            <a href="/settings" class="block w-full text-left px-4 py-3 text-xs font-bold text-gray-500 hover:text-brand-sage hover:bg-gray-50 flex items-center">
+                               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                               </svg>
+                               Manage Households
+                            </a>
+                       </div>
+                   </div>
+               </div>
+           {/if}
+       </div>
     </div>
     <a href="/settings" class="p-2 text-gray-400 hover:text-gray-600" aria-label="Settings">
       <!-- Settings Icon -->
@@ -694,9 +737,10 @@
                  <div class="bg-primary-5 p-3 rounded-2xl">
                   <div class="bg-primary-5 p-3 rounded-2xl border-2 border-white shadow-sm">
                     <!-- Icon from DB -->
-                    <span class="text-3xl">
-                        {pet.icon || '🐾'}
-                    </span>
+                    <!-- Icon from DB -->
+                    <div class="w-[36px] h-[36px] flex items-center justify-center overflow-hidden rounded-full">
+                        <PetIcon icon={pet.icon} size="sm" />
+                    </div>
                   </div>
                  </div>
                  <div>

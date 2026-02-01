@@ -249,18 +249,32 @@
 
           // 1. Create Pet
           // Map UI species to DB species
-          const finalSpecies = species.trim() || 'Pet';
+          // The DB constraint likely allows 'dog', 'cat', etc. 
+          // We need to map 'Dog 2', 'Cat 3' to basic types.
+          let finalSpecies = species.trim().toLowerCase() || 'pet';
+          
+          if (finalSpecies.includes('dog')) finalSpecies = 'dog';
+          else if (finalSpecies.includes('cat')) finalSpecies = 'cat';
+          else if (finalSpecies.includes('bird')) finalSpecies = 'bird';
+          else if (finalSpecies.includes('fish')) finalSpecies = 'fish';
+          else if (finalSpecies.includes('rabbit')) finalSpecies = 'rabbit';
+          else if (finalSpecies.includes('hamster')) finalSpecies = 'hamster';
+          else if (finalSpecies.includes('lizard') || finalSpecies.includes('iguana')) finalSpecies = 'lizard';
+          else if (finalSpecies.includes('snake')) finalSpecies = 'snake';
+          else if (finalSpecies.includes('turtle')) finalSpecies = 'turtle';
 
-          const { data: pet, error: petError } = await supabase
-            .from('pets')
-            .insert({
-                name,
-                species: finalSpecies,
-                icon,
-                household_id: householdId
-            })
-            .select()
-            .single();
+      // 2. Insert Pet
+      const { data: pet, error: petError } = await supabase
+        .from('pets')
+        .insert({
+          name,
+          species: species.toLowerCase(), // Allow mixed case input, strictly save as lowercase
+          icon,
+          household_id: householdId,
+          created_by: currentUser.id
+        })
+        .select()
+        .single();
 
           if (petError) throw petError;
           
@@ -375,6 +389,47 @@
           loading = false;
       }
   }
+  import PetIcon from '$lib/components/PetIcon.svelte';
+
+  let fileInput: HTMLInputElement;
+  let isUploading = false;
+
+  async function handleFileUpload(e: Event) {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
+      
+      if (!householdId && currentUser) {
+          // Edge case: if creating a new household, we might not have ID yet.
+          // But user should be auth'd. We can use user ID for folder structure.
+      }
+
+      isUploading = true;
+      try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `${currentUser.id}/${fileName}`;
+          
+          const { error: uploadError } = await supabase.storage
+              .from('pet-avatars')
+              .upload(filePath, file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+              .from('pet-avatars')
+              .getPublicUrl(filePath);
+
+          icon = publicUrl;
+          showIconModal = false;
+
+      } catch (error: any) {
+          console.error('Upload failed:', error);
+          alert('Failed to upload image: ' + error.message);
+      } finally {
+          isUploading = false;
+      }
+  }
 </script>
 
 <svelte:head>
@@ -407,7 +462,7 @@
                     on:click={() => showIconModal = true}
                     class="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center relative transition-transform active:scale-95"
                 >
-                    <span class="text-6xl">{icon}</span>
+                    <PetIcon icon={icon} size="lg" />
                     
                     <!-- Edit Overlay -->
                     <div class="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -486,53 +541,53 @@
                 <div class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl relative z-10 animate-scale-in max-h-[80vh] overflow-y-auto">
                     <h3 class="text-center text-lg font-bold text-typography-primary mb-6">Choose Icon</h3>
                     
-                    <!-- Free Icons -->
+                    <!-- Unified Icon Grid (All Emojis Free) -->
                     <div class="grid grid-cols-5 gap-3 mb-8">
-                        {#each FREE_ICONS as freeIcon}
+                        {#each [...FREE_ICONS, ...PREMIUM_ICONS] as libraryIcon}
                             <button 
                                 type="button"
                                 class="flex items-center justify-center p-2 rounded-xl transition-all aspect-square border-2
-                                {icon === freeIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
-                                on:click={() => { icon = freeIcon; showIconModal = false; }}
+                                {icon === libraryIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
+                                on:click={() => { icon = libraryIcon; showIconModal = false; }}
                             >
-                                <span class="text-3xl">{freeIcon}</span>
+                                <span class="text-3xl">{libraryIcon}</span>
                             </button>
                         {/each}
                     </div>
 
-                    <!-- Premium Divider -->
-                    <div class="flex items-center space-x-2 mb-6">
-                        <div class="h-px bg-gray-100 flex-1"></div>
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
-                            💎 Premium Icons
-                        </span>
-                        <div class="h-px bg-gray-100 flex-1"></div>
-                    </div>
-
-                    <!-- Premium Icons -->
-                    <div class="grid grid-cols-5 gap-3">
-                        {#each PREMIUM_ICONS as premIcon}
-                            <button 
-                                type="button"
-                                class="flex items-center justify-center p-2 rounded-xl transition-all aspect-square border-2 relative group
-                                {icon === premIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
-                                on:click={() => { 
-                                    if (isPremium) {
-                                        icon = premIcon; 
-                                        showIconModal = false; 
-                                    } else {
-                                        showPremiumModal = true;
-                                    }
-                                }}
-                            >
-                                <span class="text-3xl {isPremium ? '' : 'filter grayscale opacity-50'}">{premIcon}</span>
-                                {#if !isPremium}
-                                    <div class="absolute -top-1 -right-1">
-                                        <span class="text-[10px]">🔒</span>
-                                    </div>
-                                {/if}
-                            </button>
-                        {/each}
+                    <!-- Custom Upload (Premium Only) -->
+                    <div class="border-t border-gray-100 pt-6">
+                        <button 
+                            type="button"
+                            class="w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-bold hover:border-brand-sage hover:text-brand-sage transition-all flex items-center justify-center space-x-2"
+                            on:click={() => {
+                                if (isPremium) {
+                                    fileInput.click();
+                                } else {
+                                    showPremiumModal = true;
+                                }
+                            }}
+                        >
+                            {#if isUploading}
+                                <span class="animate-spin">⏳</span>
+                                <span>Uploading...</span>
+                            {:else}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>Upload Custom Photo</span>
+                            {/if}
+                            {#if !isPremium}
+                                <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">PREMIUM</span>
+                            {/if}
+                        </button>
+                        <input 
+                            bind:this={fileInput}
+                            type="file" 
+                            accept="image/*" 
+                            class="hidden"
+                            on:change={handleFileUpload}
+                        />
                     </div>
                 </div>
             </div>

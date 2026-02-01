@@ -118,6 +118,7 @@
              <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <ul class="divide-y divide-gray-100">
                     {#each logs as log}
+                        {@const label = (log.schedules?.label ?? log.daily_tasks?.label ?? '').toLowerCase()}
                         <li class="p-3 flex justify-between items-center hover:bg-gray-50 transition-colors animate-fade-in">
                              <div class="flex items-center gap-3 min-w-0">
                                 <!-- Minimal Indicator -->
@@ -126,22 +127,28 @@
                                 <div class="text-sm truncate text-gray-800">
                                     <span>{log.profiles?.first_name || 'Someone'}</span>
                                     
-                                    {#if log.action_type === 'feeding'}
-                                        fed
-                                    {:else if log.action_type === 'unfed'}
-                                        <span class="text-red-500">un-fed</span>
-                                    {:else if log.action_type === 'unmedicated'}
-                                        <span class="text-red-500">un-gave</span>
-                                    {:else}
-                                        gave
-                                    {/if}
 
-                                    {#if log.schedules?.label || log.daily_tasks?.label}
-                                        <span class="capitalize">
-                                            {(log.schedules?.label ?? log.daily_tasks?.label ?? '').toLowerCase()}
-                                        </span>
-                                    {:else if !log.action_type.includes('feeding') && !log.action_type.includes('unfed')}
-                                        <span>meds</span>
+
+                                    {#if log.action_type === 'feeding'}
+                                        fed <span class="text-gray-900">{petName}</span>
+                                        {#if label && label !== 'feeding' && label !== 'food'}
+                                            <span class="text-gray-900 capitalize"> {label}</span>
+                                        {/if}
+                                    {:else if log.action_type === 'unfed'}
+                                        <span class="text-red-500">un-fed</span> <span class="text-gray-900">{petName}</span>
+                                    {:else if log.action_type === 'medication'}
+                                        gave <span class="text-gray-900">{petName}</span>
+                                        {#if label && label !== 'medication' && label !== 'meds'}
+                                            <span class="text-gray-900 capitalize"> {label}</span>
+                                        {:else}
+                                             medication
+                                        {/if}
+                                    {:else if log.action_type === 'unmedicated'}
+                                        <span class="text-red-500">un-gave</span> <span class="text-gray-900">{petName}</span> medication
+                                    {:else if log.action_type === 'litter'}
+                                        cleaned up after <span class="text-gray-900">{petName}</span>
+                                    {:else}
+                                        <span>{log.action_type}</span>
                                     {/if}
                                 </div>
                              </div>

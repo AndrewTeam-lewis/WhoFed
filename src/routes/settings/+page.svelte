@@ -4,6 +4,7 @@
   import { supabase } from '$lib/supabase';
   import type { Database } from '$lib/database.types';
   import { APP_VERSION } from '$lib/version';
+  import { onboarding } from '$lib/stores/onboarding';
 
   type MemberProfile = {
       user_id: string;
@@ -43,6 +44,13 @@
   let showPetIconModal = false; // Nested modal for picking icon
   let editingPet: any = { id: '', name: '', species: '', icon: '' };
   
+  // Edit State
+  let editPetName = '';
+  let editPetSpecies = '';
+  let editPetIcon = '';
+  let fileInput: HTMLInputElement;
+  let isUploading = false;
+  
   // Icon Constants (Shared with Add Page)
   const FREE_ICONS = ['🐶', '🐱', '🐰', '🐦', '🐠', '🐾', '🐕', '🐈', '🐹', '🐢'];
   const PREMIUM_ICONS = [
@@ -60,9 +68,9 @@
           const { error } = await supabase
             .from('pets')
             .update({
-                name: editingPet.name,
-                species: editingPet.species,
-                icon: editingPet.icon
+                name: editPetName,
+                species: editPetSpecies,
+                icon: editPetIcon
             })
             .eq('id', editingPet.id);
 
@@ -79,7 +87,10 @@
   }
 
   function openEditPet(pet: any) {
-      editingPet = { ...pet, icon: pet.icon || '🐾', species: pet.species || '' };
+      editingPet = pet;
+      editPetName = pet.name;
+      editPetSpecies = pet.species;
+      editPetIcon = pet.icon || '🐾';
       showEditPetModal = true;
   }
 
@@ -549,8 +560,8 @@
                   {#each pets as pet}
                      <div class="p-4 flex items-center justify-between">
                          <div class="flex items-center space-x-3">
-                             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-3xl shadow-sm border-2 border-white">
-                                 {pet.icon || '🐾'}
+                             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-3xl shadow-sm border-2 border-white overflow-hidden">
+                                 <PetIcon icon={pet.icon} size="md" />
                              </div>
                              <div>
                                  <div class="font-bold text-gray-900 text-base">{pet.name}</div>
@@ -734,6 +745,99 @@
        </div>
    </main>
   
+  <!-- Edit Pet Modal -->
+  {#if showEditPetModal && editingPet}
+  <div class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" on:click={() => showEditPetModal = false}></button>
+      
+      <div class="bg-white rounded-[32px] w-full max-w-sm relative z-10 animate-scale-in max-h-[85vh] overflow-y-auto flex flex-col">
+          <div class="p-6">
+               <div class="flex items-center justify-between mb-6">
+                   <h3 class="text-xl font-bold text-gray-900">Edit Pet</h3>
+                   <button on:click={() => showEditPetModal = false} class="text-gray-400 hover:text-gray-600">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                       </svg>
+                   </button>
+               </div>
+
+               <!-- Icon Selection (Simplified Vertical Layout) -->
+               <div class="flex flex-col items-center mb-6">
+                   <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 mb-4 relative">
+                        <PetIcon icon={editPetIcon} size="lg" />
+                   </div>
+                   
+                   <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Icon</p>
+                   
+                   <!-- Unified Grid -->
+                   <div class="grid grid-cols-5 gap-2 w-full mb-4">
+                       {#each [...FREE_ICONS, ...PREMIUM_ICONS] as icon}
+                           <button 
+                               type="button"
+                               class="aspect-square flex items-center justify-center rounded-lg border-2 {editPetIcon === icon ? 'border-brand-sage bg-brand-sage/5' : 'border-transparent hover:bg-gray-50'}"
+                               on:click={() => editPetIcon = icon}
+                           >
+                               <span class="text-2xl">{icon}</span>
+                           </button>
+                       {/each}
+                   </div>
+
+                   <!-- Custom Upload -->
+                   <button 
+                        type="button"
+                        class="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 font-bold text-sm hover:border-brand-sage hover:text-brand-sage transition-colors flex items-center justify-center space-x-2"
+                        on:click={() => {
+                            if (isPremium) {
+                                fileInput.click();
+                            } else {
+                                showPremiumModal = true;
+                            }
+                        }}
+                   >
+                       {#if isUploading}
+                           <span>Uploading...</span>
+                       {:else}
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                           </svg>
+                           <span>Upload Photo</span>
+                       {/if}
+                       {#if !isPremium}
+                            <span class="text-[10px] bg-gray-100 px-1.5 rounded ml-1">PREM</span>
+                       {/if}
+                   </button>
+                   <input type="file" bind:this={fileInput} class="hidden" accept="image/*" on:change={handleFileUpload} />
+               </div>
+
+               <div class="space-y-4">
+                   <div>
+                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                       <input type="text" bind:value={editPetName} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
+                   </div>
+                   <div>
+                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Species</label>
+                       <input type="text" bind:value={editPetSpecies} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
+                   </div>
+               </div>
+
+               <button 
+                   class="w-full mt-6 py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg shadow-brand-sage/20 active:scale-95 transition-transform"
+                   on:click={savePetEdits}
+               >
+                   Save Changes
+               </button>
+               
+               <button 
+                   class="w-full mt-2 py-4 text-red-500 font-bold rounded-xl hover:bg-red-50 transition-colors"
+                   on:click={deletePet}
+               >
+                   Delete Pet
+               </button>
+          </div>
+      </div>
+  </div>
+  {/if}
+
   <!-- Edit Profile Modal -->
   {#if showEditProfileModal}
     <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

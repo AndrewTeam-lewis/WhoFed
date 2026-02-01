@@ -6,6 +6,7 @@
   import { db } from '$lib/db';
   import { ensureDailyTasks } from '$lib/services/taskService';
   import { supabase } from '$lib/supabase';
+  import { availableHouseholds, switchHousehold, getStoredHouseholdId } from '$lib/stores/appState';
   import Walkthrough from '$lib/components/Walkthrough.svelte';
   import '../app.css';
 
@@ -25,17 +26,57 @@
         await db.profiles.put(profile);
         
         // Check/Generate Tasks for Today (Option A)
-        // We need household_id. Profile might have it? Or fetching it.
-        // Let's quickly fetch household_id if not on profile type.
-        // Actually, household_members table links user to household.
-        const { data: members } = await supabase
-            .from('household_members')
-            .select('household_id')
-            .eq('user_id', session.user.id)
-            .limit(1);
+        // Refactored for Multi-Household Support
+        const { data: members, error: memError } = await supabase
+        .from('household_members')
+        .select(`household_id, households(id, subscription_status, owner_id)`)
+        .eq('user_id', session.user.id);
             
         if (members && members.length > 0) {
-            ensureDailyTasks(members[0].household_id);
+            // 1. Get formatting data (Owner Names)
+            const ownerIds = members.map(m => m.households?.owner_id).filter(Boolean);
+            let ownerNames: Record<string, string> = {};
+            
+            if (ownerIds.length > 0) {
+                const { data: owners } = await supabase
+                    .from('profiles')
+                    .select('id, first_name')
+                    .in('id', ownerIds);
+                    
+                owners?.forEach(o => {
+                    ownerNames[o.id] = o.first_name || 'Someone';
+                });
+            }
+
+            // 2. Map to State Objects
+            const householdsList = members.map(m => {
+                 const ownerId = m.households?.owner_id;
+                 const ownerName = ownerNames[ownerId] || 'Unknown';
+                 // If I am owner, say "My Household", else "[Name]'s Household"
+                 const displayName = (ownerId === session.user.id) 
+                    ? 'My Household' 
+                    : `${ownerName}'s Household`;
+
+                 return {
+                     id: m.household_id,
+                     name: displayName,
+                     role: (ownerId === session.user.id) ? 'owner' : 'member',
+                     subscription_status: m.households?.subscription_status
+                 };
+            });
+            
+            // 3. Update Stores
+            availableHouseholds.set(householdsList as any);
+            
+            // 4. Determine Active
+            const storedId = getStoredHouseholdId();
+            const preferred = householdsList.find(h => h.id === storedId);
+            const initial = preferred || householdsList[0];
+            
+            switchHousehold(initial as any);
+            
+            // 5. Ensure tasks for the ACTIVE one
+            ensureDailyTasks(initial.id);
         }
       }
     } else {
