@@ -285,8 +285,9 @@
   let showDeleteAccountModal = false;
 
   function openInviteModal(hhId: string) {
-      // Monetization Gate
-      if (!canInvite) {
+      // Monetization Gate: re-check at click time since store may have loaded after initial render
+      const MEMBER_LIMIT = 2;
+      if (!$userIsPremium && members.length >= MEMBER_LIMIT) {
           showPremiumModal = true;
           return;
       }
@@ -718,6 +719,26 @@
         </div>
      </section>
 
+      <!-- Notifications -->
+      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={() => showNotificationsModal = true}>
+               <div class="flex items-center space-x-3 text-gray-700">
+                  <div class="p-2 bg-blue-50 text-blue-500 rounded-lg relative">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                     </svg>
+                     {#if pendingInviteCount > 0}
+                         <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{pendingInviteCount}</span>
+                     {/if}
+                  </div>
+                  <span class="font-medium text-sm">Notifications</span>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+          </div>
+      </section>
+
       <!-- My Households -->
       <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
          <div class="p-4 border-b border-gray-100 flex items-center justify-between">
@@ -955,24 +976,7 @@
        </section>
 
        <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={() => showNotificationsModal = true}>
-               <div class="flex items-center space-x-3 text-gray-700">
-                  <div class="p-2 bg-blue-50 text-blue-500 rounded-lg relative">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                     </svg>
-                     {#if pendingInviteCount > 0}
-                         <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{pendingInviteCount}</span>
-                     {/if}
-                  </div>
-                  <span class="font-medium text-sm">Notifications</span>
-              </div>
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-          </div>
-           
-           <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100" on:click={handleExportData}>
+           <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleExportData}>
               <div class="flex items-center space-x-3 text-gray-700">
                  <div class="p-2 bg-green-50 text-green-600 rounded-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

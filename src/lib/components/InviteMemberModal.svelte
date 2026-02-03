@@ -15,10 +15,12 @@
     let inviteUrl = '';
     let linkLoading = true;
 
-    // Username invite state
-    let usernameInput = '';
+    // Username/email invite state
+    let identifierInput = '';
     let inviteStatus: 'idle' | 'sending' | 'success' | 'error' = 'idle';
     let inviteMessage = '';
+
+    $: isEmail = identifierInput.includes('@') && identifierInput.includes('.');
 
     // Generate invite link + QR on mount
     generateInviteLink();
@@ -49,7 +51,7 @@
             }
 
             const baseUrl = window.location.origin;
-            inviteUrl = `${baseUrl}/join/${inviteKey}`;
+            inviteUrl = `${baseUrl}/join/?k=${inviteKey}`;
             qrCodeDataUrl = await QRCode.toDataURL(inviteUrl, {
                 width: 256,
                 margin: 2,
@@ -86,16 +88,16 @@
         }
     }
 
-    async function sendUsernameInvite() {
-        const username = usernameInput.trim().replace(/^@/, '');
-        if (!username) return;
+    async function sendInvite() {
+        const identifier = identifierInput.trim().replace(/^@/, '');
+        if (!identifier) return;
 
         inviteStatus = 'sending';
         inviteMessage = '';
 
         try {
-            const { data, error } = await supabase.rpc('invite_user_by_username', {
-                p_username: username,
+            const { data, error } = await supabase.rpc('invite_user_by_identifier', {
+                p_identifier: identifier,
                 p_household_id: householdId
             });
 
@@ -105,8 +107,8 @@
 
             if (result.success) {
                 inviteStatus = 'success';
-                inviteMessage = `Invite sent to @${username}`;
-                usernameInput = '';
+                inviteMessage = isEmail ? `Invite sent to ${identifier}` : `Invite sent to @${identifier}`;
+                identifierInput = '';
             } else {
                 inviteStatus = 'error';
                 inviteMessage = result.error || 'Failed to send invite';
@@ -148,7 +150,7 @@
                     class="flex-1 py-2 text-sm font-bold rounded-lg transition-all {activeTab === 'username' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}"
                     on:click={() => activeTab = 'username'}
                 >
-                    By Username
+                    By Name / Email
                 </button>
             </div>
 
@@ -187,18 +189,20 @@
             <!-- Tab Content: By Username -->
             {#if activeTab === 'username'}
                 <div class="space-y-4">
-                    <p class="text-sm text-gray-500">Enter the username of the person you want to invite. They'll receive a notification to accept or decline.</p>
+                    <p class="text-sm text-gray-500">Enter a username or email address. They'll receive a notification to accept or decline.</p>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Username</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{isEmail ? 'Email' : 'Username'}</label>
                         <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-brand-sage/20 focus-within:border-brand-sage">
-                            <span class="pl-3 text-gray-400 font-medium">@</span>
+                            {#if !isEmail}
+                                <span class="pl-3 text-gray-400 font-medium">@</span>
+                            {/if}
                             <input
                                 type="text"
-                                bind:value={usernameInput}
-                                placeholder="username"
-                                class="flex-1 p-3 pl-1 text-sm text-gray-900 outline-none"
-                                on:keydown={(e) => { if (e.key === 'Enter') sendUsernameInvite(); }}
+                                bind:value={identifierInput}
+                                placeholder="username or email"
+                                class="flex-1 p-3 text-sm text-gray-900 outline-none {isEmail ? 'pl-3' : 'pl-1'}"
+                                on:keydown={(e) => { if (e.key === 'Enter') sendInvite(); }}
                             />
                         </div>
                     </div>
@@ -212,8 +216,8 @@
 
                     <button
                         class="w-full py-3 bg-brand-sage text-white font-bold rounded-xl shadow-lg shadow-brand-sage/20 active:scale-95 transition-transform disabled:opacity-50"
-                        on:click={sendUsernameInvite}
-                        disabled={!usernameInput.trim() || inviteStatus === 'sending'}
+                        on:click={sendInvite}
+                        disabled={!identifierInput.trim() || inviteStatus === 'sending'}
                     >
                         {#if inviteStatus === 'sending'}
                             <span class="flex items-center justify-center space-x-2">

@@ -477,6 +477,10 @@ export type Database = {
         }[]
       }
       get_my_households: { Args: never; Returns: string[] }
+      invite_user_by_identifier: {
+        Args: { p_identifier: string; p_household_id: string }
+        Returns: Json
+      }
       invite_user_by_username: {
         Args: { p_username: string; p_household_id: string }
         Returns: Json

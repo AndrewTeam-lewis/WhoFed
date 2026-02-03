@@ -10,6 +10,7 @@
         household_id: string;
         household_name: string;
         invited_by_name: string;
+        invited_by_email: string;
         created_at: string;
     }
 
@@ -29,20 +30,26 @@
                     household_id,
                     created_at,
                     households (name),
-                    profiles!household_invitations_invited_by_fkey (first_name)
+                    profiles!household_invitations_invited_by_fkey (first_name, last_name, email)
                 `)
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            invites = (data || []).map((inv: any) => ({
-                id: inv.id,
-                household_id: inv.household_id,
-                household_name: inv.households?.name || 'Unnamed Household',
-                invited_by_name: inv.profiles?.first_name || 'Someone',
-                created_at: inv.created_at
-            }));
+            invites = (data || []).map((inv: any) => {
+                const first = inv.profiles?.first_name || '';
+                const last = inv.profiles?.last_name || '';
+                const fullName = [first, last].filter(Boolean).join(' ') || 'Someone';
+                return {
+                    id: inv.id,
+                    household_id: inv.household_id,
+                    household_name: inv.households?.name || 'Unnamed Household',
+                    invited_by_name: fullName,
+                    invited_by_email: inv.profiles?.email || '',
+                    created_at: inv.created_at
+                };
+            });
         } catch (e) {
             console.error('Error loading invites:', e);
         } finally {
@@ -173,7 +180,10 @@
                                     <p class="text-xs text-gray-500 mt-0.5">
                                         <span class="font-semibold">{invite.invited_by_name}</span> invited you to join <span class="font-semibold">{invite.household_name}</span>
                                     </p>
-                                    <p class="text-[10px] text-gray-400 mt-1">{timeAgo(invite.created_at)}</p>
+                                    {#if invite.invited_by_email}
+                                        <p class="text-[10px] text-gray-400 mt-0.5">{invite.invited_by_email}</p>
+                                    {/if}
+                                    <p class="text-[10px] text-gray-400 mt-0.5">{timeAgo(invite.created_at)}</p>
                                 </div>
                             </div>
                             <div class="flex space-x-2 mt-3">
