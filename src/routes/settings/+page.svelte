@@ -15,6 +15,7 @@
       user_id: string;
       role: 'owner' | 'member'; // derived
       first_name: string | null;
+      last_name: string | null;
       email: string | null;
       can_log: boolean;
       can_edit: boolean;
@@ -207,7 +208,7 @@
                 can_log,
                 can_edit,
                 is_active,
-                profiles (first_name, email)
+                profiles (first_name, last_name, email)
             `)
             .eq('household_id', householdId);
 
@@ -219,7 +220,7 @@
             .select('*')
             .eq('household_id', householdId)
             .order('name');
-            
+
         if (petError) throw petError;
         pets = petData || [];
 
@@ -227,6 +228,7 @@
             user_id: m.user_id,
             role: m.user_id === household.owner_id ? 'owner' : 'member',
             first_name: m.profiles?.first_name || 'Unknown',
+            last_name: m.profiles?.last_name || null,
             email: m.profiles?.email || '',
             can_log: m.can_log,
             can_edit: m.can_edit,
@@ -549,20 +551,23 @@
                   is_active,
                   profiles (
                       first_name,
+                      last_name,
                       email
                   )
               `)
               .eq('household_id', hhId);
-              
+
           if (memberError) throw memberError;
-          
+
           const fetchedMembers: MemberProfile[] = (memberData || []).map(m => ({
               user_id: m.user_id,
               role: hh?.owner_id === m.user_id ? 'owner' : 'member',
               first_name: (m.profiles as any)?.first_name || 'Unknown',
+              last_name: (m.profiles as any)?.last_name || null,
               email: (m.profiles as any)?.email || null,
               can_log: m.can_log ?? true,
-              can_edit: m.can_edit ?? false
+              can_edit: m.can_edit ?? false,
+              is_active: m.is_active ?? true
           }));
           
           householdMembersCache[hhId] = fetchedMembers;
@@ -774,7 +779,7 @@
                                 <div class="font-medium text-gray-900 text-sm flex items-center space-x-2">
                                     <span>{hh.name}</span>
                                     {#if hh.role === 'owner'}
-                                        <button 
+                                        <button
                                             on:click|stopPropagation={() => openEditHouseholdModal(hh)}
                                             class="p-1 text-gray-400 hover:text-brand-sage rounded-full hover:bg-gray-100 transition-colors"
                                             title="Edit Name"
@@ -786,7 +791,11 @@
                                     {/if}
                                 </div>
                                 <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'} font-medium">
-                                    {hh.role === 'owner' ? 'Owner' : 'Member'}
+                                    {#if hh.role === 'owner'}
+                                        Owner
+                                    {:else}
+                                        Member · {hh.ownerName || 'Unknown Owner'}
+                                    {/if}
                                 </div>
                             </div>
                         </div>
@@ -825,8 +834,17 @@
                                                         {member.first_name ? member.first_name[0] : '?'}
                                                     </div>
                                                     <div>
-                                                        <div class="font-medium text-gray-900 text-xs">{member.first_name} {member.user_id === currentUser?.id ? '(You)' : ''}</div>
-                                                        <div class="text-xs {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">{member.role === 'owner' ? 'Owner' : 'Member'}</div>
+                                                        <div class="font-medium text-gray-900 text-xs">
+                                                            {[member.first_name, member.last_name].filter(Boolean).join(' ')}
+                                                            {member.user_id === currentUser?.id ? '(You)' : ''}
+                                                        </div>
+                                                        <div class="text-xs {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
+                                                            {#if member.role === 'owner'}
+                                                                Owner
+                                                            {:else}
+                                                                Member (owner: {hh.ownerName || 'Unknown'})
+                                                            {/if}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 

@@ -6,6 +6,7 @@ export interface HouseholdState {
     name: string; // Actual name or "My Household" fallback
     role: 'owner' | 'member';
     subscription_status?: string;
+    ownerName?: string; // Owner's full name for display
 }
 
 // Stores

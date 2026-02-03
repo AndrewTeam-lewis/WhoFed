@@ -78,15 +78,16 @@
       // Get owner names for display
       const ownerIds = members.map(m => m.households?.owner_id).filter(Boolean);
       let ownerNames: Record<string, string> = {};
-      
+
       if (ownerIds.length > 0) {
           const { data: owners } = await supabase
               .from('profiles')
-              .select('id, first_name')
+              .select('id, first_name, last_name')
               .in('id', ownerIds);
-              
+
           owners?.forEach(o => {
-              ownerNames[o.id] = o.first_name || 'Someone';
+              const fullName = [o.first_name, o.last_name].filter(Boolean).join(' ') || 'Someone';
+              ownerNames[o.id] = fullName;
           });
       }
 
@@ -95,16 +96,17 @@
            const ownerId = m.households?.owner_id;
            const ownerName = ownerNames[ownerId] || 'Unknown';
            const isOwner = ownerId === userId;
-           
+
            // Use actual name if set, otherwise fallback to owner-based name
-           const displayName = m.households?.name 
+           const displayName = m.households?.name
                || (isOwner ? 'My Household' : `${ownerName}'s Household`);
 
            return {
                id: m.household_id,
                name: displayName,
                role: isOwner ? 'owner' : 'member',
-               subscription_status: m.households?.subscription_status
+               subscription_status: m.households?.subscription_status,
+               ownerName: ownerName
            };
       });
       
