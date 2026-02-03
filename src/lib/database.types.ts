@@ -151,6 +151,55 @@ export type Database = {
           },
         ]
       }
+      household_invitations: {
+        Row: {
+          id: string
+          household_id: string
+          invited_user_id: string
+          invited_by: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          invited_user_id: string
+          invited_by: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          invited_user_id?: string
+          invited_by?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_invitations_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_invitations_invited_user_id_fkey"
+            columns: ["invited_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_members: {
         Row: {
           can_edit: boolean | null
@@ -428,6 +477,10 @@ export type Database = {
         }[]
       }
       get_my_households: { Args: never; Returns: string[] }
+      invite_user_by_username: {
+        Args: { p_username: string; p_household_id: string }
+        Returns: Json
+      }
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
     }
     Enums: {

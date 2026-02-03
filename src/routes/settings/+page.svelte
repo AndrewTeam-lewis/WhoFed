@@ -8,6 +8,8 @@
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
   import { userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
+  import InviteMemberModal from '$lib/components/InviteMemberModal.svelte';
+  import NotificationsModal from '$lib/components/NotificationsModal.svelte';
 
   type MemberProfile = {
       user_id: string;
@@ -26,9 +28,11 @@
   let isOwner = false;
   let canInvite = false;
 
-  // Invite state
-  let showInviteModal = false;
-  let inviteEmail = '';
+  // Invite / Notifications state
+  let showInviteMemberModal = false;
+  let inviteHouseholdId = '';
+  let showNotificationsModal = false;
+  let pendingInviteCount = 0;
   
   let showEditProfileModal = false;
   let profile = {
@@ -232,6 +236,14 @@
         // Monetization Check: Free tier limit is 2 members
         const MEMBER_LIMIT = 2;
         canInvite = $userIsPremium || members.length < MEMBER_LIMIT;
+
+        // 5. Get pending invite count for current user
+        const { count: invCount } = await supabase
+            .from('household_invitations')
+            .select('*', { count: 'exact', head: true })
+            .eq('invited_user_id', currentUser.id)
+            .eq('status', 'pending');
+        pendingInviteCount = invCount || 0;
         
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -269,105 +281,17 @@
 
 
 
-  import QRCode from 'qrcode';
-  let qrCodeDataUrl = '';
-  let inviteUrl = '';
   let showPremiumModal = false;
   let showDeleteAccountModal = false;
 
-  async function generateInviteForHousehold(hhId: string) {
-      householdIdForAction = hhId;
-      
+  function openInviteModal(hhId: string) {
       // Monetization Gate
       if (!canInvite) {
           showPremiumModal = true;
           return;
       }
-      
-      try {
-          // Check if key exists
-          const { data: existingKey } = await supabase
-             .from('household_keys')
-             .select('key_value')
-             .eq('household_id', hhId)
-             .maybeSingle();
-
-          let inviteKey = existingKey?.key_value;
-
-          if (!inviteKey) {
-             // Create new key
-             inviteKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-             const { error: createError } = await supabase
-                 .from('household_keys')
-                 .insert({
-                     household_id: hhId,
-                     key_value: inviteKey,
-                     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-                 });
-             if (createError) throw createError;
-          }
-
-          // Generate URL
-          const baseUrl = window.location.origin;
-          inviteUrl = `${baseUrl}/join/${inviteKey}`;
-          showInviteModal = true;
-      } catch (e) {
-          console.error('Error generating invite:', e);
-          alert('Failed to generate invite link');
-      }
-  }
-
-  async function generateInvite() {
-      if (!householdId) return;
-      
-      // Monetization Gate
-      if (!canInvite) {
-          showPremiumModal = true;
-          return;
-      }
-      
-      try {
-          // Check if key exists
-          const { data: existingKey } = await supabase
-             .from('household_keys')
-             .select('key_value')
-             .eq('household_id', householdId)
-             .maybeSingle();
-
-          let inviteKey = existingKey?.key_value;
-
-          if (!inviteKey) {
-             // Create new key
-             inviteKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-             const { error: createError } = await supabase
-                 .from('household_keys')
-                 .insert({
-                     household_id: householdId,
-                     key_value: inviteKey,
-                     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-                 });
-             if (createError) throw createError;
-          }
-
-          // Generate URL
-          const origin = window.location.origin;
-          const url = `${origin}/join?k=${inviteKey}`;
-          inviteUrl = url;
-          qrCodeDataUrl = await QRCode.toDataURL(url, {
-              width: 256,
-              margin: 2,
-              color: {
-                  dark: '#2f4f4f', // Brand Sage Darker
-                  light: '#ffffff'
-              }
-          });
-          
-          showInviteModal = true;
-
-      } catch (err: any) {
-          console.error('Error generating invite:', err);
-          alert('Failed to generate invite');
-      }
+      inviteHouseholdId = hhId;
+      showInviteMemberModal = true;
   }
   
   async function handleExportData() {
@@ -754,26 +678,6 @@
       }
   }
 
-  async function handleShare() {
-      if (!inviteUrl) return;
-      
-      const shareData = {
-          title: 'Join my Household on WhoFed',
-          text: 'Help me take care of the pets! Join my household here:',
-          url: inviteUrl
-      };
-
-      try {
-          if (navigator.share) {
-              await navigator.share(shareData);
-          } else {
-              await navigator.clipboard.writeText(inviteUrl);
-              alert('Link copied to clipboard!');
-          }
-      } catch (err) {
-          console.error('Error sharing:', err);
-      }
-  }
 </script>
 
 <svelte:head>
@@ -880,7 +784,7 @@
                                     {#if hh.role === 'owner'}
                                         <button 
                                             class="text-xs font-medium text-brand-sage hover:underline flex items-center space-x-1"
-                                            on:click={() => generateInviteForHousehold(hh.id)}
+                                            on:click={() => openInviteModal(hh.id)}
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
@@ -1051,18 +955,21 @@
        </section>
 
        <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={() => showNotificationsModal = true}>
                <div class="flex items-center space-x-3 text-gray-700">
-                  <div class="p-2 bg-blue-50 text-blue-500 rounded-lg">
+                  <div class="p-2 bg-blue-50 text-blue-500 rounded-lg relative">
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                      </svg>
+                     {#if pendingInviteCount > 0}
+                         <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{pendingInviteCount}</span>
+                     {/if}
                   </div>
                   <span class="font-medium text-sm">Notifications</span>
               </div>
-              <div class="w-10 h-6 bg-brand-sage rounded-full relative">
-                  <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 shadow-sm"></div>
-              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
           </div>
            
            <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100" on:click={handleExportData}>
@@ -1264,64 +1171,15 @@
     </div>
   {/if}
 
-  <!-- Invite Modal (Placeholder) -->
-  {#if showInviteModal}
-    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-sm p-6 relative animate-fade-in">
-             <button class="absolute top-4 right-4 text-gray-400" on:click={() => showInviteModal = false}>
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                 </svg>
-             </button>
-             
-             <h3 class="text-xl font-bold text-gray-900 mb-2">Invite Family Member</h3>
-             <p class="text-sm text-gray-500 mb-6">Share pet care responsibilities via email or scanning a code.</p>
-             
-             <div class="mb-4">
-                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Email Address</label>
-                 <input type="email" placeholder="Enter their email" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-primary-500 outline-none" />
-             </div>
-             
-             <div class="relative py-4">
-                 <div class="absolute inset-0 flex items-center">
-                     <div class="w-full border-t border-gray-100"></div>
-                 </div>
-                 <div class="relative flex justify-center text-sm">
-                     <span class="px-2 bg-white text-gray-500">OR</span>
-                 </div>
-             </div>
-             
-             <div class="flex flex-col items-center justify-center py-4 space-y-4">
-                 <div class="w-48 h-48 bg-white rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200">
-                    {#if qrCodeDataUrl}
-                        <img src={qrCodeDataUrl} alt="Invite QR Code" class="w-full h-full object-contain" />
-                    {:else}
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                     </svg>
-                    {/if}
-                 </div>
-                 
-                 {#if inviteUrl}
-                    <a href={inviteUrl} target="_blank" class="text-brand-sage text-sm font-bold hover:underline">
-                        Test Link (Click Me)
-                    </a>
-                 {/if}
-             </div>
-             
-             <button 
-                 class="w-full mt-4 flex items-center justify-center space-x-2 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 active:scale-95 transition-transform"
-                 on:click={handleShare}
-             >
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                 </svg>
-                 <span>Share Invite Link</span>
-             </button>
-        </div>
-    </div>
+  <!-- Invite Member Modal -->
+  {#if showInviteMemberModal}
+    <InviteMemberModal householdId={inviteHouseholdId} {canInvite} on:close={() => showInviteMemberModal = false} />
   {/if}
 
+  <!-- Notifications Modal -->
+  {#if showNotificationsModal}
+    <NotificationsModal on:close={() => showNotificationsModal = false} />
+  {/if}
 
   <!-- PREMIUM UPSELL MODAL -->
   {#if showPremiumModal}
