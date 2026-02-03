@@ -461,6 +461,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_household_invite: {
+        Args: { p_invite_id: string }
+        Returns: Json
+      }
       get_household_join_info: {
         Args: { _household_id: string }
         Returns: {
@@ -486,6 +490,10 @@ export type Database = {
         Returns: Json
       }
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
+      join_household_by_key: {
+        Args: { p_household_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

@@ -525,8 +525,8 @@
                 </div>
             </section>
 
-            <!-- Household Section -->
-            {#if $availableHouseholds.length > 1}
+            <!-- Household Section (owners only) -->
+            {#if isOwner && $availableHouseholds.length > 1}
             <section class="bg-white rounded-[24px] p-5 shadow-card">
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
                     Household

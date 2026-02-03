@@ -90,6 +90,12 @@
       return;
     }
     currentUser = session.user;
+
+    // Only owners can add pets
+    if ($activeHousehold?.role !== 'owner') {
+      goto('/');
+      return;
+    }
   });
 
   async function createHousehold() {

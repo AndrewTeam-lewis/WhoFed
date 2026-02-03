@@ -288,6 +288,8 @@
   }
 
   function handleAddPet() {
+      // Only owners can add pets
+      if ($activeHousehold?.role !== 'owner') return;
       // Free Limit = 2 Pets
       if (!$userIsPremium && pets.length >= 2) {
           showPremiumModal = true;
@@ -769,16 +771,20 @@
                    <div class="py-1">
                        {#each $availableHouseholds as hh}
                            <button
-                               class="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 flex items-center justify-between
+                               class="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 flex items-center gap-2
                                {$activeHousehold?.id === hh.id ? 'text-brand-sage bg-brand-sage/5' : 'text-gray-700'}"
                                on:click={() => {
                                    switchHousehold(hh);
                                    showHouseholdMenu = false;
                                }}
                            >
-                               <span class="truncate">{hh.name}</span>
+                               <span class="truncate flex-1">{hh.name}</span>
+                               <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0
+                                   {hh.role === 'owner' ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-500'}">
+                                   {hh.role === 'owner' ? 'Owner' : 'Member'}
+                               </span>
                                {#if $activeHousehold?.id === hh.id}
-                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                    </svg>
                                {/if}
@@ -818,14 +824,18 @@
       </div>
     {:else if pets.length === 0}
       <div class="text-center py-10 bg-white rounded-2xl p-6 shadow-sm">
+        {#if $activeHousehold?.role === 'owner'}
         <p class="text-gray-500 mb-4">You haven't added any pets yet.</p>
-        <button 
+        <button
            data-tour="add-pet-btn"
            class="bg-brand-sage text-white px-6 py-2 rounded-full font-medium hover:bg-brand-sage/90 transition-colors inline-block"
            on:click={() => goto('/pets/add')}
         >
           Add Your First Pet
         </button>
+        {:else}
+        <p class="text-gray-500 mb-4">No pets have been added to this household yet. Ask the household owner to add pets.</p>
+        {/if}
         
         <div class="mt-4">
             <button 
@@ -913,7 +923,8 @@
                             </svg>
                             History
                         </a>
-                        <button 
+                        {#if $activeHousehold?.role === 'owner'}
+                        <button
                             class="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 flex items-center border-t border-gray-50"
                             on:click={() => promptDelete(pet.id)}
                             role="menuitem"
@@ -923,6 +934,7 @@
                             </svg>
                             Remove Pet
                         </button>
+                        {/if}
                     </div>
                  {/if}
                </div>
@@ -974,17 +986,18 @@
     {/if}
   </main>
     
-  <!-- Floating Add Button -->
-  <!-- Floating Add Button -->
-  <button 
+  <!-- Floating Add Button (owners only) -->
+  {#if $activeHousehold?.role === 'owner'}
+  <button
       on:click={handleAddPet}
-      class="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 bg-brand-sage text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity transform hover:scale-105 z-20 shadow-brand-sage/30" 
+      class="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 bg-brand-sage text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity transform hover:scale-105 z-20 shadow-brand-sage/30"
       aria-label="Add Pet"
   >
     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
     </svg>
   </button>
+  {/if}
 </div>
 
     <!-- PREMIUM UPSELL MODAL -->

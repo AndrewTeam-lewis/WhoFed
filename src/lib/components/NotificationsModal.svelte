@@ -62,26 +62,14 @@
         actionLoading = invite.id;
 
         try {
-            // 1. Add user to household_members
-            const { error: memberError } = await supabase
-                .from('household_members')
-                .insert({
-                    household_id: invite.household_id,
-                    user_id: $currentUser.id,
-                    is_active: true,
-                    can_log: true,
-                    can_edit: false
-                });
+            const { data, error } = await supabase.rpc('accept_household_invite', {
+                p_invite_id: invite.id
+            });
 
-            if (memberError) throw memberError;
+            if (error) throw error;
 
-            // 2. Update invitation status
-            const { error: updateError } = await supabase
-                .from('household_invitations')
-                .update({ status: 'accepted' })
-                .eq('id', invite.id);
-
-            if (updateError) throw updateError;
+            const result = data as { success: boolean; error?: string };
+            if (!result.success) throw new Error(result.error || 'Failed to accept invite');
 
             // Remove from local list
             invites = invites.filter(i => i.id !== invite.id);

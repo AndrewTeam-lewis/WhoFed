@@ -98,25 +98,16 @@
       if (!currentUser || !householdId) return;
       joining = true;
       try {
-          const { error: joinError } = await supabase
-            .from('household_members')
-            .insert({
-                household_id: householdId,
-                user_id: currentUser.id,
-                is_active: true,
-                can_log: true,
-                can_edit: false
-            });
+          const { data, error: joinError } = await supabase.rpc('join_household_by_key', {
+              p_household_id: householdId
+          });
 
-            if (joinError) {
-                // Ignore unique constraint violation (already a member)
-                if (joinError.code === '23505') {
-                    goto('/');
-                    return;
-                }
-                throw joinError;
-            }
-            goto('/');
+          if (joinError) throw joinError;
+
+          const result = data as { success: boolean; already_member?: boolean; error?: string };
+          if (!result.success) throw new Error(result.error || 'Failed to join household');
+
+          goto('/');
 
       } catch (err: any) {
           console.error('Error joining:', err);
