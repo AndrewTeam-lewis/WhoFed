@@ -6,6 +6,7 @@ export interface Profile {
     first_name: string;
     last_name?: string;
     phone?: string;
+    tier?: string; // 'free' | 'premium'
 }
 
 export class AppDatabase extends Dexie {
@@ -13,7 +14,7 @@ export class AppDatabase extends Dexie {
 
     constructor() {
         super('OfflineShellDB');
-        this.version(2).stores({
+        this.version(3).stores({
             profiles: 'id, username'
         });
     }

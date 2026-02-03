@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
+  import { userIsPremium } from '$lib/stores/user';
   import type { Database } from '$lib/database.types';
 
   type ActivityLog = Database['public']['Tables']['activity_log']['Row'] & {
@@ -24,27 +25,17 @@
     loading = false;
   });
 
-  let isPremium = false;
   let isLocked = false;
 
   async function fetchPetDetails() {
-      // Get Pet & Household Info
       const { data } = await supabase
         .from('pets')
-        .select(`
-            name,
-            household_id,
-            households (
-                subscription_status
-            )
-        `)
+        .select('name')
         .eq('id', petId)
         .single();
-      
+
       if (data) {
           petName = data.name;
-          const status = data.households?.subscription_status;
-          isPremium = status === 'active';
       }
   }
 
@@ -52,7 +43,7 @@
       const now = new Date();
       let startTime = new Date();
 
-      if (isPremium) {
+      if ($userIsPremium) {
           // Premium: 1 Year History
           startTime.setFullYear(now.getFullYear() - 1);
       } else {
@@ -68,21 +59,18 @@
         .gte('performed_at', startTime.toISOString())
         .order('performed_at', { ascending: false })
         .limit(100); // Sanity limit
-        
+
       logs = data || [];
 
       // 2. Check if we should show the "Unlock" banner
-      if (!isPremium) {
+      if (!$userIsPremium) {
           // Check if ANY records exist older than our start time
           const { count } = await supabase
               .from('activity_log')
               .select('id', { count: 'exact', head: true })
               .eq('pet_id', petId)
               .lt('performed_at', startTime.toISOString());
-              
-          // If there are older records, or if the list is empty (marketing), show lock
-          // Actually, only show lock if there IS history hidden, or maybe always at bottom?
-          // Let's show it if we found hidden records.
+
           isLocked = (count || 0) > 0;
       } else {
           isLocked = false;

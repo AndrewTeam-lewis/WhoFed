@@ -16,6 +16,7 @@ export interface Profile {
     first_name: string;
     last_name?: string;
     phone?: string;
+    tier?: string; // 'free' | 'premium'
 }
 
 export const authService = {

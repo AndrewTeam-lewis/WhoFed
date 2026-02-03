@@ -4,6 +4,7 @@
   import { supabase } from '$lib/supabase';
   import { generateTasksForDate } from '$lib/taskUtils';
   import { activeHousehold } from '$lib/stores/appState';
+  import { userIsPremium } from '$lib/stores/user';
 
 
 
@@ -72,8 +73,7 @@
   let householdId: string | null = null;
   let currentUser: any = null;
   let showIconModal = false; // Renamed from showSpeciesModal
-  let showPremiumModal = false; 
-  let isPremium = false; 
+  let showPremiumModal = false;
   let pushReminders = true;
 
   let scheduleNameEditingId: string | null = null;
@@ -81,7 +81,6 @@
   // Subscribe to active household
   $: if ($activeHousehold) {
       householdId = $activeHousehold.id;
-      isPremium = $activeHousehold.subscription_status === 'active';
   }
 
   onMount(async () => {
@@ -214,7 +213,7 @@
       try {
           // Monetization Check: Free Limit = 2 Pets (warn on 3rd)
           const PET_LIMIT = 2;
-          if (!isPremium) {
+          if (!$userIsPremium) {
               const { count, error: countError } = await supabase
                   .from('pets')
                   .select('*', { count: 'exact', head: true })
@@ -541,7 +540,7 @@
                             type="button"
                             class="w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-bold hover:border-brand-sage hover:text-brand-sage transition-all flex items-center justify-center space-x-2"
                             on:click={() => {
-                                if (isPremium) {
+                                if ($userIsPremium) {
                                     fileInput.click();
                                 } else {
                                     showPremiumModal = true;
@@ -557,7 +556,7 @@
                                 </svg>
                                 <span>Upload Custom Photo</span>
                             {/if}
-                            {#if !isPremium}
+                            {#if !$userIsPremium}
                                 <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">PREMIUM</span>
                             {/if}
                         </button>

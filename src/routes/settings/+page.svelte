@@ -6,6 +6,7 @@
   import { APP_VERSION } from '$lib/version';
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
+  import { userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
 
   type MemberProfile = {
@@ -23,7 +24,6 @@
   let currentUser: any = null;
   let householdId: string | null = null;
   let isOwner = false;
-  let isPremium = false;
   let canInvite = false;
 
   // Invite state
@@ -45,6 +45,8 @@
   let showLeaveHouseholdModal = false;
   let showDeleteHouseholdModal = false;
   let showCannotDeleteModal = false;
+  let showEditHouseholdModal = false;
+  let editingHousehold: { id: string, name: string } | null = null;
   let memberToRemove: { user_id: string, first_name: string } | null = null;
 
   // Household to switch to or create
@@ -183,16 +185,15 @@
         }
         householdId = currentHousehold.id;
 
-        // 2. Check if I am owner AND get subscription status
+        // 2. Check if I am owner
         const { data: household, error: hhError } = await supabase
             .from('households')
-            .select('owner_id, subscription_status')
+            .select('owner_id')
             .eq('id', householdId)
             .single();
-            
+
         if (hhError) throw hhError;
         isOwner = household.owner_id === currentUser.id;
-        isPremium = household.subscription_status === 'active';
 
         // 3. Get all members
         const { data: memberData, error: memberError } = await supabase
@@ -230,10 +231,7 @@
         
         // Monetization Check: Free tier limit is 2 members
         const MEMBER_LIMIT = 2;
-        
-        // Update component state
-        isPremium = household.subscription_status === 'active';
-        canInvite = isPremium || members.length < MEMBER_LIMIT;
+        canInvite = $userIsPremium || members.length < MEMBER_LIMIT;
         
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -373,7 +371,7 @@
   }
   
   async function handleExportData() {
-      if (!isPremium) {
+      if (!$userIsPremium) {
           showPremiumModal = true;
           return;
       }
@@ -649,8 +647,52 @@
       }
   }
 
+  function openEditHouseholdModal(hh: any) {
+      editingHousehold = { id: hh.id, name: hh.name };
+      showEditHouseholdModal = true;
+  }
+
+  async function updateHouseholdName() {
+      if (!editingHousehold || !editingHousehold.name.trim()) return;
+      
+      try {
+          const { error } = await supabase
+              .from('households')
+              .update({ name: editingHousehold.name.trim() })
+              .eq('id', editingHousehold.id);
+
+          if (error) throw error;
+
+          // Update local stores
+          availableHouseholds.update(hhs => 
+              hhs.map(h => h.id === editingHousehold!.id ? { ...h, name: editingHousehold!.name } : h)
+          );
+
+          if ($activeHousehold?.id === editingHousehold.id) {
+              activeHousehold.update(h => h ? { ...h, name: editingHousehold!.name } : null);
+          }
+
+          showEditHouseholdModal = false;
+          editingHousehold = null;
+
+      } catch (e: any) {
+          console.error('Error updating household:', e);
+          alert('Failed to update household: ' + e.message);
+      }
+  }
+
   async function createNewHousehold() {
       if (!newHouseholdName.trim() || !currentUser) return;
+
+      // Premium gate: free users can own max 1 household
+      if (!$userIsPremium) {
+          const ownedCount = $availableHouseholds.filter(h => h.role === 'owner').length;
+          if (ownedCount >= 1) {
+              showPremiumModal = true;
+              return;
+          }
+      }
+
       try {
           // 1. Create household
           const { data: household, error: hhError } = await supabase
@@ -804,7 +846,20 @@
                                 </svg>
                             </div>
                             <div>
-                                <div class="font-medium text-gray-900 text-sm">{hh.name}</div>
+                                <div class="font-medium text-gray-900 text-sm flex items-center space-x-2">
+                                    <span>{hh.name}</span>
+                                    {#if hh.role === 'owner'}
+                                        <button 
+                                            on:click|stopPropagation={() => openEditHouseholdModal(hh)}
+                                            class="p-1 text-gray-400 hover:text-brand-sage rounded-full hover:bg-gray-100 transition-colors"
+                                            title="Edit Name"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                            </svg>
+                                        </button>
+                                    {/if}
+                                </div>
                                 <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'} font-medium">
                                     {hh.role === 'owner' ? 'Owner' : 'Member'}
                                 </div>
@@ -927,40 +982,35 @@
              <div class="font-bold text-gray-900 mb-2">Subscription</div>
              <div class="flex items-center justify-between">
                  <div>
-                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {isPremium ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-600'}">
-                        {isPremium ? 'PREMIUM HOUSEHOLD' : 'FREE TIER'}
+                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {$userIsPremium ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-600'}">
+                        {$userIsPremium ? 'PREMIUM USER' : 'FREE TIER'}
                      </span>
                  </div>
                  <!-- DEV ONLY: Toggle -->
-                 <button 
+                 <button
                     class="text-xs text-blue-500 hover:underline"
                     on:click={async () => {
                         try {
-                            const newStatus = isPremium ? 'free' : 'active';
-                            console.log('Toggling subscription to:', newStatus);
-                            
+                            const newTier = $userIsPremium ? 'free' : 'premium';
+                            console.log('Toggling user tier to:', newTier);
+
                             const { data: updatedRows, error: updateError } = await supabase
-                                .from('households')
-                                .update({ subscription_status: newStatus })
-                                .eq('id', householdId)
+                                .from('profiles')
+                                .update({ tier: newTier })
+                                .eq('id', currentUser.id)
                                 .select();
 
                             if (updateError) {
                                 console.error('Toggle failed:', updateError);
-                                alert('Failed to toggle status: ' + updateError.message);
+                                alert('Failed to toggle tier: ' + updateError.message);
                             } else if (!updatedRows || updatedRows.length === 0) {
                                 console.error('Toggle updated 0 rows.');
-                                alert('Toggle failed: No rows updated. Permission blocked?');
+                                alert('Toggle failed: No rows updated.');
                             } else {
-                                const row = updatedRows[0];
-                                if (row.subscription_status !== newStatus) {
-                                    alert(`Update IGNORED by Database!\nWe sent: '${newStatus}'\nDB kept: '${row.subscription_status}'\n\nThis confirms RLS policies prevent client-side billing updates (Security!).\n\nTo test: Create a NEW account (defaults to Free) or edit the DB manually.`);
-                                } else {
-                                    console.log('Toggle success, reloading...');
-                                    window.location.reload();
-                                }
+                                console.log('Toggle success, reloading...');
+                                window.location.reload();
                             }
-                        } catch (e) {
+                        } catch (e: any) {
                             console.error(e);
                             alert('Error: ' + e.message);
                         }
@@ -969,8 +1019,8 @@
                     [Dev: Toggle]
                  </button>
              </div>
-             {#if !isPremium}
-                <p class="text-xs text-gray-400 mt-2">Limits: 1 Pet, 2 Members, 3 History Items</p>
+             {#if !$userIsPremium}
+                <p class="text-xs text-gray-400 mt-2">Limits: 2 Pets, 2 Members, 3 Days History</p>
              {/if}
          </div>
        </section>
@@ -1024,7 +1074,7 @@
                  </div>
                  <div class="flex flex-col">
                      <span class="font-medium text-sm">Export Data</span>
-                     {#if !isPremium}
+                     {#if !$userIsPremium}
                         <span class="text-[10px] text-brand-sage font-bold uppercase tracking-wide">Premium</span>
                      {/if}
                  </div>
@@ -1105,7 +1155,7 @@
                         type="button"
                         class="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 font-bold text-sm hover:border-brand-sage hover:text-brand-sage transition-colors flex items-center justify-center space-x-2"
                         on:click={() => {
-                            if (isPremium) {
+                            if ($userIsPremium) {
                                 fileInput.click();
                             } else {
                                 showPremiumModal = true;
@@ -1120,7 +1170,7 @@
                            </svg>
                            <span>Upload Photo</span>
                        {/if}
-                       {#if !isPremium}
+                       {#if !$userIsPremium}
                             <span class="text-[10px] bg-gray-100 px-1.5 rounded ml-1">PREM</span>
                        {/if}
                    </button>
@@ -1500,6 +1550,36 @@
           >
               Got it
           </button>
+      </div>
+  </div>
+  {/if}
+
+  <!-- Edit Household Modal -->
+  {#if showEditHouseholdModal}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showEditHouseholdModal = false}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
+          <div class="text-center mb-6">
+              <h3 class="text-xl font-bold text-gray-900">Rename Household</h3>
+          </div>
+          
+          <div class="mb-6">
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Household Name</label>
+              <input 
+                  type="text" 
+                  bind:value={editingHousehold.name}
+                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent"
+              />
+          </div>
+          
+          <div class="flex space-x-3">
+              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showEditHouseholdModal = false}>Cancel</button>
+              <button 
+                  class="flex-1 py-3 bg-brand-sage text-white rounded-xl font-semibold hover:bg-brand-sage/90 disabled:opacity-50" 
+                  on:click={updateHouseholdName}
+                  disabled={!editingHousehold?.name.trim()}
+              >Save</button>
+          </div>
       </div>
   </div>
   {/if}

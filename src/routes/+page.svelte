@@ -23,7 +23,6 @@
   let currentUser: any = null;
   let authChecked = false;
 
-  let isPremium = false;
   let showPremiumModal = false;
   let showHouseholdMenu = false;
   
@@ -48,6 +47,7 @@
   
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
+  import { userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
 
   // Animation State
@@ -95,7 +95,17 @@
 
   async function createNewHousehold() {
       if (!newHouseholdName.trim() || !currentUser) return;
-      
+
+      // Premium gate: free users can own max 1 household
+      if (!$userIsPremium) {
+          const ownedCount = $availableHouseholds.filter(h => h.role === 'owner').length;
+          if (ownedCount >= 1) {
+              showPremiumModal = true;
+              showHouseholdMenu = false;
+              return;
+          }
+      }
+
       try {
           // 1. Create Household
           const { data: household, error: hhError } = await supabase
@@ -103,7 +113,7 @@
               .insert({
                   name: newHouseholdName.trim(),
                   owner_id: currentUser.id,
-                  subscription_status: 'active' // Default to active for now (Free Tier)
+                  subscription_status: 'free'
               })
               .select()
               .single();
@@ -224,7 +234,6 @@
     
     try {
       const householdId = $activeHousehold.id;
-      isPremium = $activeHousehold.subscription_status === 'active';
 
         // 2. Get pets
         const { data: petData } = await supabase
@@ -280,7 +289,7 @@
 
   function handleAddPet() {
       // Free Limit = 2 Pets
-      if (!isPremium && pets.length >= 2) {
+      if (!$userIsPremium && pets.length >= 2) {
           showPremiumModal = true;
       } else {
           goto('/pets/add');
