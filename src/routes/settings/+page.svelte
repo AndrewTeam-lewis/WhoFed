@@ -699,347 +699,332 @@
       </svg>
     </a>
     <h1 class="text-xl font-bold text-gray-900">Settings</h1>
+    <div class="flex-1"></div>
+    <div class="flex items-center space-x-2">
+        <button class="relative p-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all" on:click={() => showNotificationsModal = true}>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {#if pendingInviteCount > 0}
+                <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+            {/if}
+        </button>
+    </div>
   </header>
 
   <main class="p-6 max-w-lg mx-auto space-y-6">
       <!-- Profile Settings (Editable via Modal) -->
-      <!-- Profile Card -->
-     <section class="bg-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
-        <div class="flex items-center space-x-4">
-            <div class="w-16 h-16 rounded-full bg-brand-sage/10 text-brand-sage flex items-center justify-center text-2xl font-bold">
-                {profile.first_name ? profile.first_name[0] : '?'}
-            </div>
-            <div class="flex-1">
-                <h2 class="text-xl font-bold text-gray-900">{profile.first_name} {profile.last_name}</h2>
-                <p class="text-sm text-gray-500">{profile.phone || 'No phone set'}</p>
-            </div>
-            <button 
-                class="p-2 text-gray-400 hover:text-brand-sage transition-colors rounded-full hover:bg-gray-50"
-                on:click={() => showEditProfileModal = true}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-            </button>
-        </div>
-     </section>
-
-      <!-- Notifications -->
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={() => showNotificationsModal = true}>
-               <div class="flex items-center space-x-3 text-gray-700">
-                  <div class="p-2 bg-blue-50 text-blue-500 rounded-lg relative">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                     </svg>
-                     {#if pendingInviteCount > 0}
-                         <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{pendingInviteCount}</span>
+       <div class="space-y-2">
+         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Personal Identity</div>
+         <!-- Profile Card -->
+         <section class="bg-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
+             <div class="flex items-start justify-between">
+                 <div class="flex-1">
+                     <h2 class="text-xl font-bold text-gray-900 mb-1">{profile.first_name} {profile.last_name}</h2>
+                     <p class="text-sm text-gray-500 mb-1">{profile.phone || 'No phone set'}</p>
+                     {#if profile.username}
+                         <p class="text-sm text-brand-sage font-medium">@{profile.username.replace('@','')}</p>
                      {/if}
-                  </div>
-                  <span class="font-medium text-sm">Notifications</span>
-              </div>
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-          </div>
-      </section>
-
-      <!-- My Households -->
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
-         <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-             <div>
-                <div class="font-bold text-gray-900">My Households</div>
-                <p class="text-xs text-gray-500">Switch between or manage your households.</p>
+                 </div>
+                 <button 
+                     class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors rounded-full"
+                     on:click={() => showEditProfileModal = true}
+                 >
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                     </svg>
+                 </button>
              </div>
-             <button 
-                class="bg-brand-sage/10 text-brand-sage p-2 rounded-full hover:bg-brand-sage/20 transition-colors"
-                on:click={() => showCreateHouseholdModal = true}
-                title="Create new household"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                </svg>
-            </button>
-         </div>
-         <div class="divide-y divide-gray-100">
-             {#each $availableHouseholds as hh}
-                <div>
-                    <!-- Accordion Header -->
-                    <button 
-                        class="w-full p-4 flex items-center justify-between text-left"
-                        on:click={() => toggleHouseholdAccordion(hh.id)}
-                    >
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="font-medium text-gray-900 text-sm flex items-center space-x-2">
-                                    <span>{hh.name}</span>
-                                    {#if hh.role === 'owner'}
-                                        <button
-                                            on:click|stopPropagation={() => openEditHouseholdModal(hh)}
-                                            class="p-1 text-gray-400 hover:text-brand-sage rounded-full hover:bg-gray-100 transition-colors"
-                                            title="Edit Name"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                            </svg>
-                                        </button>
-                                    {/if}
-                                </div>
-                                <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'} font-medium">
-                                    {#if hh.role === 'owner'}
-                                        Owner
-                                    {:else}
-                                        Member · {hh.ownerName || 'Unknown Owner'}
-                                    {/if}
-                                </div>
-                            </div>
-                        </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 transition-transform {expandedHouseholdId === hh.id ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
+         </section>
+       </div>
 
-                    <!-- Accordion Content: Members -->
-                    {#if expandedHouseholdId === hh.id}
-                        <div class="px-4 pb-4 pt-0">
-                            <div class="bg-gray-50 rounded-xl p-3">
-                                <!-- Members Header with Invite Button -->
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="text-xs font-bold text-gray-500 uppercase tracking-wider">Members</div>
-                                    {#if hh.role === 'owner'}
-                                        <button 
-                                            class="text-xs font-medium text-brand-sage hover:underline flex items-center space-x-1"
-                                            on:click={() => openInviteModal(hh.id)}
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                                            </svg>
-                                            <span>Invite</span>
-                                        </button>
-                                    {/if}
-                                </div>
-                                
-                                <!-- Members List -->
-                                {#if householdMembersCache[hh.id]}
-                                    <div class="space-y-2">
-                                        {#each householdMembersCache[hh.id] as member}
-                                            <div class="flex items-center justify-between py-2 bg-white rounded-lg px-3 shadow-sm">
-                                                <div class="flex items-center space-x-2">
-                                                    <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs">
-                                                        {member.first_name ? member.first_name[0] : '?'}
-                                                    </div>
-                                                    <div>
-                                                        <div class="font-medium text-gray-900 text-xs">
-                                                            {[member.first_name, member.last_name].filter(Boolean).join(' ')}
-                                                            {member.user_id === currentUser?.id ? '(You)' : ''}
-                                                        </div>
-                                                        <div class="text-xs {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
-                                                            {#if member.role === 'owner'}
-                                                                Owner
-                                                            {:else}
-                                                                Member (owner: {hh.ownerName || 'Unknown'})
-                                                            {/if}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <!-- Actions -->
-                                                <div class="flex items-center space-x-1">
-                                                    <!-- Remove (Owner can remove non-self) -->
-                                                    {#if hh.role === 'owner' && member.user_id !== currentUser?.id}
-                                                        <button 
-                                                            class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                                            on:click={() => { memberToRemove = member; householdIdForAction = hh.id; showRemoveMemberModal = true; }}
-                                                            title="Remove member"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-                                                    {/if}
-                                                    
-                                                    <!-- Leave (Non-owner can leave) -->
-                                                    {#if hh.role !== 'owner' && member.user_id === currentUser?.id}
-                                                        <button 
-                                                            class="px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 rounded transition-colors"
-                                                            on:click={() => { householdIdForAction = hh.id; showLeaveHouseholdModal = true; }}
-                                                        >
-                                                            Leave
-                                                        </button>
-                                                    {/if}
-                                                </div>
-                                            </div>
-                                        {/each}
-                                    </div>
-                                {:else}
-                                    <div class="text-xs text-gray-400 py-2">Loading members...</div>
-                                {/if}
-                                
-                                <!-- Delete Household (Owner only) -->
-                                {#if hh.role === 'owner'}
-                                    <button 
-                                        class="w-full mt-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center space-x-1"
-                                        on:click={() => initiateDeleteHousehold(hh.id)}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                        <span>Delete Household</span>
-                                    </button>
-                                {/if}
-                            </div>
-                        </div>
-                    {/if}
-                </div>
-             {/each}
-         </div>
-      </section>
 
-      <!-- Account & General -->
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100" data-tour="settings-preferences">
-         <!-- Account Info -->
-         <div class="p-4">
-             <div class="font-bold text-gray-900 mb-4">Account</div>
-             <div class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <div class="text-sm text-gray-500">Email</div>
-                    <div class="text-sm font-medium text-gray-900">{profile.email || 'No email set'}</div>
-                </div>
-                <!-- Username removed as it's less critical for settings view, kept in edit modal if needed or just rely on profile -->
-             </div>
-             <div class="mt-6 space-y-2">
-                <button class="w-full py-3 bg-gray-50 rounded-xl text-gray-600 font-bold text-xs uppercase tracking-wider hover:bg-gray-100 transition-colors">
-                    Reset Password
-                </button>
-             </div>
-         </div>
-      </section>
 
-       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100" data-tour="settings-premium">
-         <div class="p-4">
-             <div class="font-bold text-gray-900 mb-2">Subscription</div>
-             <div class="flex items-center justify-between">
+      <!-- Account & General (Moved here) -->
+       <div class="space-y-2">
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Security & Account</div>
+          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100" data-tour="settings-preferences">
+             <!-- Email Row -->
+             <div class="p-4 flex items-center justify-between">
                  <div>
-                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {$userIsPremium ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-600'}">
-                        {$userIsPremium ? 'PREMIUM USER' : 'FREE TIER'}
+                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Primary Email</p>
+                     <p class="text-sm font-medium text-gray-900">{profile.email || 'No email set'}</p>
+                 </div>
+                 <div class="flex items-center text-brand-sage font-medium text-xs cursor-default">
+                     <!-- <span>Change</span> -->
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                     </svg>
+                 </div>
+             </div>
+             
+             <!-- Password Row (Used to be Reset Password Button) -->
+             <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => { /* Reuse existing reset logic or just placeholder */ }}>
+                 <div>
+                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Password</p>
+                     <p class="text-sm font-bold text-gray-900 tracking-widest">••••••••••••</p>
+                 </div>
+                 <div class="flex items-center text-brand-sage font-medium text-xs">
+                     <span>Update</span>
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                     </svg>
+                 </div>
+             </button>
+          </section>
+          <p class="text-xs text-gray-400 px-1 leading-relaxed">
+              Changes to sensitive information may require a secondary verification step to ensure your account's safety.
+          </p>
+       </div>
+
+       <!-- My Households -->
+       <div class="space-y-2">
+         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">My Households</div>
+         <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+             
+             <!-- Header / Action -->
+             <div class="p-4 flex items-center justify-between">
+                 <div>
+                     <h3 class="font-bold text-gray-900 leading-tight">Manage Households</h3>
+                     <p class="text-xs text-gray-500 mt-1">Manage your households and access levels.</p>
+                 </div>
+                 <button 
+                     class="w-8 h-8 rounded-full bg-brand-sage/10 text-brand-sage flex items-center justify-center hover:bg-brand-sage/20 transition-colors"
+                     on:click={() => showCreateHouseholdModal = true}
+                     title="Create new household"
+                 >
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                     </svg>
+                 </button>
+             </div>
+
+             <!-- Households List -->
+             {#each $availableHouseholds as hh}
+                 <div>
+                     <button 
+                         class="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                         on:click={() => toggleHouseholdAccordion(hh.id)}
+                     >
+                         <div class="flex items-center space-x-3">
+                             <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500">
+                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                                     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                                 </svg>
+                             </div>
+                             <div>
+                                 <div class="font-bold text-gray-900 text-sm flex items-center space-x-2">
+                                     <span>{hh.name}</span>
+                                     {#if hh.role === 'owner'}
+                                         <button
+                                             on:click|stopPropagation={() => openEditHouseholdModal(hh)}
+                                             class="text-gray-400 hover:text-brand-sage p-0.5"
+                                         >
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                             </svg>
+                                         </button>
+                                     {/if}
+                                 </div>
+                                 <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage font-bold' : 'text-gray-400 font-medium'}">
+                                     {hh.role === 'owner' ? 'Owner' : `Member (owner: ${hh.ownerName || 'Unknown'})`}
+                                 </div>
+                             </div>
+                         </div>
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 transition-transform {expandedHouseholdId === hh.id ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                         </svg>
+                     </button>
+ 
+                     <!-- Accordion Content -->
+                     {#if expandedHouseholdId === hh.id}
+                         <div class="px-4 pb-4 pt-0 bg-gray-50/50">
+                             <div class="pt-3">
+                                 <!-- Members Header -->
+                                 <div class="flex items-center justify-between mb-3 px-1">
+                                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Members</div>
+                                     {#if hh.role === 'owner'}
+                                         <button 
+                                             class="text-xs font-bold text-brand-sage hover:underline flex items-center space-x-1"
+                                             on:click={() => openInviteModal(hh.id)}
+                                         >
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                 <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                                             </svg>
+                                             <span>Add Member</span>
+                                         </button>
+                                     {/if}
+                                 </div>
+                                 
+                                 <!-- Members List -->
+                                 {#if householdMembersCache[hh.id]}
+                                     <div class="space-y-2">
+                                         {#each householdMembersCache[hh.id] as member}
+                                             <div class="flex items-center justify-between py-2 px-1">
+                                                 <div class="flex items-center space-x-3">
+                                                     <div class="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs shadow-sm">
+                                                         {member.first_name ? member.first_name[0] : '?'}
+                                                     </div>
+                                                     <div>
+                                                         <div class="font-bold text-gray-900 text-xs">
+                                                             {[member.first_name, member.last_name].filter(Boolean).join(' ')}
+                                                             {member.user_id === currentUser?.id ? ' (You)' : ''}
+                                                         </div>
+                                                         <div class="text-[10px] uppercase tracking-wide font-bold {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
+                                                             {member.role === 'owner' ? 'Owner' : 'Member'}
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                                 
+                                                 <!-- Actions -->
+                                                 <div class="flex items-center space-x-1">
+                                                     {#if hh.role === 'owner' && member.user_id !== currentUser?.id}
+                                                         <button 
+                                                             class="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                                                             on:click={() => { memberToRemove = member; householdIdForAction = hh.id; showRemoveMemberModal = true; }}
+                                                             title="Remove member"
+                                                         >
+                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                             </svg>
+                                                         </button>
+                                                     {/if}
+                                                     {#if hh.role !== 'owner' && member.user_id === currentUser?.id}
+                                                         <button 
+                                                             class="px-2 py-1 text-[10px] font-bold text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors uppercase tracking-wide"
+                                                             on:click={() => { householdIdForAction = hh.id; showLeaveHouseholdModal = true; }}
+                                                         >
+                                                             Leave
+                                                         </button>
+                                                     {/if}
+                                                 </div>
+                                             </div>
+                                         {/each}
+                                     </div>
+                                 {:else}
+                                     <div class="text-xs text-gray-400 py-2 italic">Loading members...</div>
+                                 {/if}
+                                 
+                                 <!-- Delete Household -->
+                                 {#if hh.role === 'owner'}
+                                     <div class="mt-4 pt-3 border-t border-gray-100">
+                                         <button 
+                                             class="text-xs font-bold text-red-400 hover:text-red-600 transition-colors flex items-center space-x-1"
+                                             on:click={() => initiateDeleteHousehold(hh.id)}
+                                         >
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                             </svg>
+                                             <span>Delete Household</span>
+                                         </button>
+                                     </div>
+                                 {/if}
+                             </div>
+                         </div>
+                     {/if}
+                 </div>
+             {/each}
+         </section>
+       </div>
+
+
+
+       <!-- Subscription (Dev Only Toggle) -->
+       <div class="space-y-2">
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Subscription</div>
+          <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+             <div class="p-4 flex items-center justify-between">
+                 <div>
+                     <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {$userIsPremium ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-600'}">
+                        {$userIsPremium ? 'Premium User' : 'Free Tier'}
                      </span>
                  </div>
-                 <!-- DEV ONLY: Toggle -->
                  <button
                     class="text-xs text-blue-500 hover:underline"
                     on:click={async () => {
                         try {
                             const newTier = $userIsPremium ? 'free' : 'premium';
                             console.log('Toggling user tier to:', newTier);
-
-                            const { data: updatedRows, error: updateError } = await supabase
-                                .from('profiles')
-                                .update({ tier: newTier })
-                                .eq('id', currentUser.id)
-                                .select();
-
-                            if (updateError) {
-                                console.error('Toggle failed:', updateError);
-                                alert('Failed to toggle tier: ' + updateError.message);
-                            } else if (!updatedRows || updatedRows.length === 0) {
-                                console.error('Toggle updated 0 rows.');
-                                alert('Toggle failed: No rows updated.');
-                            } else {
-                                console.log('Toggle success, reloading...');
-                                window.location.reload();
-                            }
-                        } catch (e: any) {
-                            console.error(e);
-                            alert('Error: ' + e.message);
-                        }
+                            // ... toggle logic ...
+                            const { data: updatedRows, error: updateError } = await supabase.from('profiles').update({ tier: newTier }).eq('id', currentUser.id).select();
+                            if (updateError) { alert('Failed: ' + updateError.message); } else { window.location.reload(); }
+                        } catch (e: any) { alert('Error: ' + e.message); }
                     }}
                  >
                     [Dev: Toggle]
                  </button>
              </div>
-             {#if !$userIsPremium}
-                <p class="text-xs text-gray-400 mt-2">Limits: 2 Pets, 2 Members, 3 Days History</p>
-             {/if}
-         </div>
-       </section>
-       
-       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-          <div class="p-4">
-              <div class="font-bold text-gray-900 mb-2">About</div>
-              <div class="space-y-1">
-                  <a href="/legal/privacy" class="flex items-center justify-between py-2 text-sm text-gray-500 hover:text-brand-sage transition-colors">
-                      <span>Privacy Policy</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                  </a>
-                  <a href="/legal/tos" class="flex items-center justify-between py-2 text-sm text-gray-500 hover:text-brand-sage transition-colors">
-                      <span>Terms of Service</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                  </a>
-              </div>
-              <div class="mt-4 pt-4 border-t border-gray-50">
-                  <p class="text-[10px] text-center text-gray-400">
-                      Made with ❤️ for Pets everywhere.
-                  </p>
-              </div>
-          </div>
-       </section>
-
-       <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-           <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleExportData}>
-              <div class="flex items-center space-x-3 text-gray-700">
-                 <div class="p-2 bg-green-50 text-green-600 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                 </div>
-                 <div class="flex flex-col">
-                     <span class="font-medium text-sm">Export Data</span>
-                     {#if !$userIsPremium}
-                        <span class="text-[10px] text-brand-sage font-bold uppercase tracking-wide">Premium</span>
-                     {/if}
-                 </div>
-              </div>
-          </div>
-          
-          <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100" on:click={handleLogout}>
-             <div class="flex items-center space-x-3 text-gray-600">
-                <div class="p-2 bg-gray-100 rounded-lg">
-                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                 </div>
-                 <span class="font-medium text-sm">Log Out</span>
-             </div>
-         </div>
-
-         <!-- Danger Zone: Delete Account -->
-         <div class="flex items-center justify-between p-4 hover:bg-red-50 transition-colors cursor-pointer border-t border-gray-100" 
-            on:click={() => showDeleteAccountModal = true}
-         >
-            <div class="flex items-center space-x-3 text-red-600">
-               <div class="p-2 bg-red-100 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                   </svg>
-                </div>
-                <span class="font-medium text-sm">Delete Account</span>
-            </div>
-        </div>
-        </section>
-
-       <!-- Version Display -->
-       <div class="text-center pb-8">
-           <p class="text-xs text-gray-400 font-mono">v{APP_VERSION}</p>
+          </section>
        </div>
+             <!-- About -->
+       <div class="space-y-2">
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">About</div>
+          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+              <a href="/legal/privacy" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                  <span class="text-sm font-bold text-gray-900">Privacy Policy</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+              </a>
+              <a href="/legal/tos" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                  <span class="text-sm font-bold text-gray-900">Terms of Service</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+              </a>
+              <div class="flex items-center justify-between p-4 bg-gray-50/50">
+                  <span class="text-sm font-bold text-gray-900">Version</span>
+                  <span class="text-sm text-gray-500">{APP_VERSION}</span>
+              </div>
+          </section>
+       </div>
+       
+       <div class="h-8"></div>
+       <div class="space-y-2">
+          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+              <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleExportData}>
+                  <div class="flex items-center space-x-3 text-gray-700">
+                      <div class="p-2 bg-green-50 text-green-600 rounded-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                      </div>
+                      <div class="flex flex-col">
+                          <span class="font-medium text-sm">Export Data</span>
+                          {#if !$userIsPremium}
+                              <span class="text-[10px] text-brand-sage font-bold uppercase tracking-wide">Premium</span>
+                          {/if}
+                      </div>
+                  </div>
+              </div>
+              
+              <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleLogout}>
+                  <div class="flex items-center space-x-3 text-gray-600">
+                      <div class="p-2 bg-gray-100 rounded-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                      </div>
+                      <span class="font-medium text-sm">Log Out</span>
+                  </div>
+              </div>
+
+              <!-- Danger Zone: Delete Account -->
+              <div class="flex items-center justify-between p-4 hover:bg-red-50 transition-colors cursor-pointer" 
+                  on:click={() => showDeleteAccountModal = true}
+              >
+                  <div class="flex items-center space-x-3 text-red-600">
+                      <div class="p-2 bg-red-100 rounded-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                      </div>
+                      <span class="font-medium text-sm">Delete Account</span>
+                  </div>
+              </div>
+          </section>
+       </div>
+ 
    </main>
   
   <!-- Edit Pet Modal -->
@@ -1165,6 +1150,11 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="lastName">Last Name</label>
                         <input id="lastName" type="text" bind:value={profile.last_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="Last Name" />
                      </div>
+                 </div>
+
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="pfUsername">Username</label>
+                    <input id="pfUsername" type="text" bind:value={profile.username} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="@username" />
                  </div>
 
                  <div>
