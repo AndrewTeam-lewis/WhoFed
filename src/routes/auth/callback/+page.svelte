@@ -17,7 +17,7 @@
         
         if (profile) {
           // Profile exists, go to profile page
-          goto('/');
+          goto('/app');
         } else {
           // No profile, need to complete profile
           goto('/auth/complete-profile');

@@ -17,7 +17,7 @@
     try {
       await authService.login(usernameOrEmail, password);
       const redirectTo = $page.url.searchParams.get('redirectTo');
-      goto(redirectTo ? decodeURIComponent(redirectTo) : '/');
+      goto(redirectTo ? decodeURIComponent(redirectTo) : '/app');
     } catch (e: any) {
       error = e.message || 'Login failed';
     } finally {

@@ -7,8 +7,13 @@
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
   import { userIsPremium } from '$lib/stores/user';
-  import PetIcon from '$lib/components/PetIcon.svelte';
+  import CreateHouseholdModal from '$lib/components/CreateHouseholdModal.svelte';
   import InviteMemberModal from '$lib/components/InviteMemberModal.svelte';
+  import PremiumFeatureModal from '$lib/components/PremiumFeatureModal.svelte';
+  import AddPetModal from '$lib/components/AddPetModal.svelte';
+  import ChangePasswordModal from '$lib/components/ChangePasswordModal.svelte';
+  import ChangeEmailModal from '$lib/components/ChangeEmailModal.svelte';
+  import PetIcon from '$lib/components/PetIcon.svelte';
   import NotificationsModal from '$lib/components/NotificationsModal.svelte';
 
   type MemberProfile = {
@@ -67,6 +72,10 @@
   let showPetIconModal = false; // Nested modal for picking icon
   let editingPet: any = { id: '', name: '', species: '', icon: '' };
   
+  // Security State (Added to fix build)
+  let showChangePasswordModal = false;
+  let showChangeEmailModal = false;
+  
   // Edit State
   let editPetName = '';
   let editPetSpecies = '';
@@ -109,6 +118,36 @@
       }
   }
 
+  // Aliases and missing handlers for syntax check
+  const savePetEdits = savePet;
+
+  async function deletePet() {
+      if (!confirm('Are you sure you want to delete this pet? This cannot be undone.')) return;
+      loading = true;
+      try {
+          const { error } = await supabase
+              .from('pets')
+              .delete()
+              .eq('id', editingPet.id);
+          
+          if (error) throw error;
+          showEditPetModal = false;
+          await loadSettings();
+      } catch (e: any) {
+          alert('Error deleting pet: ' + e.message);
+      } finally {
+          loading = false;
+      }
+  }
+
+  async function handleFileUpload(event: Event) {
+       const input = event.target as HTMLInputElement;
+       if (!input.files?.length) return;
+       // Logic to upload custom icon would go here.
+       // For now, simple alert or ignore as we use emoji picker primarily.
+       alert("Custom photo upload coming soon!");
+  }
+
   function openEditPet(pet: any) {
       editingPet = pet;
       editPetName = pet.name;
@@ -148,6 +187,12 @@
       } finally {
           loading = false;
       }
+  }
+
+  function handleCreateHousehold(event: CustomEvent) {
+      showCreateHouseholdModal = false;
+      // Force reload to pick up new household in layout
+      window.location.reload();
   }
 
   onMount(async () => {
@@ -268,7 +313,7 @@
             .from('household_members')
             .update({ [permission]: newValue })
             .eq('user_id', userId)
-            .eq('household_id', householdId);
+            .eq('household_id', householdId || '');
 
           if (error) throw error;
           
@@ -611,78 +656,8 @@
       }
   }
 
-  async function createNewHousehold() {
-      if (!newHouseholdName.trim() || !currentUser) return;
+ 
 
-      // Premium gate: free users can own max 1 household
-      if (!$userIsPremium) {
-          const ownedCount = $availableHouseholds.filter(h => h.role === 'owner').length;
-          if (ownedCount >= 1) {
-              showPremiumModal = true;
-              return;
-          }
-      }
-
-      try {
-          // 1. Create household
-          const { data: household, error: hhError } = await supabase
-              .from('households')
-              .insert({
-                  owner_id: currentUser.id,
-                  name: newHouseholdName.trim(),
-                  subscription_status: 'free'
-              })
-              .select()
-              .single();
-          
-          if (hhError) throw hhError;
-          
-          // 2. Add user as member
-          const { error: memberError } = await supabase
-              .from('household_members')
-              .insert({
-                  household_id: household.id,
-                  user_id: currentUser.id,
-                  is_active: true,
-                  can_log: true,
-                  can_edit: true
-              });
-          
-          if (memberError) throw memberError;
-          // 3. Switch to it (Store update + Persistence)
-          switchHousehold({ 
-              id: household.id, 
-              name: household.name, 
-              role: 'owner', 
-              subscription_status: household.subscription_status 
-          });
-          
-          showCreateHouseholdModal = false;
-          newHouseholdName = '';
-          
-          // Expand the new household in the list
-          expandedHouseholdId = household.id;
-          
-          // Force refresh of available households
-          const { data: updatedHouseholds } = await supabase
-              .from('households')
-              .select('*')
-              .eq('owner_id', currentUser.id);
-              
-          if (updatedHouseholds) {
-              const mapped = updatedHouseholds.map(h => ({
-                  id: h.id, 
-                  name: h.name, 
-                  role: 'owner' as const, 
-                  subscription_status: h.subscription_status 
-              }));
-              availableHouseholds.set(mapped);
-          }
-      } catch (e: any) {
-          console.error('Error creating household:', e);
-          alert('Failed to create household: ' + e.message);
-      }
-  }
 
 </script>
 
@@ -745,27 +720,27 @@
           <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Security & Account</div>
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100" data-tour="settings-preferences">
              <!-- Email Row -->
-             <div class="p-4 flex items-center justify-between">
+             <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => showChangeEmailModal = true}>
                  <div>
                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Primary Email</p>
                      <p class="text-sm font-medium text-gray-900">{profile.email || 'No email set'}</p>
                  </div>
-                 <div class="flex items-center text-brand-sage font-medium text-xs cursor-default">
-                     <!-- <span>Change</span> -->
+                 <div class="flex items-center text-brand-sage font-medium text-xs">
+                     <span>Change</span>
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                      </svg>
                  </div>
-             </div>
+             </button>
              
-             <!-- Password Row (Used to be Reset Password Button) -->
-             <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => { /* Reuse existing reset logic or just placeholder */ }}>
+             <!-- Password Row -->
+             <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => showChangePasswordModal = true}>
                  <div>
                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Password</p>
                      <p class="text-sm font-bold text-gray-900 tracking-widest">••••••••••••</p>
                  </div>
                  <div class="flex items-center text-brand-sage font-medium text-xs">
-                     <span>Update</span>
+                     <span>Change</span>
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                      </svg>
@@ -879,9 +854,9 @@
                                                  <!-- Actions -->
                                                  <div class="flex items-center space-x-1">
                                                      {#if hh.role === 'owner' && member.user_id !== currentUser?.id}
-                                                         <button 
+                                                             <button 
                                                              class="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                                                             on:click={() => { memberToRemove = member; householdIdForAction = hh.id; showRemoveMemberModal = true; }}
+                                                             on:click={() => { memberToRemove = { ...member, first_name: member.first_name || 'Member' }; householdIdForAction = hh.id; showRemoveMemberModal = true; }}
                                                              title="Remove member"
                                                          >
                                                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1274,7 +1249,7 @@
                               if (error) throw error;
                               await supabase.auth.signOut();
                               window.location.href = '/auth/login';
-                          } catch(err) {
+                          } catch(err: any) {
                               alert('Error deleting account: ' + err.message);
                               showDeleteAccountModal = false;
                           }
@@ -1360,41 +1335,7 @@
   </div>
   {/if}
 
-  <!-- Create Household Modal -->
-  {#if showCreateHouseholdModal}
-  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showCreateHouseholdModal = false}></button>
-      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10">
-          <div class="text-center mb-6">
-              <div class="w-16 h-16 bg-brand-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-brand-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-              </div>
-              <h3 class="text-xl font-bold text-gray-900">Create New Household</h3>
-          </div>
-          
-          <div class="mb-6">
-              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Household Name</label>
-              <input 
-                  type="text" 
-                  bind:value={newHouseholdName}
-                  placeholder="e.g., Beach House, Mom's Place..."
-                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent"
-              />
-          </div>
-          
-          <div class="flex space-x-3">
-              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showCreateHouseholdModal = false}>Cancel</button>
-              <button 
-                  class="flex-1 py-3 bg-brand-sage text-white rounded-xl font-semibold hover:bg-brand-sage/90 disabled:opacity-50" 
-                  on:click={createNewHousehold}
-                  disabled={!newHouseholdName.trim()}
-              >Create</button>
-          </div>
-      </div>
-  </div>
-  {/if}
+
 
   <!-- Cannot Delete Modal -->
   {#if showCannotDeleteModal}
@@ -1423,8 +1364,9 @@
   </div>
   {/if}
 
+
   <!-- Edit Household Modal -->
-  {#if showEditHouseholdModal}
+  {#if showEditHouseholdModal && editingHousehold}
   <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showEditHouseholdModal = false}></button>
       <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
@@ -1451,6 +1393,17 @@
           </div>
       </div>
   </div>
+  {/if}
+
+  {#if showChangePasswordModal}
+    <ChangePasswordModal on:close={() => showChangePasswordModal = false} />
+  {/if}
+
+  {#if showChangeEmailModal}
+    <ChangeEmailModal 
+        currentEmail={currentUser?.email || ''} 
+        on:close={() => showChangeEmailModal = false} 
+    />
   {/if}
 
 </div>

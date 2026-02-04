@@ -64,7 +64,7 @@
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirectTo');
       
-      setTimeout(() => goto(redirectTo ? decodeURIComponent(redirectTo) : '/'), 1500);
+      setTimeout(() => goto(redirectTo ? decodeURIComponent(redirectTo) : '/app'), 1500);
     } catch (e: any) {
       error = e.message || 'Registration failed';
     }
