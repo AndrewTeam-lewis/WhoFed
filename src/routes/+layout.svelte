@@ -63,11 +63,26 @@
   });
 
   async function loadHouseholds(userId: string) {
-      const { data: members } = await supabase
+      // Optimized Query: Get members + households + owner profile in ONE go
+      const { data: members, error } = await supabase
           .from('household_members')
-          .select(`household_id, households(id, name, subscription_status, owner_id)`)
+          .select(`
+              household_id, 
+              households (
+                  id, 
+                  name, 
+                  subscription_status, 
+                  owner_id,
+                  profiles:owner_id (first_name, last_name)
+              )
+          `)
           .eq('user_id', userId);
       
+      if (error) {
+          console.error('Error loading households:', error);
+          return;
+      }
+
       // If no household, show setup modal
       if (!members || members.length === 0) {
           setupUserId = userId;
@@ -75,37 +90,26 @@
           return;
       }
       
-      // Get owner names for display
-      const ownerIds = members.map(m => m.households?.owner_id).filter(Boolean);
-      let ownerNames: Record<string, string> = {};
-
-      if (ownerIds.length > 0) {
-          const { data: owners } = await supabase
-              .from('profiles')
-              .select('id, first_name, last_name')
-              .in('id', ownerIds);
-
-          owners?.forEach(o => {
-              const fullName = [o.first_name, o.last_name].filter(Boolean).join(' ') || 'Someone';
-              ownerNames[o.id] = fullName;
-          });
-      }
-
-      // Map to State Objects - use actual name or fallback
+      // Map to State Objects
       const householdsList = members.map(m => {
-           const ownerId = m.households?.owner_id;
-           const ownerName = ownerNames[ownerId] || 'Unknown';
+           const hh = m.households as any;
+           const ownerId = hh?.owner_id;
+           const ownerProfile = hh?.profiles; // Joined data
+           const ownerName = ownerProfile 
+               ? [ownerProfile.first_name, ownerProfile.last_name].filter(Boolean).join(' ') 
+               : 'Unknown';
+
            const isOwner = ownerId === userId;
 
            // Use actual name if set, otherwise fallback to owner-based name
-           const displayName = m.households?.name
+           const displayName = hh?.name
                || (isOwner ? 'My Household' : `${ownerName}'s Household`);
 
            return {
                id: m.household_id,
                name: displayName,
                role: isOwner ? 'owner' : 'member',
-               subscription_status: m.households?.subscription_status,
+               subscription_status: hh?.subscription_status,
                ownerName: ownerName
            };
       });

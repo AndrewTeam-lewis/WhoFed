@@ -234,41 +234,45 @@
     
     try {
       const householdId = $activeHousehold.id;
+      
+      // Calculate day range
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
 
-        // 2. Get pets
-        const { data: petData } = await supabase
-          .from('pets')
-          .select('*')
-          .eq('household_id', householdId)
-          .order('name');
-          
-        pets = petData || [];
-
-        // Onboarding Trigger
-        if (pets.length === 0) {
-            onboarding.checkWelcome();
-        }
-
-        // 3. Simple Display: Fetch Tasks for Today (Local Date)
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        
-        const endOfDay = new Date();
-        endOfDay.setHours(23, 59, 59, 999);
-        
-        const { data: existingTasks, error: fetchError } = await supabase
+      // Parallel Fetch: Pets & Tasks (Independent)
+      const [petRes, taskRes] = await Promise.all([
+          supabase
+            .from('pets')
+            .select('*')
+            .eq('household_id', householdId)
+            .order('name'),
+            
+          supabase
             .from('daily_tasks')
             .select('*, schedules(schedule_mode)')
             .eq('household_id', householdId)
             // Use ISO strings to match timestamptz correctly in UTC
             .gte('due_at', startOfDay.toISOString())
-            .lte('due_at', endOfDay.toISOString());
+            .lte('due_at', endOfDay.toISOString())
+      ]);
 
-        if (fetchError) throw fetchError;
+      // Handle Pets
+      pets = petRes.data || [];
 
-        dailyTasks = (existingTasks || []) as any; // Cast mainly for schedule_mode join
+      // Onboarding Trigger
+      if (pets.length === 0) {
+          onboarding.checkWelcome();
+      }
 
-        // 4. Get recent activity
+      // Handle Tasks
+      if (taskRes.error) throw taskRes.error;
+      dailyTasks = (taskRes.data || []) as any; // Cast mainly for schedule_mode join
+
+      // 4. Get recent activity (Depends on Pets)
+      if (pets.length > 0) {
         const { data: logData, error: logError } = await supabase
           .from('activity_log')
           .select('*, profiles(first_name), schedules(label, task_type)')
@@ -277,8 +281,10 @@
           .limit(50);
 
         if (logError) throw logError;
-        
         recentActivity = logData || [];
+      } else {
+        recentActivity = [];
+      }
 
     } catch (error) {
         console.error('Error fetching dashboard:', error);
