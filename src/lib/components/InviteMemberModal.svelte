@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     import { supabase } from '$lib/supabase';
     import QRCode from 'qrcode';
 
@@ -20,10 +20,67 @@
     let inviteStatus: 'idle' | 'sending' | 'success' | 'error' = 'idle';
     let inviteMessage = '';
 
+    // Suggestions State
+    let suggestedUsers: any[] = [];
+    let loadingSuggestions = false;
+
     $: isEmail = identifierInput.includes('@') && identifierInput.includes('.');
 
     // Generate invite link + QR on mount
-    generateInviteLink();
+    onMount(() => {
+        generateInviteLink();
+        if (canInvite) {
+            loadSuggestions();
+        }
+    });
+
+    async function loadSuggestions() {
+        loadingSuggestions = true;
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // 1. Get IDs of households I own
+            const { data: myHouseholds } = await supabase
+                .from('households')
+                .select('id')
+                .eq('owner_id', user.id);
+            
+            if (!myHouseholds || myHouseholds.length === 0) return;
+
+            const myHouseholdIds = myHouseholds.map(h => h.id);
+
+            // 2. Get members of those households (potential suggestions)
+            const { data: allMembers } = await supabase
+                .from('household_members')
+                .select('user_id, profiles(username, first_name, last_name, email)')
+                .in('household_id', myHouseholdIds);
+
+            // 3. Get members of THIS household (to exclude)
+            const { data: currentMembers } = await supabase
+                .from('household_members')
+                .select('user_id')
+                .eq('household_id', householdId);
+
+            const currentMemberIds = new Set((currentMembers || []).map(m => m.user_id));
+            currentMemberIds.add(user.id); // Exclude self
+
+            // 4. Filter & Dedupe
+            const uniqueMap = new Map();
+            (allMembers || []).forEach((m: any) => {
+                if (!currentMemberIds.has(m.user_id) && m.profiles) {
+                    uniqueMap.set(m.user_id, m.profiles);
+                }
+            });
+
+            suggestedUsers = Array.from(uniqueMap.values());
+
+        } catch (e) {
+            console.error('Error loading suggestions', e);
+        } finally {
+            loadingSuggestions = false;
+        }
+    }
 
     async function generateInviteLink() {
         linkLoading = true;
@@ -206,6 +263,35 @@
                             />
                         </div>
                     </div>
+
+                    <!-- Suggested Members -->
+                    {#if loadingSuggestions}
+                        <div class="text-center py-2">
+                             <span class="text-xs text-gray-400">Loading suggestions...</span>
+                        </div>
+                    {:else if suggestedUsers.length > 0}
+                        <div class="space-y-2">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Previously Added</div>
+                            <div class="max-h-32 overflow-y-auto space-y-1">
+                                {#each suggestedUsers as user}
+                                    <button 
+                                        class="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg group transition-colors text-left"
+                                        on:click={() => identifierInput = user.username || user.email}
+                                    >
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-bold text-gray-700">
+                                                {user.first_name} {user.last_name || ''}
+                                            </span>
+                                            <span class="text-[10px] text-gray-400">@{user.username}</span>
+                                        </div>
+                                        <div class="text-brand-sage opacity-0 group-hover:opacity-100 text-xs font-bold">
+                                            Select
+                                        </div>
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
 
                     <!-- Status Message -->
                     {#if inviteMessage}
