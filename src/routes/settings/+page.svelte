@@ -870,7 +870,7 @@
                                                              {[member.first_name, member.last_name].filter(Boolean).join(' ')}
                                                              {member.user_id === currentUser?.id ? ' (You)' : ''}
                                                          </div>
-                                                         <div class="text-[10px] uppercase tracking-wide font-bold {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
+                                                         <div class="text-[10px]  font-bold {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
                                                              {member.role === 'owner' ? 'Owner' : 'Member'}
                                                          </div>
                                                      </div>
@@ -961,25 +961,24 @@
           <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">About</div>
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
               <a href="/legal/privacy" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                  <span class="text-sm font-bold text-gray-900">Privacy Policy</span>
+                  <span class="text-sm font-medium text-gray-900">Privacy Policy</span>
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
               </a>
               <a href="/legal/tos" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                  <span class="text-sm font-bold text-gray-900">Terms of Service</span>
+                  <span class="text-sm font-medium text-gray-900">Terms of Service</span>
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
               </a>
               <div class="flex items-center justify-between p-4 bg-gray-50/50">
-                  <span class="text-sm font-bold text-gray-900">Version</span>
+                  <span class="text-sm font-medium text-gray-900">Version</span>
                   <span class="text-sm text-gray-500">{APP_VERSION}</span>
               </div>
           </section>
        </div>
        
-       <div class="h-8"></div>
        <div class="space-y-2">
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
               <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleExportData}>
