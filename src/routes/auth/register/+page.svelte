@@ -80,43 +80,52 @@
   }
 </script>
 
-<div class="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-  <h1 class="text-2xl font-bold mb-6 text-center">Create Account</h1>
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+  <div class="w-full max-w-md bg-white rounded-[32px] shadow-xl p-8 animate-fade-in">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-brand-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span class="text-4xl">🐾</span>
+      </div>
+      <h1 class="text-3xl font-black text-gray-900 tracking-tight">Join WhoFed</h1>
+      <p class="text-brand-sage font-bold uppercase tracking-widest text-xs mt-2">Create your account</p>
+    </div>
 
   {#if error}
-    <div class="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>
+    <div class="bg-red-50 text-red-600 p-4 rounded-2xl mb-6 text-sm font-medium text-center">{error}</div>
   {/if}
 
   {#if success}
-    <div class="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>
+    <div class="bg-green-50 text-green-600 p-4 rounded-2xl mb-6 text-sm font-medium text-center">{success}</div>
   {/if}
 
-  <form on:submit={handleSubmit} class="space-y-4">
+  <form on:submit={handleSubmit} class="space-y-5">
     <div>
-      <label for="email" class="block text-sm font-medium text-gray-700">Email *</label>
+      <label for="email" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Email *</label>
       <input 
         id="email"
         type="email" 
         bind:value={formData.email} 
         required 
-        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
+        placeholder="your@email.com"
+        class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
       />
     </div>
 
     <div>
-      <label for="password" class="block text-sm font-medium text-gray-700">Password *</label>
+      <label for="password" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Password *</label>
       <input 
         id="password"
         type="password" 
         bind:value={formData.password} 
         required 
         minlength="6"
-        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
+        placeholder="Min 6 characters"
+        class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
       />
     </div>
 
     <div>
-      <label for="username" class="block text-sm font-medium text-gray-700">Username *</label>
+      <label for="username" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Username *</label>
       <div class="relative">
         <input 
           id="username"
@@ -125,83 +134,88 @@
           on:input={onUsernameInput}
           required 
           minlength="3"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2 pr-8" 
+          placeholder="Choose a username"
+          class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300 pr-10" 
         />
         {#if usernameChecking}
-          <span class="absolute right-2 top-3 text-gray-400">...</span>
+          <span class="absolute right-4 top-4 text-gray-400 font-bold">...</span>
         {:else if usernameAvailable === true}
-          <span class="absolute right-2 top-3 text-green-600">✓</span>
+          <span class="absolute right-4 top-4 text-brand-sage text-xl">✓</span>
         {:else if usernameAvailable === false}
-          <span class="absolute right-2 top-3 text-red-600">✗</span>
+          <span class="absolute right-4 top-4 text-red-500 text-xl">✗</span>
         {/if}
       </div>
       {#if usernameAvailable === false}
-        <p class="text-sm text-red-600 mt-1">Username already taken</p>
+        <p class="text-xs text-red-500 font-bold mt-2 ml-1">Username already taken</p>
       {/if}
     </div>
 
-    <div>
-      <label for="firstName" class="block text-sm font-medium text-gray-700">First Name *</label>
-      <input 
-        id="firstName"
-        type="text" 
-        bind:value={formData.firstName} 
-        required 
-        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
-      />
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label for="firstName" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">First Name *</label>
+            <input 
+                id="firstName"
+                type="text" 
+                bind:value={formData.firstName} 
+                required 
+                placeholder="Jane"
+                class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
+            />
+        </div>
+        <div>
+            <label for="lastName" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Last Name</label>
+            <input 
+                id="lastName"
+                type="text" 
+                bind:value={formData.lastName} 
+                placeholder="Doe"
+                class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
+            />
+        </div>
     </div>
 
     <div>
-      <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
-      <input 
-        id="lastName"
-        type="text" 
-        bind:value={formData.lastName} 
-        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
-      />
-    </div>
-
-    <div>
-      <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
+      <label for="phone" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Phone</label>
       <input 
         id="phone"
         type="tel" 
         bind:value={formData.phone} 
-        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
+        placeholder="(555) 123-4567"
+        class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
       />
-      <p class="text-[10px] text-gray-400 mt-1 leading-tight">
-        By providing your number, you agree to receive SMS feeding reminders. See our <a href="/legal/privacy" class="underline hover:text-gray-600" target="_blank">Privacy Policy</a> for details. Msg & data rates may apply.
+      <p class="text-[10px] text-gray-400 mt-2 ml-1 leading-tight font-medium">
+        By providing your number, you agree to receive SMS feeding reminders. See our <a href="/legal/privacy" class="underline hover:text-gray-600" target="_blank">Privacy Policy</a>.
       </p>
     </div>
 
-    <p class="text-xs text-gray-500 text-center">
+    <p class="text-xs text-brand-sage/80 text-center font-medium px-4">
       By creating an account, you agree to our 
-      <a href="/legal/tos" class="underline hover:text-gray-800" target="_blank">Terms of Service</a> & 
-      <a href="/legal/privacy" class="underline hover:text-gray-800" target="_blank">Privacy Policy</a>.
+      <a href="/legal/tos" class="underline hover:text-brand-sage" target="_blank">Terms</a> & 
+      <a href="/legal/privacy" class="underline hover:text-brand-sage" target="_blank">Privacy Policy</a>.
     </p>
 
     <button 
       type="submit" 
-      class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      class="w-full py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg shadow-brand-sage/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
     >
-      Register
+      Create Account
     </button>
   </form>
 
-  <div class="mt-4">
+  <div class="mt-8 mb-6">
     <div class="relative">
       <div class="absolute inset-0 flex items-center">
-        <div class="w-full border-t border-gray-300"></div>
+        <div class="w-full border-t border-gray-100"></div>
       </div>
       <div class="relative flex justify-center text-sm">
-        <span class="px-2 bg-white text-gray-500">Or continue with</span>
+        <span class="px-4 bg-white text-gray-400 font-medium text-xs uppercase tracking-wider">Or continue with</span>
       </div>
     </div>
 
     <button
       type="button"
       on:click={handleGoogleSignIn}
-      class="mt-4 w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      class="mt-6 w-full flex justify-center items-center gap-3 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm text-gray-700 font-bold hover:bg-gray-50 transition-all hover:scale-[1.01] active:scale-[0.99]"
     >
       <svg class="w-5 h-5" viewBox="0 0 24 24">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -213,7 +227,18 @@
     </button>
   </div>
 
-  <p class="mt-4 text-center text-sm text-gray-600">
-    Already have an account? <a href="/auth/login" class="text-indigo-600 hover:text-indigo-800 font-medium">Login</a>
+  <p class="text-center text-sm text-gray-500">
+    Already have an account? <a href="/auth/login" class="text-brand-sage font-bold hover:underline">Log In</a>
   </p>
+  </div>
 </div>
+
+<style>
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fade-in 0.4s ease-out forwards;
+    }
+</style>

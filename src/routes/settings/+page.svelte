@@ -15,6 +15,7 @@
   import ChangeEmailModal from '$lib/components/ChangeEmailModal.svelte';
   import PetIcon from '$lib/components/PetIcon.svelte';
   import NotificationsModal from '$lib/components/NotificationsModal.svelte';
+  import { notificationService } from '$lib/services/notifications';
 
   type MemberProfile = {
       user_id: string;
@@ -38,6 +39,9 @@
   let showInviteMemberModal = false;
   let inviteHouseholdId = '';
   let showNotificationsModal = false;
+  let showManageRemindersModal = false; // New: Granular management
+  let notificationSettings: Record<string, boolean> = {}; // schedule_id -> is_enabled
+  let reminderSchedules: any[] = []; // List of all schedules with pet info
   let pendingInviteCount = 0;
   
   let showEditProfileModal = false;
@@ -58,6 +62,7 @@
   let showEditHouseholdModal = false;
   let editingHousehold: { id: string, name: string } | null = null;
   let memberToRemove: { user_id: string, first_name: string } | null = null;
+  let notificationsEnabled = false;
 
   // Household to switch to or create
   let showCreateHouseholdModal = false;
@@ -204,7 +209,135 @@
     currentUser = session.user;
 
     await loadSettings();
+    
+    // Check notification status
+    notificationsEnabled = await notificationService.checkSubscriptionState();
   });
+
+  async function openManageReminders() {
+      // Changed: Fetch for ALL households I am in
+      loading = true;
+      try {
+          // 1. Get my households
+          const { data: myHHs } = await supabase.from('household_members').select('household_id').eq('user_id', currentUser.id);
+          const hhIds = myHHs?.map(h => h.household_id) || [];
+          
+          
+          if (hhIds.length === 0) {
+            reminderSchedules = [];
+            showManageRemindersModal = true;
+            return;
+          }
+
+          // 2. Get Households Info (for grouping)
+          const { data: households } = await supabase.from('households').select('id, name').in('id', hhIds);
+          
+          // 3. Get all pets in these households
+          const { data: myPets, error: petsError } = await supabase
+            .from('pets')
+            .select('id, name, icon, species, household_id')
+            .in('household_id', hhIds);
+          
+          if (petsError) throw petsError;
+          const petIds = myPets.map(p => p.id);
+
+          // 4. Get all schedules for these pets
+          const { data: scheds, error: schedError } = await supabase
+            .from('schedules')
+            .select('*')
+            .in('pet_id', petIds)
+            .eq('is_enabled', true); 
+          
+          if (schedError) throw schedError;
+
+          // 4. Get my personal reminder settings
+          const { data: settings, error: setError } = await supabase
+            .from('reminder_settings')
+            .select('schedule_id, is_enabled')
+            .eq('user_id', currentUser.id);
+
+          if (setError) throw setError;
+
+          // 5. Build State
+          const settingsMap: Record<string, boolean> = {};
+          settings?.forEach(s => settingsMap[s.schedule_id] = s.is_enabled);
+
+          notificationSettings = settingsMap;
+
+          // Combine schedules with pet and household info
+          reminderSchedules = scheds.map(s => {
+              const pet = myPets.find(p => p.id === s.pet_id);
+              const hh = households?.find(h => h.id === pet?.household_id);
+              return {
+                  ...s,
+                  pet: pet,
+                  household_name: hh?.name || 'Unknown Household',
+                  // Fallback title logic
+                  display_label: s.label || (s.task_type === 'medication' ? 'Medication' : s.task_type === 'litter' ? 'Change Litter' : 'Feeding'),
+                  my_enabled: settingsMap[s.id] !== undefined ? settingsMap[s.id] : true
+              };
+          });
+
+          // Sort by Household Name, then Pet Name, then Time
+          reminderSchedules.sort((a, b) => {
+              if (a.household_name !== b.household_name) return a.household_name.localeCompare(b.household_name);
+              if (a.pet?.name !== b.pet?.name) return (a.pet?.name || '').localeCompare(b.pet?.name || '');
+              return (a.target_times?.[0] || '').localeCompare(b.target_times?.[0] || '');
+          });
+
+          showManageRemindersModal = true;
+      } catch (e: any) {
+          alert('Error loading reminders: ' + e.message);
+      } finally {
+          loading = false;
+      }
+  }
+
+  async function toggleReminder(scheduleId: string) {
+      const currentVal = notificationSettings[scheduleId] !== undefined ? notificationSettings[scheduleId] : true;
+      const newVal = !currentVal;
+
+      // Optimistic update
+      notificationSettings[scheduleId] = newVal;
+      // Update the list view too
+      reminderSchedules = reminderSchedules.map(s => s.id === scheduleId ? { ...s, my_enabled: newVal } : s);
+
+      try {
+          // Upsert to DB
+          const { error } = await supabase
+            .from('reminder_settings')
+            .upsert({ 
+                user_id: currentUser.id, 
+                schedule_id: scheduleId, 
+                is_enabled: newVal 
+            }, { onConflict: 'user_id, schedule_id' });
+
+          if (error) throw error;
+      } catch (e: any) {
+          console.error("Failed to save reminder setting", e);
+          // Revert on error
+          notificationSettings[scheduleId] = currentVal;
+          reminderSchedules = reminderSchedules.map(s => s.id === scheduleId ? { ...s, my_enabled: currentVal } : s);
+      }
+  }
+
+  async function toggleNotifications() {
+      try {
+          if (notificationsEnabled) {
+              // Disable
+              await notificationService.unsubscribeFromPush();
+              notificationsEnabled = false;
+          } else {
+              // Enable
+              await notificationService.subscribeToPush();
+              notificationsEnabled = true;
+          }
+      } catch (e: any) {
+          alert('Notification Error: ' + e.message);
+          // Revert Toggle if failed
+          notificationsEnabled = !notificationsEnabled;
+      }
+  }
 
   async function loadSettings() {
     loading = true;
@@ -452,11 +585,11 @@
           console.log('Logging out...');
           await supabase.auth.signOut();
           console.log('Signed out, redirecting...');
-          goto('/auth/login');
+          window.location.href = '/'; 
       } catch (e) {
           console.error('Logout failed:', e);
           // Force redirect anyway
-          goto('/auth/login');
+          window.location.href = '/';
       }
   }
 
@@ -902,6 +1035,73 @@
          </section>
        </div>
 
+      <!-- Notifications -->
+      <div class="space-y-2 mb-8">
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Preferences</div>
+        <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+           <div class="p-4 flex items-center justify-between">
+               <div class="flex items-center space-x-3">
+                   <div class="p-2 bg-brand-sage/10 text-brand-sage rounded-xl">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                       </svg>
+                   </div>
+                   <div class="flex flex-col">
+                       <span class="font-bold text-sm text-gray-900">Push Notifications</span>
+                       <span class="text-[10px] text-gray-400">Receive reminders on this device</span>
+                   </div>
+               </div>
+               
+               <button 
+                  class="relative w-11 h-6 rounded-full transition-colors {notificationsEnabled ? 'bg-brand-sage' : 'bg-gray-200'}"
+                  on:click={toggleNotifications}
+               >
+                   <span 
+                       class="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm {notificationsEnabled ? 'translate-x-5' : 'translate-x-0'}"
+                   ></span>
+               </button>
+           </div>
+           
+           {#if notificationsEnabled}
+           <div class="px-4 pb-4 bg-white border-t border-gray-100 mt-2 pt-3">
+                <button 
+                    class="w-full flex items-center justify-between text-left group"
+                    on:click={openManageReminders}
+                >
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">Manage Alerts</span>
+                        <span class="text-[10px] text-gray-400">Choose which schedules notify you</span>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 group-hover:text-brand-sage transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+           </div>
+           {/if}
+        </section>
+      </div>
+
+       <!-- Test Notification Button (Hidden unless toggled?) No, explicit request -->
+       {#if notificationsEnabled}
+       <div class="flex justify-center mb-6 -mt-4">
+            <button 
+                class="text-[10px] uppercase font-bold text-gray-400 hover:text-brand-sage flex items-center space-x-1 transition-colors"
+                on:click={async () => {
+                    if(!confirm('Send a test notification to this device?')) return;
+                    try {
+                        await notificationService.sendTestNotification();
+                        alert('Test sent! Check your notification center.');
+                    } catch(e) { alert('Failed: ' + e.message) }
+                }}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span>Send Test Notification</span>
+            </button>
+       </div>
+       {/if}
+
 
 
        <!-- Subscription (Dev Only Toggle) -->
@@ -1075,6 +1275,8 @@
                        <input type="text" bind:value={editPetSpecies} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
                    </div>
                </div>
+
+
 
                <button 
                    class="w-full mt-6 py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg shadow-brand-sage/20 active:scale-95 transition-transform"
@@ -1360,6 +1562,70 @@
           >
               Got it
           </button>
+      </div>
+  </div>
+  {/if}
+
+  <!-- Manage Reminders Modal -->
+  {#if showManageRemindersModal}
+  <div class="fixed inset-0 z-[150] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" on:click={() => showManageRemindersModal = false}></button>
+      
+      <div class="bg-white rounded-[32px] w-full max-w-sm relative z-10 animate-scale-in max-h-[80vh] flex flex-col">
+          <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                  <h3 class="text-xl font-bold text-gray-900">Manage Alerts</h3>
+                  <p class="text-xs text-gray-400">Tap to toggle notification per schedule</p>
+              </div>
+              <button on:click={() => showManageRemindersModal = false} class="text-gray-400 hover:text-gray-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+              </button>
+          </div>
+
+          <div class="p-4 overflow-y-auto flex-1">
+              {#if reminderSchedules.length === 0}
+                 <div class="text-center py-10">
+                     <p class="text-gray-400 font-medium">No active schedules found.</p>
+                 </div>
+              {:else}
+                  <div class="space-y-6">
+                      <!-- Group by Household unique keys -->
+                      {#each [...new Set(reminderSchedules.map(r => r.household_name))] as hhName}
+                          <div>
+                              <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1 mb-2">
+                                  {hhName}
+                              </div>
+                              <div class="space-y-3">
+                                  {#each reminderSchedules.filter(r => r.household_name === hhName) as sched (sched.id)}
+                                      <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
+                                          <div class="flex items-center space-x-3">
+                                              <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm">
+                                                  {sched.pet?.icon || '🐾'}
+                                              </div>
+                                              <div>
+                                                  <div class="font-bold text-gray-900 text-sm">{sched.display_label}</div>
+                                                  <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wide">
+                                                      {sched.pet?.name} • {sched.target_times ? sched.target_times[0] : 'Daily'}
+                                                  </div>
+                                              </div>
+                                          </div>
+                                          
+                                          <button 
+                                              class="w-12 h-7 rounded-full transition-colors relative {sched.my_enabled ? 'bg-brand-sage' : 'bg-gray-200'}"
+                                              on:click={() => toggleReminder(sched.id)}
+                                          >
+                                              <span class="absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform {sched.my_enabled ? 'translate-x-5' : 'translate-x-0'}"></span>
+                                          </button>
+                                      </div>
+                                  {/each}
+                              </div>
+                          </div>
+                      {/each}
+                  </div>
+              {/if}
+          </div>
       </div>
   </div>
   {/if}

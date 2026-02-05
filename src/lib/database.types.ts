@@ -327,6 +327,7 @@ export type Database = {
           id: string
           last_name: string | null
           phone: string | null
+          push_subscription: Json | null
           tier: string
           updated_at: string
           username: string | null
@@ -337,6 +338,7 @@ export type Database = {
           id: string
           last_name?: string | null
           phone?: string | null
+          push_subscription?: Json | null
           tier?: string
           updated_at?: string
           username?: string | null
@@ -347,6 +349,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           phone?: string | null
+          push_subscription?: Json | null
           tier?: string
           updated_at?: string
           username?: string | null
