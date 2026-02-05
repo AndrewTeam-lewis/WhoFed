@@ -54,22 +54,21 @@ serve(async (req) => {
             });
         }
 
-        // Configure Web Push
-        // NOTE: Ideally VAPID_PUBLIC_KEY is also an env var, but hardcoded here for simplicity with valid pair.
-        webpush.setVapidDetails(
-            'mailto:admin@whofed.com',
-            'BKgU7auEtbT1TI3WDNYygc2tGnOzgQ92JMAXvm4zuX7lgwibL747ltF4nifFtMpCJkqghlWVA9BoSaBLPAoUAHo',
-            Deno.env.get('VAPID_PRIVATE_KEY')!
-        );
+        const sub = profile.push_subscription;
 
-        await webpush.sendNotification(
-            profile.push_subscription,
-            JSON.stringify({
-                title: title || 'WhoFed Reminder',
-                body: body || 'Time to feed the pets!',
-                url: url || '/'
-            })
-        );
+        // 3. Determine Transport (Web vs Native)
+        // Native (FCM) is stored as { type: 'android', token: '...' }
+        if (sub.type === 'android' && sub.token) {
+            console.log(`Sending Native FCM to user ${user_id}`);
+            await sendFCM(sub.token, title, body, url);
+        } else if (sub.endpoint) {
+            // Web Push
+            console.log(`Sending Web Push to user ${user_id}`);
+            await sendWebPush(sub, title, body, url);
+        } else {
+            console.warn("Unknown subscription format", sub);
+            // Don't fail the request, just log
+        }
 
         return new Response(JSON.stringify({ success: true }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -77,9 +76,120 @@ serve(async (req) => {
         });
 
     } catch (error: any) {
+        console.error("Handler error:", error);
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });
     }
 });
+
+async function sendWebPush(sub: any, title: string, body: string, url: string) {
+    webpush.setVapidDetails(
+        'mailto:admin@whofed.com',
+        'BKgU7auEtbT1TI3WDNYygc2tGnOzgQ92JMAXvm4zuX7lgwibL747ltF4nifFtMpCJkqghlWVA9BoSaBLPAoUAHo',
+        Deno.env.get('VAPID_PRIVATE_KEY')!
+    );
+
+    await webpush.sendNotification(
+        sub,
+        JSON.stringify({
+            title: title || 'WhoFed Reminder',
+            body: body || 'Time to feed the pets!',
+            url: url || '/'
+        })
+    );
+}
+
+// Manual JWT Signer for FCM (Zero Dependencies)
+async function getAccessToken(serviceAccount: any) {
+    const now = Math.floor(Date.now() / 1000);
+    const claim = {
+        iss: serviceAccount.client_email,
+        scope: "https://www.googleapis.com/auth/firebase.messaging",
+        aud: serviceAccount.token_uri,
+        exp: now + 3600,
+        iat: now,
+    };
+
+    const header = { alg: "RS256", typ: "JWT" };
+
+    // PEM to Key
+    const pem = serviceAccount.private_key;
+    const binaryDerString = window.atob(pem.replace(/-----BEGIN PRIVATE KEY-----/, '').replace(/-----END PRIVATE KEY-----/, '').replace(/\s/g, ''));
+    const binaryDer = new Uint8Array(binaryDerString.length);
+    for (let i = 0; i < binaryDerString.length; i++) {
+        binaryDer[i] = binaryDerString.charCodeAt(i);
+    }
+
+    const key = await crypto.subtle.importKey(
+        "pkcs8",
+        binaryDer,
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+        false,
+        ["sign"]
+    );
+
+    const sHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const sClaim = btoa(JSON.stringify(claim)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const data = new TextEncoder().encode(`${sHeader}.${sClaim}`);
+
+    const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, data);
+    const sSignature = btoa(String.fromCharCode(...new Uint8Array(signature))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const jwt = `${sHeader}.${sClaim}.${sSignature}`;
+
+    // Exchange for Access Token
+    const res = await fetch(serviceAccount.token_uri, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
+    });
+
+    const json = await res.json();
+    return json.access_token;
+}
+
+async function sendFCM(token: string, title: string, body: string, url: string) {
+    const serviceAccountStr = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
+    if (!serviceAccountStr) {
+        console.error("Missing FIREBASE_SERVICE_ACCOUNT env var");
+        return;
+    }
+    const serviceAccount = JSON.parse(serviceAccountStr);
+
+    const accessToken = await getAccessToken(serviceAccount);
+    if (!accessToken) throw new Error("Failed to get access token");
+
+    const projectId = serviceAccount.project_id;
+    const fcmEndpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+
+    const payload = {
+        message: {
+            token: token,
+            notification: {
+                title: title || 'WhoFed Reminder',
+                body: body || 'Time to feed the pets!',
+            },
+            data: {
+                url: url || '/'
+            }
+        }
+    };
+
+    const res = await fetch(fcmEndpoint, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        const txt = await res.text();
+        console.error("FCM Error:", res.status, txt);
+        throw new Error(`FCM rejected: ${txt}`);
+    }
+}

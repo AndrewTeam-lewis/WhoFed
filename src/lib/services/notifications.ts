@@ -4,8 +4,61 @@ import { get } from 'svelte/store';
 
 const VAPID_PUBLIC_KEY = 'BKgU7auEtbT1TI3WDNYygc2tGnOzgQ92JMAXvm4zuX7lgwibL747ltF4nifFtMpCJkqghlWVA9BoSaBLPAoUAHo';
 
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
+
 export const notificationService = {
     async subscribeToPush() {
+        if (Capacitor.isNativePlatform()) {
+            return this.subscribeNative();
+        } else {
+            return this.subscribeWeb();
+        }
+    },
+
+    async subscribeNative() {
+        console.log('Subscribing to Native Push (FCM)');
+
+        // 1. Request Permission
+        let permStatus = await PushNotifications.checkPermissions();
+        if (permStatus.receive === 'prompt') {
+            permStatus = await PushNotifications.requestPermissions();
+        }
+        if (permStatus.receive !== 'granted') {
+            throw new Error('User denied push permissions');
+        }
+
+        // 2. Register
+        await PushNotifications.register();
+
+        // 3. Listen for Token (Promise wrapper or global listener setup?)
+        // Since register() is void and triggers a listener, we need to handle this carefully.
+        // For simplicity in this call, we'll set up the listener to save to DB.
+
+        // Note: Ideally this listener is set up once at app launch, but we can do it here to capture the token.
+        return new Promise((resolve, reject) => {
+            PushNotifications.addListener('registration', async (token) => {
+                console.log('FCM Token:', token.value);
+                const user = get(currentUser);
+                if (user) {
+                    // We save it as a "string" or a specific "native" object structure
+                    // The DB column is JSON, so we can store { type: 'android', token: token.value }
+                    const { error } = await supabase
+                        .from('profiles')
+                        .update({ push_subscription: { type: 'android', token: token.value } as any })
+                        .eq('id', user.id);
+                    if (error) console.error('Error saving FCM token', error);
+                }
+                resolve(token);
+            });
+
+            PushNotifications.addListener('registrationError', (error) => {
+                reject(error);
+            });
+        });
+    },
+
+    async subscribeWeb() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             throw new Error('Push notifications are not supported on this device.');
         }
@@ -35,23 +88,28 @@ export const notificationService = {
     },
 
     async unsubscribeFromPush() {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
-        if (subscription) {
-            await subscription.unsubscribe();
+        if (Capacitor.isNativePlatform()) {
+            // Native unsubscribe/unregister not always necessary, usually just disable logic
+            // But we should clear the DB
+        } else {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) await subscription.unsubscribe();
+        }
 
-            // Clear from DB
-            const user = get(currentUser);
-            if (user) {
-                await supabase
-                    .from('profiles')
-                    .update({ push_subscription: null })
-                    .eq('id', user.id);
-            }
+        // Clear from DB
+        const user = get(currentUser);
+        if (user) {
+            await supabase.from('profiles').update({ push_subscription: null }).eq('id', user.id);
         }
     },
 
     async checkSubscriptionState(): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            const perm = await PushNotifications.checkPermissions();
+            return perm.receive === 'granted';
+        }
+
         if (!('serviceWorker' in navigator)) return false;
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
