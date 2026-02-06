@@ -7,6 +7,7 @@
   import { ensureDailyTasks } from '$lib/services/taskService';
   import { supabase } from '$lib/supabase';
   import { availableHouseholds, switchHousehold, getStoredHouseholdId } from '$lib/stores/appState';
+  import { purchasesService } from '$lib/services/purchases';
   import Walkthrough from '$lib/components/Walkthrough.svelte';
   import HouseholdSetupModal from '$lib/components/HouseholdSetupModal.svelte';
   import '../app.css';
@@ -14,7 +15,17 @@
   let showHouseholdSetup = false;
   let setupUserId = '';
 
+  // Reactively sync RevenueCat user
+  $: if ($currentUser) {
+      purchasesService.login($currentUser.id);
+  } else {
+      purchasesService.logout(); // Clears native entitlement store
+  }
+
   onMount(async () => {
+    // Initialize RevenueCat
+    purchasesService.init();
+
     // Check for existing session
     const session = await authService.getSession();
     

@@ -256,7 +256,8 @@
           species: species.toLowerCase(), // Allow mixed case input, strictly save as lowercase
           icon,
           household_id: householdId,
-          created_by: currentUser.id
+          created_by: currentUser.id,
+          pet_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
         })
         .select()
         .single();

@@ -16,6 +16,7 @@
   import PetIcon from '$lib/components/PetIcon.svelte';
   import NotificationsModal from '$lib/components/NotificationsModal.svelte';
   import { notificationService } from '$lib/services/notifications';
+  import { purchasesService, currentOfferings } from '$lib/services/purchases';
 
   type MemberProfile = {
       user_id: string;
@@ -1083,23 +1084,7 @@
 
        <!-- Test Notification Button (Hidden unless toggled?) No, explicit request -->
        {#if notificationsEnabled}
-       <div class="flex justify-center mb-6 -mt-4">
-            <button 
-                class="text-[10px] uppercase font-bold text-gray-400 hover:text-brand-sage flex items-center space-x-1 transition-colors"
-                on:click={async () => {
-                    if(!confirm('Send a test notification to this device?')) return;
-                    try {
-                        await notificationService.sendTestNotification();
-                        alert('Test sent! Check your notification center.');
-                    } catch(e) { alert('Failed: ' + e.message) }
-                }}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                <span>Send Test Notification</span>
-            </button>
-       </div>
+
        {/if}
 
 
@@ -1395,15 +1380,31 @@
               </p>
               
               <div class="space-y-3">
-                  <button 
-                      class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95"
-                      on:click={() => {
-                          alert('Payment Flow would start here!');
-                          showPremiumModal = false;
-                      }}
-                  >
-                      Check Pricing
-                  </button>
+                  {#if $currentOfferings.length > 0}
+                      {#each $currentOfferings as pkg}
+                        <button 
+                            class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95 mb-2"
+                            on:click={async () => {
+                                const success = await purchasesService.purchase(pkg);
+                                if (success) {
+                                    showPremiumModal = false;
+                                    alert("Welcome to Premium! 💎");
+                                }
+                            }}
+                        >
+                            Upgrade for {pkg.product.priceString} / {pkg.packageType === 'ANNUAL' ? 'year' : 'month'}
+                        </button>
+                      {/each}
+                  {:else}
+                       <button 
+                          class="w-full py-4 bg-gray-200 text-gray-400 font-bold rounded-2xl cursor-not-allowed"
+                          disabled
+                      >
+                          { $currentOfferings.length === 0 ? 'Loading Prices...' : 'No products found' }
+                      </button>
+                      <!-- Fallback/Debug -->
+                      <button on:click={() => purchasesService.loadOfferings()} class="text-xs text-blue-500 mt-2 underline">Retry Loading</button>
+                  {/if}
                   <button 
                       class="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600"
                       on:click={() => showPremiumModal = false}
@@ -1494,13 +1495,35 @@
   {/if}
 
   <!-- Leave Household Confirmation Modal -->
+  <!-- Remove Member Modal -->
+  {#if showRemoveMemberModal && memberToRemove}
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showRemoveMemberModal = false}></button>
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
+          <div class="text-center">
+              <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+                  </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Remove {memberToRemove.first_name}?</h3>
+              <p class="text-gray-500 text-sm mb-6">They will lose access to all pets and schedules in this household.</p>
+              <div class="flex space-x-3">
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showRemoveMemberModal = false}>Cancel</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={removeMember}>Remove</button>
+              </div>
+          </div>
+      </div>
+  </div>
+  {/if}
+
   {#if showLeaveHouseholdModal}
   <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showLeaveHouseholdModal = false}></button>
-      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10">
+      <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
           <div class="text-center">
-              <div class="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
               </div>
@@ -1508,7 +1531,7 @@
               <p class="text-gray-500 text-sm mb-6">You will lose access to all pets and schedules in this household.</p>
               <div class="flex space-x-3">
                   <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showLeaveHouseholdModal = false}>Cancel</button>
-                  <button class="flex-1 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600" on:click={leaveHousehold}>Leave</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={leaveHousehold}>Leave</button>
               </div>
           </div>
       </div>
