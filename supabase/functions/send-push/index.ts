@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import webpush from "npm:web-push";
+// import webpush from "npm:web-push"; // DISABLED: Causing Deploy Timeouts
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -62,9 +62,9 @@ serve(async (req) => {
             console.log(`Sending Native FCM to user ${user_id}`);
             await sendFCM(sub.token, title, body, url);
         } else if (sub.endpoint) {
-            // Web Push
-            console.log(`Sending Web Push to user ${user_id}`);
-            await sendWebPush(sub, title, body, url);
+            // Web Push DISABLED due to deployment issues
+            console.log(`Web Push skipped for user ${user_id} (Library disabled)`);
+            // await sendWebPush(sub, title, body, url);
         } else {
             console.warn("Unknown subscription format", sub);
             // Don't fail the request, just log
@@ -84,6 +84,7 @@ serve(async (req) => {
     }
 });
 
+/*
 async function sendWebPush(sub: any, title: string, body: string, url: string) {
     webpush.setVapidDetails(
         'mailto:admin@whofed.com',
@@ -100,6 +101,7 @@ async function sendWebPush(sub: any, title: string, body: string, url: string) {
         })
     );
 }
+*/
 
 // Manual JWT Signer for FCM (Zero Dependencies)
 async function getAccessToken(serviceAccount: any) {

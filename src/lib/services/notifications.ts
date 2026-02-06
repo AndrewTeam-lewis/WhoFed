@@ -121,7 +121,7 @@ export const notificationService = {
         const user = get(currentUser);
         if (!user) throw new Error("Must be logged in");
 
-        await fetch(`https://ryrwlkbzyldzbscvcqjh.supabase.co/functions/v1/send-push`, {
+        const res = await fetch(`https://ryrwlkbzyldzbscvcqjh.supabase.co/functions/v1/send-push`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -134,6 +134,14 @@ export const notificationService = {
                 url: '/settings'
             })
         });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Push Error: ' + (data.error || 'Unknown Error'));
+            console.error('Push Failed:', data);
+        } else {
+            alert('Push Sent! Server says: ' + JSON.stringify(data));
+        }
     },
 
     // Utility to convert VAPID key
