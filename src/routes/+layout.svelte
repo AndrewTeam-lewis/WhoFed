@@ -17,50 +17,89 @@
 
   // Reactively sync RevenueCat user
   $: if ($currentUser) {
+      console.log('[DEBUG REACTIVE] currentUser changed, calling purchasesService.login()');
       purchasesService.login($currentUser.id);
   } else {
+      console.log('[DEBUG REACTIVE] currentUser cleared, calling purchasesService.logout()');
       purchasesService.logout(); // Clears native entitlement store
   }
 
   onMount(async () => {
+    console.log('[DEBUG] === Layout onMount START ===');
+    console.time('[DEBUG] Total onMount time');
+
     // Initialize RevenueCat
+    console.log('[DEBUG] Step 1: Calling purchasesService.init()...');
     purchasesService.init();
+    console.log('[DEBUG] Step 1: purchasesService.init() called (runs in background)');
 
     // Check for existing session
+    console.log('[DEBUG] Step 2: Getting session...');
+    console.time('[DEBUG] getSession');
     const session = await authService.getSession();
-    
+    console.timeEnd('[DEBUG] getSession');
+    console.log('[DEBUG] Step 2: Session result:', session?.user?.id ? 'User found' : 'No user');
+
     if (session?.user) {
+      console.log('[DEBUG] Step 3: Setting currentSession and currentUser stores...');
       currentSession.set(session);
       currentUser.set(session.user);
-      
+      console.log('[DEBUG] Step 3: Stores set (this triggers reactive statement)');
+
       // Load profile
+      console.log('[DEBUG] Step 4: Loading profile for user:', session.user.id);
+      console.time('[DEBUG] getProfile');
       const profile = await authService.getProfile(session.user.id);
+      console.timeEnd('[DEBUG] getProfile');
+      console.log('[DEBUG] Step 4: Profile result:', profile ? 'Found' : 'Not found');
+
       if (profile) {
+        console.log('[DEBUG] Step 5: Setting currentProfile store...');
         currentProfile.set(profile);
+
         // Cache profile locally for offline access
+        console.log('[DEBUG] Step 6: Caching profile to Dexie...');
+        console.time('[DEBUG] Dexie put');
         await db.profiles.put(profile);
-        
+        console.timeEnd('[DEBUG] Dexie put');
+        console.log('[DEBUG] Step 6: Profile cached');
+
         // Load households
+        console.log('[DEBUG] Step 7: Loading households...');
+        console.time('[DEBUG] loadHouseholds TOTAL');
         await loadHouseholds(session.user.id);
+        console.timeEnd('[DEBUG] loadHouseholds TOTAL');
+        console.log('[DEBUG] Step 7: Households loaded');
       }
     } else {
+      console.log('[DEBUG] No session, trying cached profiles...');
       // Try to load from local cache for offline access
       const cachedProfiles = await db.profiles.toArray();
       if (cachedProfiles.length > 0) {
         currentProfile.set(cachedProfiles[0]);
+        console.log('[DEBUG] Loaded cached profile');
       }
     }
 
+    console.timeEnd('[DEBUG] Total onMount time');
+    console.log('[DEBUG] === Layout onMount END ===');
+
     // Listen to auth state changes
     const { data: authListener } = authService.onAuthStateChange(async (session) => {
+      console.log('[DEBUG AUTH LISTENER] Auth state changed, session:', session?.user?.id ? 'User found' : 'No user');
       currentSession.set(session);
       currentUser.set(session?.user || null);
-      
+
       if (session?.user) {
+        console.log('[DEBUG AUTH LISTENER] Loading profile and households...');
         const profile = await authService.getProfile(session.user.id);
         if (profile) {
           currentProfile.set(profile);
           await db.profiles.put(profile);
+
+          // Load households if not already loaded
+          console.log('[DEBUG AUTH LISTENER] Calling loadHouseholds...');
+          await loadHouseholds(session.user.id);
         }
       } else {
         currentProfile.set(null);
@@ -74,40 +113,49 @@
   });
 
   async function loadHouseholds(userId: string) {
+      console.log('[DEBUG loadHouseholds] START for userId:', userId);
+
       // Optimized Query: Get members + households + owner profile in ONE go
+      console.log('[DEBUG loadHouseholds] Executing Supabase query...');
+      console.time('[DEBUG loadHouseholds] Supabase query');
       const { data: members, error } = await supabase
           .from('household_members')
           .select(`
-              household_id, 
+              household_id,
               households (
-                  id, 
-                  name, 
-                  subscription_status, 
+                  id,
+                  name,
+                  subscription_status,
                   owner_id,
                   profiles:owner_id (first_name, last_name)
               )
           `)
           .eq('user_id', userId);
-      
+      console.timeEnd('[DEBUG loadHouseholds] Supabase query');
+      console.log('[DEBUG loadHouseholds] Query complete. Data:', members, 'Error:', error);
+
       if (error) {
-          console.error('Error loading households:', error);
+          console.error('[DEBUG loadHouseholds] ERROR loading households:', error);
           return;
       }
 
       // If no household, show setup modal
       if (!members || members.length === 0) {
+          console.log('[DEBUG loadHouseholds] No households found, showing setup modal');
           setupUserId = userId;
           showHouseholdSetup = true;
           return;
       }
-      
+
+      console.log('[DEBUG loadHouseholds] Found', members.length, 'household(s), mapping...');
+
       // Map to State Objects
       const householdsList = members.map(m => {
            const hh = m.households as any;
            const ownerId = hh?.owner_id;
            const ownerProfile = hh?.profiles; // Joined data
-           const ownerName = ownerProfile 
-               ? [ownerProfile.first_name, ownerProfile.last_name].filter(Boolean).join(' ') 
+           const ownerName = ownerProfile
+               ? [ownerProfile.first_name, ownerProfile.last_name].filter(Boolean).join(' ')
                : 'Unknown';
 
            const isOwner = ownerId === userId;
@@ -124,19 +172,28 @@
                ownerName: ownerName
            };
       });
-      
+      console.log('[DEBUG loadHouseholds] Mapped households:', householdsList);
+
       // Update Stores
+      console.log('[DEBUG loadHouseholds] Setting availableHouseholds store...');
       availableHouseholds.set(householdsList as any);
-      
+
       // Determine Active
+      console.log('[DEBUG loadHouseholds] Determining active household...');
       const storedId = getStoredHouseholdId();
+      console.log('[DEBUG loadHouseholds] Stored household ID from localStorage:', storedId);
       const preferred = householdsList.find(h => h.id === storedId);
       const initial = preferred || householdsList[0];
-      
+      console.log('[DEBUG loadHouseholds] Selected household:', initial.name, initial.id);
+
+      console.log('[DEBUG loadHouseholds] Calling switchHousehold...');
       switchHousehold(initial as any);
-      
+      console.log('[DEBUG loadHouseholds] activeHousehold store set');
+
       // Ensure tasks for the ACTIVE one
+      console.log('[DEBUG loadHouseholds] Calling ensureDailyTasks (background)...');
       ensureDailyTasks(initial.id);
+      console.log('[DEBUG loadHouseholds] END');
   }
 
   async function handleHouseholdCreated(event: CustomEvent) {

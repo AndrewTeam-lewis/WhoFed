@@ -152,13 +152,24 @@ export const authService = {
 
     // Get user profile
     async getProfile(userId: string): Promise<Profile | null> {
+        console.log('[DEBUG authService.getProfile] START for userId:', userId);
+        console.time('[DEBUG authService.getProfile] Supabase query');
+
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .single();
 
-        if (error) return null;
+        console.timeEnd('[DEBUG authService.getProfile] Supabase query');
+        console.log('[DEBUG authService.getProfile] Query complete. Data:', data, 'Error:', error);
+
+        if (error) {
+            console.log('[DEBUG authService.getProfile] Returning null due to error');
+            return null;
+        }
+
+        console.log('[DEBUG authService.getProfile] Returning data');
         return data;
     },
 
