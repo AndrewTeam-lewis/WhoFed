@@ -573,10 +573,10 @@
               }
           });
 
-          // 4. Save / Share
+          // 4. Save / Open
           if (Capacitor.isNativePlatform()) {
               const { Filesystem, Directory } = await import('@capacitor/filesystem');
-              const { Share } = await import('@capacitor/share');
+              const { FileOpener } = await import('@capacitor-community/file-opener');
 
               const base64 = doc.output('datauristring').split(',')[1];
               const fileName = 'WhoFed_Export.pdf';
@@ -587,13 +587,13 @@
                       data: base64,
                       directory: Directory.Cache
                   });
-
-                  await Share.share({
-                      title: 'WhoFed Export',
-                      text: 'Here is your WhoFed activity log.',
-                      url: result.uri,
-                      dialogTitle: 'Share Export'
+                  
+                  // Open the file with default viewer
+                  await FileOpener.open({
+                      filePath: result.uri,
+                      contentType: 'application/pdf'
                   });
+                  
               } catch (e: any) {
                   console.error('Native export failed', e);
                   alert('Export failed: ' + e.message);
