@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { App } from '@capacitor/app';
   import { authService } from '$lib/services/auth';
   import { currentUser, currentSession, currentProfile } from '$lib/stores/user';
   import { db } from '$lib/db';
@@ -106,9 +107,44 @@
       }
     });
 
+    // Listen for deep links (OAuth redirects)
+    const appUrlListener = await App.addListener('appUrlOpen', async (event) => {
+        console.log('[DEBUG DEEP LINK] App opened with URL:', event.url);
+        
+        // Check if it's our auth callback scheme
+        if (event.url.includes('google-auth')) {
+            // Extract hash
+            const hashIndex = event.url.indexOf('#');
+            if (hashIndex !== -1) {
+                const hash = event.url.substring(hashIndex + 1);
+                const params = new URLSearchParams(hash);
+                
+                const access_token = params.get('access_token');
+                const refresh_token = params.get('refresh_token');
+
+                if (access_token && refresh_token) {
+                    console.log('[DEBUG DEEP LINK] Found tokens, setting session...');
+                    const { error } = await supabase.auth.setSession({
+                        access_token,
+                        refresh_token
+                    });
+
+                    if (error) {
+                        console.error('[DEBUG DEEP LINK] Error setting session:', error);
+                    } else {
+                        console.log('[DEBUG DEEP LINK] Session set successfully');
+                        // No need to navigate manually, auth listener will pick it up
+                        goto('/app');
+                    }
+                }
+            }
+        }
+    });
+
     // Cleanup listener on unmount
     return () => {
       authListener?.subscription.unsubscribe();
+      appUrlListener.remove();
     };
   });
 

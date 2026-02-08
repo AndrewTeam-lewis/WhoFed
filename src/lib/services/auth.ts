@@ -1,5 +1,6 @@
 import { supabase } from '$lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
 
 export interface RegisterData {
     email: string;
@@ -88,10 +89,15 @@ export const authService = {
 
     // Sign in with Google OAuth
     async signInWithGoogle() {
+        const redirectTo = Capacitor.isNativePlatform()
+            ? 'com.whofed.me://google-auth'
+            : `${window.location.origin}/auth/callback`;
+
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/auth/callback`
+                redirectTo,
+                skipBrowserRedirect: false // Ensure we redirect
             }
         });
 
