@@ -17,6 +17,41 @@
   import NotificationsModal from '$lib/components/NotificationsModal.svelte';
   import { notificationService } from '$lib/services/notifications';
   import { purchasesService, currentOfferings } from '$lib/services/purchases';
+  // Import the new modal
+  import ExportOptionsModal from '$lib/components/ExportOptionsModal.svelte';
+
+  let showExportOptionsModal = false;
+  let allPets: any[] = [];
+
+  async function openExportModal() {
+      if (!$userIsPremium) {
+          showPremiumModal = true;
+          return;
+      }
+      
+      // Fetch ALL pets across all households for the export dropdown
+      try {
+          const householdIds = $availableHouseholds.map(h => h.id);
+          if (householdIds.length > 0) {
+              const { data, error } = await supabase
+                  .from('pets')
+                  .select('id, name, household_id')
+                  .in('household_id', householdIds)
+                  .order('name');
+              
+              if (!error && data) {
+                  allPets = data;
+              }
+          }
+      } catch (e) {
+          console.error('Error fetching export pets', e);
+      }
+
+      showExportOptionsModal = true;
+  }
+  
+  // Clean up old function if referenced in template, verify template updation next
+
 
   type MemberProfile = {
       user_id: string;
@@ -476,138 +511,7 @@
       showInviteMemberModal = true;
   }
   
-  async function handleExportData() {
-      if (!$userIsPremium) {
-          showPremiumModal = true;
-          return;
-      }
-      
-      try {
-          // Fetch ALL logs for current views
-          // Since we need household-wide logs, we need a way to find all pets
-          // But our current helpers are scoped. 
-          // Let's rely on RLS: We can just query `activity_log` directly and rely on RLS to filter to our household.
-          // BUT `activity_log` doesn't strictly have household_id on it? It has `pet_id`.
-          // We need to join pets.
-          
-          const { data, error } = await supabase
-            .from('activity_log')
-            .select(`
-                performed_at,
-                action_type,
-                pets (name),
-                profiles (first_name, email),
-                schedules (label),
-                daily_tasks (label)
-            `)
-            .order('performed_at', { ascending: false });
 
-          if (error) throw error;
-          
-          if (!data || data.length === 0) {
-              alert('No history found to export.');
-              return;
-          }
-
-          // Convert to PDF
-          // We must dynamic import to ensure client-side execution if SSR is involved, 
-          // though this function is triggered by click so standard import might work if it wasn't for SSR.
-          // Safer to use import() inside the function or just standard ESD imports if we are in onMount/browser.
-          // Since we are in SvelteKit, let's dynamic import to be safe.
-          const { Capacitor } = await import('@capacitor/core');
-          const { jsPDF } = await import('jspdf');
-          const autoTable = (await import('jspdf-autotable')).default;
-
-          const doc = new jsPDF();
-
-          // 1. Title & Header
-          doc.setFontSize(22);
-          doc.setTextColor(47, 79, 79); // Dark Sage
-          doc.text('WhoFed Export', 14, 20);
-          
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
-
-          // 2. Prepare Table Data
-          const tableHeaders = [['Date', 'Pet', 'Action', 'Details', 'Performed By']];
-          
-          const formatAction = (action: string) => {
-             if (action === 'unfed') return 'un-fed';
-             if (action === 'unmedicated') return 'un-medicated';
-             return action;
-          }
-          
-          const tableRows = data.map((row: any) => {
-              const date = new Date(row.performed_at);
-              const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-              
-              const details = row.schedules?.label || row.daily_tasks?.label || '-';
-
-              return [
-                  dateStr,
-                  row.pets?.name || 'Unknown Pet',
-                  formatAction(row.action_type),
-                  details,
-                  row.profiles?.first_name || 'Unknown User'
-              ];
-          });
-
-          // 3. Render Table
-          autoTable(doc, {
-              head: tableHeaders,
-              body: tableRows,
-              startY: 35,
-              theme: 'grid',
-              headStyles: {
-                  fillColor: [75, 114, 109], // Brand Sage Green
-                  textColor: 255,
-                  fontStyle: 'bold'
-              },
-              styles: {
-                  fontSize: 10,
-                  cellPadding: 3
-              },
-              alternateRowStyles: {
-                  fillColor: [245, 247, 247] // Very light sage/gray
-              }
-          });
-
-          // 4. Save / Open
-          if (Capacitor.isNativePlatform()) {
-              const { Filesystem, Directory } = await import('@capacitor/filesystem');
-              const { FileOpener } = await import('@capacitor-community/file-opener');
-
-              const base64 = doc.output('datauristring').split(',')[1];
-              const fileName = 'WhoFed_Export.pdf';
-
-              try {
-                  const result = await Filesystem.writeFile({
-                      path: fileName,
-                      data: base64,
-                      directory: Directory.Cache
-                  });
-                  
-                  // Open the file with default viewer
-                  await FileOpener.open({
-                      filePath: result.uri,
-                      contentType: 'application/pdf'
-                  });
-                  
-              } catch (e: any) {
-                  console.error('Native export failed', e);
-                  alert('Export failed: ' + e.message);
-              }
-
-          } else {
-              doc.save(`WhoFed_Export.pdf`);
-          }
-          
-      } catch (err: any) {
-          console.error('Export failed:', err);
-          alert('Failed to export data: ' + err.message);
-      }
-  }
 
   async function handleLogout() {
       try {
@@ -1169,7 +1073,7 @@
        
        <div class="space-y-2">
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-              <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleExportData}>
+              <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={openExportModal}>
                   <div class="flex items-center space-x-3 text-gray-700">
                       <div class="p-2 bg-green-50 text-green-600 rounded-lg">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1722,6 +1626,12 @@
         on:close={() => showChangeEmailModal = false} 
     />
   {/if}
+
+  <ExportOptionsModal 
+      bind:show={showExportOptionsModal} 
+      households={$availableHouseholds}
+      pets={allPets}
+  />
 
 </div>
 
