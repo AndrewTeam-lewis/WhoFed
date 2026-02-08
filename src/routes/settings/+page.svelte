@@ -79,7 +79,12 @@
   let notificationSettings: Record<string, boolean> = {}; // schedule_id -> is_enabled
   let reminderSchedules: any[] = []; // List of all schedules with pet info
   let pendingInviteCount = 0;
-  
+  let sentInviteCount = 0; // [NEW] Count for outgoing invites
+  let incomingInvites: any[] = []; // [NEW] Actual data
+  let outgoingInvites: any[] = []; // [NEW] Actual data
+  let expandedInvitations = false; // [NEW] Toggle state
+  let processingInviteId: string | null = null; // [NEW] Loading state
+
   let showEditProfileModal = false;
   let profile = {
       first_name: '',
@@ -453,13 +458,43 @@
         const MEMBER_LIMIT = 2;
         canInvite = $userIsPremium || members.length < MEMBER_LIMIT;
 
-        // 5. Get pending invite count for current user
-        const { count: invCount } = await supabase
+        // 5. Get pending invite count for current user (INCOMING)
+        const { data: incInvites, error: incError } = await supabase
             .from('household_invitations')
-            .select('*', { count: 'exact', head: true })
+            .select(`
+                id,
+                household_id,
+                created_at,
+                households (name),
+                profiles!household_invitations_invited_by_fkey (first_name, last_name, email)
+            `)
             .eq('invited_user_id', currentUser.id)
-            .eq('status', 'pending');
-        pendingInviteCount = invCount || 0;
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        if (incError) console.error('Error fetching incoming invites:', incError);
+        incomingInvites = incInvites || [];
+        pendingInviteCount = incomingInvites.length;
+
+        // 6. Get pending invite count sent BY me (OUTGOING)
+        const { data: outInvites, error: outError } = await supabase
+            .from('household_invitations')
+            .select(`
+                id,
+                household_id,
+                created_at,
+                status,
+                households (name),
+                profiles!household_invitations_invited_user_id_fkey (first_name, last_name, email, username)
+            `)
+            .eq('invited_by', currentUser.id)
+            .order('created_at', { ascending: false });
+
+        if (outError) console.error('Error fetching outgoing invites:', outError);
+        outgoingInvites = outInvites || [];
+        // Count only pending/active ones if desired, or all? User asked for "sent invitations that have not been accepted".
+        // Let's filter for display logic but keep data.
+        sentInviteCount = outgoingInvites.filter(i => i.status === 'pending').length;
         
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -564,8 +599,8 @@
           
           showLeaveHouseholdModal = false;
           householdIdForAction = null;
-          // Redirect to home - they'll need to pick another household or create one
-          goto('/');
+          // Stay on settings page, just refresh to update lists
+          window.location.reload();
       } catch (e: any) {
           console.error('Error leaving household:', e);
           alert('Failed to leave household: ' + e.message);
@@ -725,7 +760,69 @@
  
 
 
+
+  async function acceptInvite(inviteId: string) {
+      if (!inviteId) return;
+      processingInviteId = inviteId;
+      console.log('Accepting invite:', inviteId);
+      
+      try {
+          // Use RPC that handles everything
+          const { data, error } = await supabase.rpc('accept_household_invite', { p_invite_id: inviteId });
+          
+          if (error) {
+              console.error('RPC Error:', error);
+              throw error;
+          }
+           
+          // Handle cases where RPC returns error object
+          if (data && typeof data === 'object' && 'success' in data && !data.success) {
+               throw new Error((data as any).error || 'Failed to join household');
+          }
+
+          // Reload to refresh all data (simplest way to sync state)
+          window.location.reload();
+      } catch (e: any) {
+          console.error('Error in acceptInvite:', e);
+          alert('Error accepting invite: ' + e.message);
+          processingInviteId = null;
+      }
+  }
+
+  async function declineInvite(inviteId: string) {
+      if (!confirm('Are you sure you want to decline?')) return;
+      processingInviteId = inviteId;
+      try {
+          const { error } = await supabase.from('household_invitations').update({ status: 'declined' }).eq('id', inviteId);
+          if (error) throw error;
+          
+          // Refresh list locally
+          incomingInvites = incomingInvites.filter(i => i.id !== inviteId);
+          pendingInviteCount = incomingInvites.length;
+      } catch (e: any) {
+          console.error('Error declining invite:', e);
+          alert('Failed to decline invite');
+      } finally {
+          processingInviteId = null;
+      }
+  }
+
+  async function revokeInvite(inviteId: string) {
+      if (!confirm('Revoke this invitation?')) return;
+      try {
+          const { error } = await supabase.from('household_invitations').delete().eq('id', inviteId);
+          if (error) throw error;
+          
+          outgoingInvites = outgoingInvites.filter(i => i.id !== inviteId);
+          sentInviteCount = Math.max(0, sentInviteCount - 1);
+      } catch (e: any) {
+          alert('Error: ' + e.message);
+      }
+  }
+
 </script>
+
+<!-- Build fix applied: 2026-02-08 -->
 
 <svelte:head>
   <title>Settings - WhoFed</title>
@@ -742,14 +839,7 @@
     <h1 class="text-xl font-bold text-gray-900">Settings</h1>
     <div class="flex-1"></div>
     <div class="flex items-center space-x-2">
-        <button class="relative p-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all" on:click={() => showNotificationsModal = true}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            {#if pendingInviteCount > 0}
-                <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            {/if}
-        </button>
+       <!-- Bell removed -->
     </div>
   </header>
 
@@ -793,9 +883,6 @@
                  </div>
                  <div class="flex items-center text-brand-sage font-medium text-xs">
                      <span>Change</span>
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                     </svg>
                  </div>
              </button>
              
@@ -807,9 +894,6 @@
                  </div>
                  <div class="flex items-center text-brand-sage font-medium text-xs">
                      <span>Change</span>
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                     </svg>
                  </div>
              </button>
           </section>
@@ -818,9 +902,9 @@
           </p>
        </div>
 
-       <!-- My Households -->
+       <!-- Households -->
        <div class="space-y-2">
-         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">My Households</div>
+         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Households</div>
          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
              
              <!-- Header / Action -->
@@ -843,8 +927,8 @@
              <!-- Households List -->
              {#each $availableHouseholds as hh}
                  <div>
-                     <button 
-                         class="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                     <div role="button" tabindex="0" on:keydown={(e) => e.key === "Enter" && toggleHouseholdAccordion(hh.id)} 
+                         class="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors cursor-pointer"
                          on:click={() => toggleHouseholdAccordion(hh.id)}
                      >
                          <div class="flex items-center space-x-3">
@@ -875,7 +959,7 @@
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 transition-transform {expandedHouseholdId === hh.id ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                          </svg>
-                     </button>
+                     </div>
  
                      <!-- Accordion Content -->
                      {#if expandedHouseholdId === hh.id}
@@ -968,6 +1052,162 @@
          </section>
        </div>
 
+
+       <!-- [NEW] Invitations Accordion -->
+       <div class="space-y-2">
+         <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+             <button 
+                class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors relative overflow-hidden text-left"
+                on:click={() => expandedInvitations = !expandedInvitations}
+                aria-label="Toggle invitations"
+             >
+                <div class="flex items-center space-x-3 relative z-10">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-brand-sage/10 text-brand-sage">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                       </svg>
+                    </div>
+                    <div>
+                        <div class="font-bold text-gray-900 text-sm">Invitations</div>
+                        <div class="text-xs text-gray-500">
+                            {#if pendingInviteCount > 0}
+                                <span class="text-brand-sage font-bold">{pendingInviteCount} new</span> 
+                            {:else if sentInviteCount > 0}
+                                <span class="text-gray-400">View sent invites</span>
+                            {:else}
+                                <span class="text-gray-400">Manage invitations</span>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    {#if pendingInviteCount > 0 && !expandedInvitations}
+                    <div class="relative w-3 h-3">
+                        <div class="w-3 h-3 bg-red-500 rounded-full animate-ping absolute inset-0 opacity-75"></div>
+                        <div class="w-3 h-3 bg-red-500 rounded-full relative"></div>
+                    </div>
+                    {/if}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 transition-transform {expandedInvitations ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+             </button>
+
+             <!-- Accordion Content -->
+             {#if expandedInvitations}
+                <div class="px-4 pb-4 pt-0 bg-gray-50/50 border-t border-gray-100">
+                    
+                    <!-- INCOMING -->
+                    {#if incomingInvites.length > 0}
+                        <div class="pt-4">
+                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Received ({incomingInvites.length})</div>
+                            <div class="space-y-2">
+                                {#each incomingInvites as invite}
+                                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                                        <div class="flex items-start justify-between">
+                                            <div>
+                                                <div class="text-xs text-gray-500">
+                                                    <span class="font-bold text-gray-900">{invite.profiles?.first_name || 'Someone'}</span> invited you to join <span class="font-bold text-gray-900">{invite.households?.name}</span>
+                                                </div>
+                                                <div class="text-[10px] text-gray-400 mt-1">
+                                                    {new Date(invite.created_at).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2 mt-3">
+                                            <button 
+                                                class="flex-1 py-1.5 bg-gray-100 text-gray-600 font-bold text-[10px] rounded-lg hover:bg-gray-200 transition-colors"
+                                                on:click={() => declineInvite(invite.id)}
+                                                disabled={processingInviteId === invite.id}
+                                            >
+                                                Decline
+                                            </button>
+                                            <button 
+                                                class="flex-1 py-1.5 bg-brand-sage text-white font-bold text-[10px] rounded-lg shadow-sm hover:bg-brand-sage/90 transition-colors"
+                                                on:click={() => acceptInvite(invite.id)}
+                                                disabled={processingInviteId === invite.id}
+                                            >
+                                                {processingInviteId === invite.id ? 'Joining...' : 'Accept'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
+
+                    <!-- OUTGOING (SENT) -->
+                    {#if outgoingInvites.length > 0}
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Sent Invites</div>
+                            <div class="space-y-2">
+                                {#each outgoingInvites as invite (invite.id)}
+                                    <div class="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                             <div class="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 font-bold text-xs">
+                                                {(invite.profiles?.first_name?.[0] || invite.profiles?.username?.[0] || '?').toUpperCase()}
+                                             </div>
+                                             <div>
+                                                 <div class="text-xs font-bold text-gray-900">
+                                                     {invite.profiles?.first_name ? `${invite.profiles.first_name} ${invite.profiles.last_name || ''}` : `@${invite.profiles?.username || 'Unknown'}`}
+                                                 </div>
+                                                 <div class="text-[10px] text-gray-500">
+                                                     Invited to: {invite.households?.name} • 
+                                                     <span class="{invite.status === 'pending' ? 'text-orange-500' : (invite.status === 'accepted' ? 'text-green-500' : 'text-red-500')} font-bold capitalize">
+                                                         {invite.status}
+                                                     </span>
+                                                 </div>
+                                             </div>
+                                        </div>
+                                        
+                                        <!-- Only allow revoking pending invites or remove declined/accepted ones to clear list -->
+                                        <!-- Separate actions based on status -->
+                                        {#if invite.status === 'pending'}
+                                            <button 
+                                                class="text-xs font-bold text-gray-400 hover:text-red-500 underline px-2 transition-colors disabled:opacity-50"
+                                                on:click={() => revokeInvite(invite.id)}
+                                                disabled={processingInviteId === invite.id}
+                                            >
+                                                {processingInviteId === invite.id ? '...' : 'Cancel'}
+                                            </button>
+                                        {:else}
+                                            <button 
+                                                class="text-gray-300 hover:text-gray-500 p-2 transition-colors disabled:opacity-50"
+                                                on:click={() => revokeInvite(invite.id, true)} 
+                                                disabled={processingInviteId === invite.id}
+                                                aria-label="Remove from list"
+                                            >
+                                                {#if processingInviteId === invite.id}
+                                                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                {:else}
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                {/if}
+                                            </button>
+                                        {/if}
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
+
+
+                    {#if incomingInvites.length === 0 && outgoingInvites.filter(i => i.status !== 'accepted').length === 0}
+                        <div class="text-center py-6">
+                            <p class="text-xs text-gray-400">No active invitations.</p>
+                        </div>
+                    {/if}
+
+                </div>
+             {/if}
+         </section>
+       </div>
+
       <!-- Notifications -->
       <div class="space-y-2 mb-8">
         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Preferences</div>
@@ -1002,11 +1242,11 @@
                     on:click={openManageReminders}
                 >
                     <div class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">Manage Alerts</span>
+                        <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">Manage Schedule Alerts</span>
                         <span class="text-[10px] text-gray-400">Choose which schedules notify you</span>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 group-hover:text-brand-sage transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
            </div>

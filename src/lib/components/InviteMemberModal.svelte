@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
     import { supabase } from '$lib/supabase';
+    import { currentUser } from '$lib/stores/user';
     import QRCode from 'qrcode';
 
     export let householdId: string;
@@ -166,6 +167,32 @@
                 inviteStatus = 'success';
                 inviteMessage = isEmail ? `Invite sent to ${identifier}` : `Invite sent to @${identifier}`;
                 identifierInput = '';
+
+                // NEW: Send Push Notification
+                const invitedUserId = (result as any).invited_user_id;
+                if (invitedUserId) {
+                    try {
+                        const senderName = $currentUser?.first_name || 'Someone';
+                        // We need the household name. It's not passed as a prop, but we can try to find it or just say "a household"
+                        // Or pass it in. For now, generic message or passed prop? 
+                        // The modal doesn't have householdName prop. We'll use a generic message or fetch it?
+                        // Actually, let's just say "their household". 
+                        // Better: We can pass householdName as a prop to this modal.
+                        // For now, let's just trigger it.
+                        supabase.functions.invoke('send-push', {
+                            body: {
+                                user_id: invitedUserId,
+                                title: 'New Invitation',
+                                body: `${senderName} invited you to join a household!`,
+                                url: '/settings'
+                            }
+                        }).then(({ error }) => {
+                            if (error) console.error('Failed to send push:', error);
+                        });
+                    } catch (err) {
+                        console.error('Error triggering push:', err);
+                    }
+                }
             } else {
                 inviteStatus = 'error';
                 inviteMessage = result.error || 'Failed to send invite';

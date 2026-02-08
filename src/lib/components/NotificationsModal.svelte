@@ -23,6 +23,9 @@
     async function loadInvites() {
         loading = true;
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
             const { data, error } = await supabase
                 .from('household_invitations')
                 .select(`
@@ -33,6 +36,7 @@
                     profiles!household_invitations_invited_by_fkey (first_name, last_name, email)
                 `)
                 .eq('status', 'pending')
+                .eq('invited_user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
