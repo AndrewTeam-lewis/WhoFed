@@ -38,7 +38,7 @@
         <div class="flex justify-center space-x-4">
             <a href="/legal/privacy" class="hover:text-brand-sage transition-colors">Privacy Policy</a>
             <span>•</span>
-            <a href="/legal/terms" class="hover:text-brand-sage transition-colors">Terms of Service</a>
+            <a href="/legal/tos" class="hover:text-brand-sage transition-colors">Terms of Service</a>
         </div>
         <p>© {new Date().getFullYear()} WhoFed</p>
     </footer>

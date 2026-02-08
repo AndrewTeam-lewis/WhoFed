@@ -514,6 +514,7 @@
           // though this function is triggered by click so standard import might work if it wasn't for SSR.
           // Safer to use import() inside the function or just standard ESD imports if we are in onMount/browser.
           // Since we are in SvelteKit, let's dynamic import to be safe.
+          const { Capacitor } = await import('@capacitor/core');
           const { jsPDF } = await import('jspdf');
           const autoTable = (await import('jspdf-autotable')).default;
 
@@ -572,8 +573,35 @@
               }
           });
 
-          // 4. Save
-          doc.save(`WhoFed_Export.pdf`);
+          // 4. Save / Share
+          if (Capacitor.isNativePlatform()) {
+              const { Filesystem, Directory } = await import('@capacitor/filesystem');
+              const { Share } = await import('@capacitor/share');
+
+              const base64 = doc.output('datauristring').split(',')[1];
+              const fileName = 'WhoFed_Export.pdf';
+
+              try {
+                  const result = await Filesystem.writeFile({
+                      path: fileName,
+                      data: base64,
+                      directory: Directory.Cache
+                  });
+
+                  await Share.share({
+                      title: 'WhoFed Export',
+                      text: 'Here is your WhoFed activity log.',
+                      url: result.uri,
+                      dialogTitle: 'Share Export'
+                  });
+              } catch (e: any) {
+                  console.error('Native export failed', e);
+                  alert('Export failed: ' + e.message);
+              }
+
+          } else {
+              doc.save(`WhoFed_Export.pdf`);
+          }
           
       } catch (err: any) {
           console.error('Export failed:', err);
