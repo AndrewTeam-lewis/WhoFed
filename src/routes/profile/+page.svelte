@@ -6,7 +6,6 @@
 
   let editing = false;
   let editData = {
-    username:    username: '',
     firstName: ''
   };
 
