@@ -39,9 +39,10 @@
             if (updateError) throw updateError;
 
             success = true;
-            setTimeout(() => {
-                dispatch('close');
-            }, 2000); // Close after showing success message
+            setTimeout(async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/'; // Force reload/redirect to login
+            }, 2000);
 
         } catch (e: any) {
             console.error('Error updating password:', e);
