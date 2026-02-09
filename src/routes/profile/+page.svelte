@@ -6,10 +6,8 @@
 
   let editing = false;
   let editData = {
-    username: '',
-firstName: '',
-    lastName: '',
-    phone: ''
+    username:    username: '',
+    firstName: ''
   };
 
   let message = '';
@@ -33,9 +31,7 @@ firstName: '',
     if ($currentProfile) {
       editData = {
         username: $currentProfile.username,
-        firstName: $currentProfile.first_name,
-        lastName: $currentProfile.last_name || '',
-        phone: $currentProfile.phone || ''
+        firstName: $currentProfile.first_name
       };
     }
   });
@@ -51,9 +47,7 @@ firstName: '',
     if ($currentProfile) {
       editData = {
         username: $currentProfile.username,
-        firstName: $currentProfile.first_name,
-        lastName: $currentProfile.last_name || '',
-        phone: $currentProfile.phone || ''
+        firstName: $currentProfile.first_name
       };
     }
   }
@@ -68,9 +62,7 @@ firstName: '',
     try {
       const updated = await authService.updateProfile($currentUser.id, {
         username: editData.username,
-        first_name: editData.firstName,
-        last_name: editData.lastName || undefined,
-        phone: editData.phone || undefined
+        first_name: editData.firstName
       });
 
       currentProfile.set(updated);
@@ -120,20 +112,6 @@ firstName: '',
           <p class="mt-1 text-gray-900">{$currentProfile.first_name}</p>
         </div>
 
-        {#if $currentProfile.last_name}
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Last Name</label>
-            <p class="mt-1 text-gray-900">{$currentProfile.last_name}</p>
-          </div>
-        {/if}
-
-        {#if $currentProfile.phone}
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Phone</label>
-            <p class="mt-1 text-gray-900">{$currentProfile.phone}</p>
-          </div>
-        {/if}
-
         <div>
           <label class="block text-sm font-medium text-gray-700">Auth Provider</label>
           <p class="mt-1 text-gray-900 capitalize">{$currentUser.app_metadata.provider || 'email'}</p>
@@ -175,26 +153,6 @@ firstName: '',
             type="text" 
             bind:value={editData.firstName} 
             required 
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
-          />
-        </div>
-
-        <div>
-          <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
-          <input 
-            id="lastName"
-            type="text" 
-            bind:value={editData.lastName} 
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
-          />
-        </div>
-
-        <div>
-          <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
-          <input 
-            id="phone"
-            type="tel" 
-            bind:value={editData.phone} 
             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2" 
           />
         </div>

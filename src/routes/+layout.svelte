@@ -163,7 +163,7 @@
                   name,
                   subscription_status,
                   owner_id,
-                  profiles:owner_id (first_name, last_name)
+                  profiles:owner_id (first_name)
               )
           `)
           .eq('user_id', userId);
@@ -190,9 +190,7 @@
            const hh = m.households as any;
            const ownerId = hh?.owner_id;
            const ownerProfile = hh?.profiles; // Joined data
-           const ownerName = ownerProfile
-               ? [ownerProfile.first_name, ownerProfile.last_name].filter(Boolean).join(' ')
-               : 'Unknown';
+           const ownerName = ownerProfile?.first_name || 'Unknown';
 
            const isOwner = ownerId === userId;
 

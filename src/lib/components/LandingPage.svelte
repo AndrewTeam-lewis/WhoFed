@@ -6,9 +6,9 @@
     <!-- Hero Section -->
     <main class="flex-grow flex flex-col items-center justify-center p-6 text-center">
         <div class="mb-8 p-6 bg-white rounded-3xl shadow-xl shadow-brand-sage/10 animate-fade-in">
-            <div class="w-24 h-24 bg-brand-sage/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <!-- App Logo / Icon Placeholder -->
-                <span class="text-6xl">🐾</span>
+            <div class="w-28 h-28 mx-auto mb-6 flex items-center justify-center">
+                <!-- App Logo -->
+                <img src="/logo.jpg" alt="WhoFed Logo" class="w-full h-full object-contain" />
             </div>
             <h1 class="text-4xl font-black text-gray-900 mb-2 tracking-tight">WhoFed</h1>
             <p class="text-brand-sage font-bold uppercase tracking-widest text-sm">Pet Care Simplified</p>
@@ -16,7 +16,7 @@
 
         <div class="max-w-md space-y-6">
             <p class="text-lg text-gray-600 leading-relaxed">
-                Connect with your family to track feedings, walks, and medications. Never ask "Did you feed the dog?" again.
+                Connect with your family to track feedings, medicine and more. Never ask "Who fed the dog?" again.
             </p>
             
             <button 

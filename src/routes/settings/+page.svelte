@@ -88,9 +88,6 @@
   let showEditProfileModal = false;
   let profile = {
       first_name: '',
-      last_name: '',
-      phone: '',
-      username: '',
       email: ''
   };
   let error = '';
@@ -211,8 +208,6 @@
           const updates = {
               id: currentUser.id,
               first_name: profile.first_name,
-              last_name: profile.last_name,
-              phone: profile.phone,
               updated_at: new Date().toISOString()
           };
 
@@ -392,13 +387,22 @@
             
         if (profileError) throw profileError;
         if (myProfile) {
+            // Prioritize Auth email (source of truth)
+            const realEmail = currentUser.email || '';
+            const profileEmail = myProfile.email || '';
+            
             profile = {
                 first_name: myProfile.first_name || '',
-                last_name: myProfile.last_name || '',
-                phone: myProfile.phone || '',
-                username: myProfile.username || '',
-                email: myProfile.email || currentUser.email || ''
+                email: realEmail || profileEmail // Use auth email if available
             };
+
+            // Lazy Sync: If auth email changed but profile is stale, update it
+            if (realEmail && realEmail !== profileEmail) {
+                console.log('Syncing profile email to auth email...');
+                supabase.from('profiles').update({ email: realEmail }).eq('id', currentUser.id).then(({ error }) => {
+                   if (error) console.error('Failed to sync profile email:', error);
+                });
+            }
         }
 
         // 1. Get household from active store (already set by layout)
@@ -848,15 +852,9 @@
        <div class="space-y-2">
          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Personal Identity</div>
          <!-- Profile Card -->
-         <section class="bg-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
-             <div class="flex items-start justify-between">
-                 <div class="flex-1">
-                     <h2 class="text-xl font-bold text-gray-900 mb-1">{profile.first_name} {profile.last_name}</h2>
-                     <p class="text-sm text-gray-500 mb-1">{profile.phone || 'No phone set'}</p>
-                     {#if profile.username}
-                         <p class="text-sm text-brand-sage font-medium">@{profile.username.replace('@','')}</p>
-                     {/if}
-                 </div>
+         <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+             <div class="flex items-center justify-between p-6">
+                 <h2 class="text-xl font-bold text-gray-900">{profile.first_name}</h2>
                  <button 
                      class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors rounded-full"
                      on:click={() => showEditProfileModal = true}
@@ -866,16 +864,8 @@
                      </svg>
                  </button>
              </div>
-         </section>
-       </div>
 
-
-
-      <!-- Account & General (Moved here) -->
-       <div class="space-y-2">
-          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Security & Account</div>
-          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100" data-tour="settings-preferences">
-             <!-- Email Row -->
+              <!-- Email Row -->
              <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => showChangeEmailModal = true}>
                  <div>
                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Primary Email</p>
@@ -896,11 +886,15 @@
                      <span>Change</span>
                  </div>
              </button>
-          </section>
-          <p class="text-xs text-gray-400 px-1 leading-relaxed">
+         </section>
+          <p class="text-xs text-gray-400 px-1 leading-relaxed mt-2">
               Changes to sensitive information may require a secondary verification step to ensure your account's safety.
           </p>
        </div>
+
+
+
+      <!-- Account & General (Moved here) -->
 
        <!-- Households -->
        <div class="space-y-2">
@@ -1474,28 +1468,9 @@
              {/if}
 
              <div class="space-y-4">
-                 <div class="grid grid-cols-2 gap-4">
-                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="firstName">First Name</label>
-                        <input id="firstName" type="text" bind:value={profile.first_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="First Name" />
-                     </div>
-                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="lastName">Last Name</label>
-                        <input id="lastName" type="text" bind:value={profile.last_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="Last Name" />
-                     </div>
-                 </div>
-
                  <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="pfUsername">Username</label>
-                    <input id="pfUsername" type="text" bind:value={profile.username} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="@username" />
-                 </div>
-
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="pfPhone">Phone</label>
-                    <input id="pfPhone" type="tel" bind:value={profile.phone} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="(555) 123-4567" />
-                    <p class="text-[10px] text-gray-400 mt-1 leading-tight">
-                       By providing your number, you agree to receive SMS feeding reminders. See our <a href="/legal/privacy" class="underline hover:text-gray-600" target="_blank">Privacy Policy</a>. Msg & data rates may apply.
-                    </p>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="firstName">Display Name</label>
+                    <input id="firstName" type="text" bind:value={profile.first_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="Display Name" />
                  </div>
                  
                  <button 

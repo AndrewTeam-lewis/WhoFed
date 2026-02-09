@@ -5,79 +5,45 @@ import { Capacitor } from '@capacitor/core';
 export interface RegisterData {
     email: string;
     password: string;
-    username: string;
     firstName: string;
-    lastName?: string;
-    phone?: string;
 }
 
 export interface Profile {
     id: string;
-    username: string;
-    first_name: string;
-    last_name?: string;
-    phone?: string;
+    username: string | null;
+    first_name: string | null;
     tier?: string; // 'free' | 'premium'
 }
 
 export const authService = {
-    // Check if username is available
-    async checkUsernameAvailable(username: string): Promise<boolean> {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('username', username)
-            .single();
-
-        return !data; // Available if no data found
-    },
-
     // Register with email/password
     async register(data: RegisterData) {
-        // Check username availability first
-        const available = await this.checkUsernameAvailable(data.username);
-        if (!available) {
-            throw new Error('Username already taken');
-        }
-
         // Sign up with Supabase Auth
         const { data: authData, error } = await supabase.auth.signUp({
             email: data.email,
             password: data.password,
             options: {
                 data: {
-                    username: data.username,
-                    firstName: data.firstName,
-                    lastName: data.lastName || null,
-                    phone: data.phone || null
+                    first_name: data.firstName
                 }
             }
         });
 
         if (error) throw error;
+        if (!authData.user) throw new Error('Registration failed');
+
+        // Create profile
+        await this.createProfile(authData.user.id, {
+            first_name: data.firstName,
+            username: null // helper for TS, though optional
+        });
+
         return authData;
     },
 
     // Login with email OR username
-    async login(usernameOrEmail: string, password: string) {
-        let email = usernameOrEmail;
-
-        // If not an email, look up email by username
-        if (!usernameOrEmail.includes('@')) {
-            const { data: profiles, error: profileError } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('username', usernameOrEmail)
-                .single();
-
-            if (profileError || !profiles?.email) {
-                throw new Error('Invalid credentials');
-            }
-
-            email = profiles.email;
-        }
-
-        // Login with email and password
+    // Login with email
+    async login(email: string, password: string) {
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password
@@ -112,12 +78,9 @@ export const authService = {
             .from('profiles')
             .insert({
                 id: userId,
-                username: profileData.username, // keep username if provided
-                first_name: profileData.first_name,
-                last_name: profileData.last_name,
-                phone: profileData.phone
+                first_name: profileData.first_name
             })
-            .select()
+            .select() // Add select to return the inserted row
             .single();
 
         if (error) throw error;

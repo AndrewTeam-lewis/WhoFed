@@ -2,10 +2,9 @@ import Dexie, { type Table } from 'dexie';
 
 export interface Profile {
     id: string; // UUID from auth.users
-    username: string;
-    first_name: string;
-    last_name?: string;
-    phone?: string;
+    username: string | null;
+    first_name: string | null;
+    tier?: string; // 'free' | 'premium'
     tier?: string; // 'free' | 'premium'
 }
 

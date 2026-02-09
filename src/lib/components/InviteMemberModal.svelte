@@ -9,7 +9,7 @@
 
     const dispatch = createEventDispatcher();
 
-    let activeTab: 'link' | 'username' = 'link';
+    let activeTab: 'link' | 'email' = 'link';
 
     // Share Link / QR state
     let qrCodeDataUrl = '';
@@ -54,7 +54,7 @@
             // 2. Get members of those households (potential suggestions)
             const { data: allMembers } = await supabase
                 .from('household_members')
-                .select('user_id, profiles(username, first_name, last_name, email)')
+                .select('user_id, profiles(first_name, email)')
                 .in('household_id', myHouseholdIds);
 
             // 3. Get members of THIS household (to exclude)
@@ -165,7 +165,7 @@
 
             if (result.success) {
                 inviteStatus = 'success';
-                inviteMessage = isEmail ? `Invite sent to ${identifier}` : `Invite sent to @${identifier}`;
+                inviteMessage = `Invite sent to ${identifier}`;
                 identifierInput = '';
 
                 // NEW: Send Push Notification
@@ -231,10 +231,10 @@
                     Share Link
                 </button>
                 <button
-                    class="flex-1 py-2 text-sm font-bold rounded-lg transition-all {activeTab === 'username' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}"
-                    on:click={() => activeTab = 'username'}
+                    class="flex-1 py-2 text-sm font-bold rounded-lg transition-all {activeTab === 'email' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}"
+                    on:click={() => activeTab = 'email'}
                 >
-                    By Name / Email
+                    By Email
                 </button>
             </div>
 
@@ -270,22 +270,19 @@
                 </div>
             {/if}
 
-            <!-- Tab Content: By Username -->
-            {#if activeTab === 'username'}
+            <!-- Tab Content: By Email -->
+            {#if activeTab === 'email'}
                 <div class="space-y-4">
-                    <p class="text-sm text-gray-500">Enter a username or email address. They'll receive a notification to accept or decline.</p>
+                    <p class="text-sm text-gray-500">Enter an email address. They'll receive a notification if they are already on WhoFed.</p>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{isEmail ? 'Email' : 'Username'}</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Email</label>
                         <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-brand-sage/20 focus-within:border-brand-sage">
-                            {#if !isEmail}
-                                <span class="pl-3 text-gray-400 font-medium">@</span>
-                            {/if}
                             <input
-                                type="text"
+                                type="email"
                                 bind:value={identifierInput}
-                                placeholder="username or email"
-                                class="flex-1 p-3 text-sm text-gray-900 outline-none {isEmail ? 'pl-3' : 'pl-1'}"
+                                placeholder="name@example.com"
+                                class="flex-1 p-3 text-sm text-gray-900 outline-none pl-3"
                                 on:keydown={(e) => { if (e.key === 'Enter') sendInvite(); }}
                             />
                         </div>
@@ -303,13 +300,13 @@
                                 {#each suggestedUsers as user}
                                     <button 
                                         class="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg group transition-colors text-left"
-                                        on:click={() => identifierInput = user.username || user.email}
+                                        on:click={() => identifierInput = user.email}
                                     >
                                         <div class="flex flex-col">
                                             <span class="text-xs font-bold text-gray-700">
-                                                {user.first_name} {user.last_name || ''}
+                                                {user.first_name}
                                             </span>
-                                            <span class="text-[10px] text-gray-400">@{user.username}</span>
+                                            <span class="text-[10px] text-gray-400">{user.email || ''}</span>
                                         </div>
                                         <div class="text-brand-sage opacity-0 group-hover:opacity-100 text-xs font-bold">
                                             Select

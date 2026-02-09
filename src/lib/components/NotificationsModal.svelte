@@ -33,7 +33,7 @@
                     household_id,
                     created_at,
                     households (name),
-                    profiles!household_invitations_invited_by_fkey (first_name, last_name, email)
+                    profiles!household_invitations_invited_by_fkey (first_name, email)
                 `)
                 .eq('status', 'pending')
                 .eq('invited_user_id', user.id)
@@ -42,14 +42,12 @@
             if (error) throw error;
 
             invites = (data || []).map((inv: any) => {
-                const first = inv.profiles?.first_name || '';
-                const last = inv.profiles?.last_name || '';
-                const fullName = [first, last].filter(Boolean).join(' ') || 'Someone';
+                const first = inv.profiles?.first_name || 'Someone';
                 return {
                     id: inv.id,
                     household_id: inv.household_id,
                     household_name: inv.households?.name || 'Unnamed Household',
-                    invited_by_name: fullName,
+                    invited_by_name: first,
                     invited_by_email: inv.profiles?.email || '',
                     created_at: inv.created_at
                 };

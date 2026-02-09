@@ -5,40 +5,14 @@
   let formData: RegisterData = {
     email: '',
     password: '',
-    username: '',
-    firstName: '',
-    lastName: '',
-    phone: ''
+    email: '',
+    password: '',
+    firstName: ''
   };
 
   let error = '';
   let success = '';
-  let usernameChecking = false;
-  let usernameAvailable: boolean | null = null;
-  let checkTimeout: number;
 
-  // Check username availability with debounce
-  async function checkUsername() {
-    if (!formData.username || formData.username.length < 3) {
-      usernameAvailable = null;
-      return;
-    }
-
-    usernameChecking = true;
-    try {
-      const available = await authService.checkUsernameAvailable(formData.username);
-      usernameAvailable = available;
-    } catch (e) {
-      usernameAvailable = null;
-    }
-    usernameChecking = false;
-  }
-
-  function onUsernameInput() {
-    clearTimeout(checkTimeout);
-    usernameAvailable = null;
-    checkTimeout = setTimeout(checkUsername, 500);
-  }
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -46,13 +20,8 @@
     success = '';
 
     // Validate required fields
-    if (!formData.email || !formData.password || !formData.username || !formData.firstName) {
+    if (!formData.email || !formData.password || !formData.firstName) {
       error = 'Please fill in all required fields';
-      return;
-    }
-
-    if (usernameAvailable === false) {
-      error = 'Username is already taken';
       return;
     }
 
@@ -124,35 +93,9 @@
       />
     </div>
 
-    <div>
-      <label for="username" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Username *</label>
-      <div class="relative">
-        <input 
-          id="username"
-          type="text" 
-          bind:value={formData.username} 
-          on:input={onUsernameInput}
-          required 
-          minlength="3"
-          placeholder="Choose a username"
-          class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300 pr-10" 
-        />
-        {#if usernameChecking}
-          <span class="absolute right-4 top-4 text-gray-400 font-bold">...</span>
-        {:else if usernameAvailable === true}
-          <span class="absolute right-4 top-4 text-brand-sage text-xl">✓</span>
-        {:else if usernameAvailable === false}
-          <span class="absolute right-4 top-4 text-red-500 text-xl">✗</span>
-        {/if}
-      </div>
-      {#if usernameAvailable === false}
-        <p class="text-xs text-red-500 font-bold mt-2 ml-1">Username already taken</p>
-      {/if}
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 gap-4">
         <div>
-            <label for="firstName" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">First Name *</label>
+            <label for="firstName" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Display Name *</label>
             <input 
                 id="firstName"
                 type="text" 
@@ -162,30 +105,6 @@
                 class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
             />
         </div>
-        <div>
-            <label for="lastName" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Last Name</label>
-            <input 
-                id="lastName"
-                type="text" 
-                bind:value={formData.lastName} 
-                placeholder="Doe"
-                class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
-            />
-        </div>
-    </div>
-
-    <div>
-      <label for="phone" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Phone</label>
-      <input 
-        id="phone"
-        type="tel" 
-        bind:value={formData.phone} 
-        placeholder="(555) 123-4567"
-        class="w-full p-4 bg-gray-50 border-transparent focus:bg-white focus:border-brand-sage focus:ring-0 rounded-2xl font-bold text-gray-900 transition-all placeholder-gray-300" 
-      />
-      <p class="text-[10px] text-gray-400 mt-2 ml-1 leading-tight font-medium">
-        By providing your number, you agree to receive SMS feeding reminders. See our <a href="/legal/privacy" class="underline hover:text-gray-600" target="_blank">Privacy Policy</a>.
-      </p>
     </div>
 
     <p class="text-xs text-brand-sage/80 text-center font-medium px-4">
