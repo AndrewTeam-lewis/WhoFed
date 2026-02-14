@@ -8,7 +8,7 @@
         <div class="mb-8 p-6 bg-white rounded-3xl shadow-xl shadow-brand-sage/10 animate-fade-in">
             <div class="w-28 h-28 mx-auto mb-6 flex items-center justify-center">
                 <!-- App Logo -->
-                <img src="/logo.jpg" alt="WhoFed Logo" class="w-full h-full object-contain" />
+                <img src="/whofed_logo.png" alt="WhoFed Logo" class="w-full h-full object-contain" />
             </div>
             <h1 class="text-4xl font-black text-gray-900 mb-2 tracking-tight">WhoFed</h1>
             <p class="text-brand-sage font-bold uppercase tracking-widest text-sm">Pet Care Simplified</p>
