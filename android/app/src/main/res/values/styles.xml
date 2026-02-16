@@ -13,9 +13,9 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <!-- Transparent System Bars for Edge-to-Edge -->
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
+        <!-- White System Bars (Stable) -->
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:statusBarColor">@android:color/white</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
