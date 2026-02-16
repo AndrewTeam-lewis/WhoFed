@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { App } from '@capacitor/app';
+  import { StatusBar, Style } from '@capacitor/status-bar';
+  import { Capacitor } from '@capacitor/core';
   import { authService } from '$lib/services/auth';
   import { currentUser, currentSession, currentProfile } from '$lib/stores/user';
   import { db } from '$lib/db';
@@ -28,6 +30,17 @@
   onMount(async () => {
     console.log('[DEBUG] === Layout onMount START ===');
     console.time('[DEBUG] Total onMount time');
+
+    // Set status bar to light mode with white background (for Android dark mode override)
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await StatusBar.setStyle({ style: Style.Light });
+        await StatusBar.setBackgroundColor({ color: '#ffffff' });
+        console.log('[DEBUG] StatusBar configured: Light style, white background');
+      } catch (e) {
+        console.error('[DEBUG] StatusBar error:', e);
+      }
+    }
 
     // Initialize RevenueCat
     console.log('[DEBUG] Step 1: Calling purchasesService.init()...');
