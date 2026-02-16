@@ -5,6 +5,11 @@ const config: CapacitorConfig = {
   appName: 'WhoFed',
   webDir: 'build',
   plugins: {
+    StatusBar: {
+      style: 'Light',
+      backgroundColor: '#FFFFFF',
+      overlaysWebView: false
+    },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     }
