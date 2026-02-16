@@ -13,6 +13,12 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        
+        <!-- Force Light Mode (Prevents system override) -->
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+        <item name="android:textColorPrimary">@android:color/black</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        
         <!-- White System Bars (Stable) -->
         <item name="android:navigationBarColor">@android:color/white</item>
         <item name="android:statusBarColor">@android:color/white</item>
