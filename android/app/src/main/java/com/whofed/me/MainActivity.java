@@ -10,6 +10,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import com.capacitorjs.plugins.statusbar.StatusBarPlugin;
+import ee.forgr.capacitor_navigation_bar.NavigationBarPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -19,6 +20,9 @@ public class MainActivity extends BridgeActivity {
 
         // Register StatusBar plugin (needed for header to work)
         registerPlugin(StatusBarPlugin.class);
+
+        // Register NavigationBar plugin (for footer control)
+        registerPlugin(NavigationBarPlugin.class);
 
         // Force light mode system bars
         Window window = getWindow();
