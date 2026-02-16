@@ -865,16 +865,16 @@
                  </button>
              </div>
 
-              <!-- Email Row -->
-             <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => showChangeEmailModal = true}>
+              <!-- Email Row (Read Only) -->
+             <div class="w-full text-left p-4 flex items-center justify-between">
                  <div>
                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Primary Email</p>
                      <p class="text-sm font-medium text-gray-900">{profile.email || 'No email set'}</p>
                  </div>
-                 <div class="flex items-center text-brand-sage font-medium text-xs">
+                 <!-- <div class="flex items-center text-brand-sage font-medium text-xs">
                      <span>Change</span>
-                 </div>
-             </button>
+                 </div> -->
+             </div>
              
              <!-- Password Row -->
              <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => showChangePasswordModal = true}>

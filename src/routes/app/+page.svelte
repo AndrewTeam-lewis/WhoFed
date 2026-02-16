@@ -63,9 +63,23 @@
 
   // Helper to split tasks by pet
   function getTasksForPet(petId: string, currentTasks: DailyTask[]): DailyTask[] {
-      return currentTasks
-          .filter(t => t.pet_id === petId && t.status !== 'archived')
-          .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+      const petTasks = currentTasks.filter(t => t.pet_id === petId && t.status !== 'archived');
+      
+      const completed = petTasks.filter(t => t.status === 'completed');
+      const open = petTasks.filter(t => t.status !== 'completed');
+
+      // Sort completed by completion time (ascending)
+      completed.sort((a, b) => {
+          const timeA = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+          const timeB = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+          return timeA - timeB;
+      });
+
+      // Sort open by due time (ascending)
+      open.sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+
+      // Completed first, then open
+      return [...completed, ...open];
   }
   
   // Constraint Helper
