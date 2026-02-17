@@ -10,7 +10,13 @@ export interface HouseholdState {
 }
 
 // Stores
-export const activeHousehold = writable<HouseholdState | null>(null);
+// Stores
+// Try to recover ID immediately to prevent "flash" of default
+const initialId = browser ? localStorage.getItem('whofed_active_hh_id') : null;
+// We initialize with a partial object if we have an ID, so UI knows we are "loading specific household"
+const initialState = initialId ? { id: initialId, name: 'Loading...', role: 'member' } as HouseholdState : null;
+
+export const activeHousehold = writable<HouseholdState | null>(initialState);
 export const availableHouseholds = writable<HouseholdState[]>([]);
 
 // Persistence Keys

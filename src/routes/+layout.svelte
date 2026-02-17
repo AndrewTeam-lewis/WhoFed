@@ -40,6 +40,9 @@
       } catch (e) {
         console.error('[DEBUG] StatusBar error:', e);
       }
+
+      // Navigation bar is controlled by native Android code in MainActivity.java
+      console.log('[DEBUG] Navigation bar controlled by native Android code');
     }
 
     // Initialize RevenueCat
@@ -229,8 +232,19 @@
       console.log('[DEBUG loadHouseholds] Determining active household...');
       const storedId = getStoredHouseholdId();
       console.log('[DEBUG loadHouseholds] Stored household ID from localStorage:', storedId);
-      const preferred = householdsList.find(h => h.id === storedId);
-      const initial = preferred || householdsList[0];
+      
+      let initial = householdsList[0]; // Default fallback
+
+      if (storedId) {
+          const preferred = householdsList.find(h => h.id === storedId);
+          if (preferred) {
+              console.log('[DEBUG loadHouseholds] Found stored household in list, using it.');
+              initial = preferred;
+          } else {
+              console.warn('[DEBUG loadHouseholds] Stored ID', storedId, 'not found in user households. Falling back to default.');
+          }
+      }
+
       console.log('[DEBUG loadHouseholds] Selected household:', initial.name, initial.id);
 
       console.log('[DEBUG loadHouseholds] Calling switchHousehold...');

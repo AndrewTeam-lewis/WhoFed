@@ -777,7 +777,7 @@
                class="flex items-center space-x-1 text-brand-sage font-medium hover:text-brand-sage/80 transition-colors"
                on:click|stopPropagation={() => showHouseholdMenu = !showHouseholdMenu}
             >
-                <span class="max-w-[150px] truncate">{$activeHousehold?.name || currentUser?.user_metadata?.first_name || 'My Household'}</span>
+                <span>{$activeHousehold?.name || currentUser?.user_metadata?.first_name || 'My Household'}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform {showHouseholdMenu ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -786,7 +786,7 @@
             <!-- Dropdown Menu -->
            {#if showHouseholdMenu}
                <div 
-                   class="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-scale-in origin-top-left"
+                   class="absolute top-full left-0 mt-2 w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-scale-in origin-top-left"
                >
                    <div class="py-1">
                        {#each $availableHouseholds as hh}
@@ -803,11 +803,6 @@
                                    {hh.role === 'owner' ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-500'}">
                                    {hh.role === 'owner' ? 'Owner' : 'Member'}
                                </span>
-                               {#if $activeHousehold?.id === hh.id}
-                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                   </svg>
-                               {/if}
                            </button>
                        {/each}
                        
