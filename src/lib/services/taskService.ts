@@ -66,3 +66,32 @@ export const ensureDailyTasks = async (householdId: string) => {
         console.error("ensureDailyTasks failed:", e);
     }
 };
+
+// Helper to cleanup stale non-medication tasks (Feedings, Cleaning, etc.)
+export const cleanupOldTasks = async (householdId: string) => {
+    try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        // Delete tasks that are:
+        // 1. In this household
+        // 2. Pending (not completed)
+        // 3. Due before today
+        // 4. NOT type 'medication'
+        const { error } = await supabase
+            .from('daily_tasks')
+            .delete()
+            .eq('household_id', householdId)
+            .eq('status', 'pending')
+            .lt('due_at', startOfDay.toISOString())
+            .neq('task_type', 'medication');
+
+        if (error) {
+            console.error("Error cleaning up old tasks:", error);
+        } else {
+            console.log("Cleaned up stale non-medication tasks.");
+        }
+    } catch (e) {
+        console.error("cleanupOldTasks failed:", e);
+    }
+};

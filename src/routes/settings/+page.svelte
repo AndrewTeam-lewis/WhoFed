@@ -119,6 +119,12 @@
   let showChangePasswordModal = false;
   let showChangeEmailModal = false;
   
+  // Monetization Limits
+  const FREE_HOUSEHOLDS_LIMIT = 1;
+
+  $: ownedHouseholdsCount = $availableHouseholds.filter(h => h.role === 'owner').length;
+  $: canAddHousehold = $userIsPremium || ownedHouseholdsCount < FREE_HOUSEHOLDS_LIMIT;
+  
   // Edit State
   let editPetName = '';
   let editPetSpecies = '';
@@ -431,7 +437,7 @@
                 can_log,
                 can_edit,
                 is_active,
-                profiles (first_name, last_name, email)
+                profiles (first_name, email)
             `)
             .eq('household_id', householdId);
 
@@ -701,7 +707,6 @@
                   is_active,
                   profiles (
                       first_name,
-                      last_name,
                       email
                   )
               `)
@@ -908,9 +913,15 @@
                      <p class="text-xs text-gray-500 mt-1">Manage your households and access levels.</p>
                  </div>
                  <button 
-                     class="w-8 h-8 rounded-full bg-brand-sage/10 text-brand-sage flex items-center justify-center hover:bg-brand-sage/20 transition-colors"
-                     on:click={() => showCreateHouseholdModal = true}
-                     title="Create new household"
+                     class="w-8 h-8 rounded-full flex items-center justify-center transition-colors {canAddHousehold ? 'bg-brand-sage/10 text-brand-sage hover:bg-brand-sage/20' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}"
+                     on:click={() => {
+                        if (canAddHousehold) {
+                            showCreateHouseholdModal = true;
+                        } else {
+                            showPremiumModal = true;
+                        }
+                     }}
+                     title={canAddHousehold ? "Create new household" : "Limit reached (Free Tier)"}
                  >
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                          <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
@@ -1024,6 +1035,28 @@
                                      <div class="text-xs text-gray-400 py-2 italic">Loading members...</div>
                                  {/if}
                                  
+                                 <!-- Invite Member -->
+                                 {#if hh.role === 'owner'}
+                                     <div class="mt-4 pt-3 border-t border-gray-100">
+                                         <button 
+                                             class="flex items-center justify-center w-full py-2.5 rounded-xl text-xs font-bold transition-all {canInvite ? 'bg-brand-sage/10 text-brand-sage hover:bg-brand-sage/20' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}"
+                                             on:click={() => {
+                                                 if (canInvite) {
+                                                     inviteHouseholdId = hh.id; 
+                                                     showInviteMemberModal = true;
+                                                 } else {
+                                                     showPremiumModal = true;
+                                                 }
+                                             }}
+                                         >
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                             </svg>
+                                             {canInvite ? 'Invite Member' : 'Member Limit Reached'}
+                                         </button>
+                                     </div>
+                                 {/if}
+
                                  <!-- Delete Household -->
                                  {#if hh.role === 'owner'}
                                      <div class="mt-4 pt-3 border-t border-gray-100">
@@ -1847,6 +1880,13 @@
       households={$availableHouseholds}
       pets={allPets}
   />
+
+  {#if showCreateHouseholdModal}
+    <CreateHouseholdModal 
+        on:close={() => showCreateHouseholdModal = false}
+        on:create={handleCreateHousehold}
+    />
+  {/if}
 
 </div>
 

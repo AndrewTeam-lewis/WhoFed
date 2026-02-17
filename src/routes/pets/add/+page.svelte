@@ -75,6 +75,7 @@
   let showIconModal = false; // Renamed from showSpeciesModal
   let showPremiumModal = false;
   let pushReminders = true;
+  let limitReached = false;
 
   let scheduleNameEditingId: string | null = null;
 
@@ -95,6 +96,21 @@
     if ($activeHousehold?.role !== 'owner') {
       goto('/');
       return;
+    }
+
+    // Check Pet Limit
+    if (!$userIsPremium && householdId) {
+        const { count } = await supabase
+            .from('pets')
+            .select('*', { count: 'exact', head: true })
+            .eq('household_id', householdId);
+        
+        const PET_LIMIT = 2;
+        if ((count || 0) >= PET_LIMIT) {
+             console.log('Pet limit reached');
+             limitReached = true;
+             showPremiumModal = true;
+        }
     }
   });
 
@@ -812,13 +828,13 @@
             <button 
                 type="submit"
                 on:click={handleSubmit}
-                disabled={loading}
-                class="w-full h-14 bg-brand-sage text-white font-bold text-base rounded-2xl shadow-lg hover:bg-brand-sage/90 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || limitReached}
+                class="w-full h-14 bg-brand-sage text-white font-bold text-base rounded-2xl shadow-lg shadow-brand-sage/20 hover:shadow-brand-sage/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none"
             >
                 {#if loading}
                     <div class="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div>
                 {:else}
-                    Save Changes
+                    {limitReached ? 'Limit Reached' : 'Save Changes'}
                 {/if}
             </button>
             

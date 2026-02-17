@@ -7,7 +7,7 @@
   import { authService } from '$lib/services/auth';
   import { currentUser, currentSession, currentProfile } from '$lib/stores/user';
   import { db } from '$lib/db';
-  import { ensureDailyTasks } from '$lib/services/taskService';
+  import { ensureDailyTasks, cleanupOldTasks } from '$lib/services/taskService';
   import { supabase } from '$lib/supabase';
   import { availableHouseholds, switchHousehold, getStoredHouseholdId } from '$lib/stores/appState';
   import { purchasesService } from '$lib/services/purchases';
@@ -254,6 +254,10 @@
       // Ensure tasks for the ACTIVE one
       console.log('[DEBUG loadHouseholds] Calling ensureDailyTasks (background)...');
       ensureDailyTasks(initial.id);
+      
+      console.log('[DEBUG loadHouseholds] Calling cleanupOldTasks (background)...');
+      cleanupOldTasks(initial.id);
+      
       console.log('[DEBUG loadHouseholds] END');
   }
 

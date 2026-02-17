@@ -47,6 +47,7 @@
   
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
+  import { ensureDailyTasks } from '$lib/services/taskService';
   import { userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
 
@@ -184,9 +185,17 @@
       const minsDiff = Math.floor(dueDiff / (1000 * 60));
 
       // Monthly: Show date (Feb 29). Daily: Show time (8:00 AM).
+      // If Daily AND Overdue from previous day: Show Date + Time (Feb 16, 8:00 AM)
+      const startOfToday = new Date();
+      startOfToday.setHours(0,0,0,0);
+      
+      const isPastDate = due < startOfToday;
+
       const timeFormatted = isMonthly 
           ? due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) 
-          : due.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          : (isPastDate && !isDone)
+              ? due.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+              : due.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       
       let dueLabel = 'Due';
       let isUrgent = false;
@@ -249,6 +258,9 @@
     try {
       const householdId = $activeHousehold.id;
       
+      // Ensure tasks exist for today (Fix for race condition with eager init)
+      await ensureDailyTasks(householdId);
+
       // Calculate day range
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
@@ -257,7 +269,7 @@
       endOfDay.setHours(23, 59, 59, 999);
 
       // Parallel Fetch: Pets & Tasks (Independent)
-      const [petRes, taskRes] = await Promise.all([
+      const [petRes, taskRes, pastMedsRes] = await Promise.all([
           supabase
             .from('pets')
             .select('*')
@@ -268,9 +280,16 @@
             .from('daily_tasks')
             .select('*, schedules(schedule_mode)')
             .eq('household_id', householdId)
-            // Use ISO strings to match timestamptz correctly in UTC
             .gte('due_at', startOfDay.toISOString())
-            .lte('due_at', endOfDay.toISOString())
+            .lte('due_at', endOfDay.toISOString()),
+
+          supabase
+            .from('daily_tasks')
+            .select('*, schedules(schedule_mode)')
+            .eq('household_id', householdId)
+            .eq('task_type', 'medication')
+            .neq('status', 'completed')
+            .lt('due_at', startOfDay.toISOString())
       ]);
 
       // Handle Pets
@@ -283,7 +302,11 @@
 
       // Handle Tasks
       if (taskRes.error) throw taskRes.error;
-      dailyTasks = (taskRes.data || []) as any; // Cast mainly for schedule_mode join
+      const todaysTasks = (taskRes.data || []) as any;
+      const pastMeds = (pastMedsRes.data || []) as any;
+      
+      // Combine and Sort
+      dailyTasks = [...pastMeds, ...todaysTasks];
 
       // 4. Get recent activity (Depends on Pets)
       if (pets.length > 0) {
