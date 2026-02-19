@@ -896,7 +896,7 @@
                      <p class="text-sm font-bold text-gray-900 tracking-widest">••••••••••••</p>
                  </div>
                  <div class="flex items-center text-brand-sage font-medium text-xs">
-                     <span>Change</span>
+                     <span>{$t.settings.change}</span>
                  </div>
              </button>
          </section>
@@ -1522,7 +1522,7 @@
                  </svg>
              </button>
              
-             <h3 class="text-xl font-bold text-gray-900 mb-6">Edit Profile</h3>
+             <h3 class="text-xl font-bold text-gray-900 mb-6">{$t.modals.edit_profile}</h3>
              
              {#if error}
                <div class="mb-4 text-sm text-red-500 bg-red-50 p-3 rounded-lg">
@@ -1532,8 +1532,8 @@
 
              <div class="space-y-4">
                  <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="firstName">Display Name</label>
-                    <input id="firstName" type="text" bind:value={profile.first_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="Display Name" />
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="firstName">{$t.modals.display_name}</label>
+                    <input id="firstName" type="text" bind:value={profile.first_name} class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-brand-sage outline-none" placeholder="{$t.modals.display_name}" />
                  </div>
                  
                  <button 
@@ -1547,7 +1547,7 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                     {/if}
-                    Save Changes
+                    {$t.modals.save_changes}
                  </button>
              </div>
         </div>
@@ -1807,8 +1807,8 @@
       <div class="bg-white rounded-[32px] w-full max-w-sm relative z-10 animate-scale-in max-h-[80vh] flex flex-col">
           <div class="p-6 border-b border-gray-100 flex items-center justify-between">
               <div>
-                  <h3 class="text-xl font-bold text-gray-900">Manage Alerts</h3>
-                  <p class="text-xs text-gray-400">Tap to toggle notification per schedule</p>
+                  <h3 class="text-xl font-bold text-gray-900">{$t.settings.manage_alerts}</h3>
+                  <p class="text-xs text-gray-400">{$t.settings.manage_alerts_help}</p>
               </div>
               <button on:click={() => showManageRemindersModal = false} class="text-gray-400 hover:text-gray-600">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1820,7 +1820,7 @@
           <div class="p-4 overflow-y-auto flex-1">
               {#if reminderSchedules.length === 0}
                  <div class="text-center py-10">
-                     <p class="text-gray-400 font-medium">No active schedules found.</p>
+                     <p class="text-gray-400 font-medium">{$t.settings.no_schedules}</p>
                  </div>
               {:else}
                   <div class="space-y-6">
@@ -1840,7 +1840,7 @@
                                               <div>
                                                   <div class="font-bold text-gray-900 text-sm">{sched.display_label}</div>
                                                   <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wide">
-                                                      {sched.pet?.name} • {sched.target_times ? sched.target_times[0] : 'Daily'}
+                                                      {sched.pet?.name} • {sched.target_times ? sched.target_times[0] : $t.pet_settings.daily}
                                                   </div>
                                               </div>
                                           </div>
