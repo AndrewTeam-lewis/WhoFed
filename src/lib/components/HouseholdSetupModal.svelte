@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { supabase } from '$lib/supabase';
+    import { t } from '$lib/services/i18n';
     
     export let userId: string;
     
@@ -12,7 +13,7 @@
     
     async function createHousehold() {
         if (!householdName.trim()) {
-            error = 'Please enter a household name';
+            error = $t.modals.error_name_required;
             return;
         }
         
@@ -51,7 +52,7 @@
             
         } catch (err: any) {
             console.error('Error creating household:', err);
-            error = err.message || 'Failed to create household';
+            error = err.message || $t.modals.create_household; // Generic error fallback
         } finally {
             loading = false;
         }
@@ -73,9 +74,9 @@
         </div>
         
         <div class="p-6">
-            <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">Welcome to WhoFed!</h2>
+            <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">{$t.modals.welcome_title}</h2>
             <p class="text-gray-500 text-center text-sm mb-6">
-                Let's set up your household to start tracking pet care.
+                {$t.modals.welcome_desc}
             </p>
             
             {#if error}
@@ -86,13 +87,13 @@
             
             <div class="mb-6">
                 <label for="household-name" class="block text-sm font-medium text-gray-700 mb-2">
-                    Name your household
+                    {$t.modals.enter_household_name}
                 </label>
                 <input
                     id="household-name"
                     type="text"
                     bind:value={householdName}
-                    placeholder="e.g. The Smith Family, Home, etc."
+                    placeholder={$t.modals.household_placeholder}
                     class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-sage focus:ring-2 focus:ring-brand-sage/20 outline-none transition-all text-gray-900"
                     disabled={loading}
                 />
@@ -106,7 +107,7 @@
                 {#if loading}
                     <div class="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div>
                 {/if}
-                Create Household
+                {$t.modals.create_button}
             </button>
         </div>
     </div>

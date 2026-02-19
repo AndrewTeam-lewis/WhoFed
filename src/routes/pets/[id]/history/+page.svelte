@@ -133,7 +133,7 @@
                                         {/if}
                                     {:else if log.action_type === 'unmedicated'}
                                         <span class="text-red-500">un-gave</span> <span class="text-gray-900">{petName}</span> medication
-                                    {:else if log.action_type === 'litter'}
+                                    {:else if log.action_type === 'care'}
                                         cleaned up after <span class="text-gray-900">{petName}</span>
                                     {:else}
                                         <span>{log.action_type}</span>

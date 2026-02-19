@@ -1,6 +1,8 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
     import { supabase } from '$lib/supabase';
+    import { t } from '$lib/services/i18n';
+    import { get } from 'svelte/store';
 
     const dispatch = createEventDispatcher();
 
@@ -15,16 +17,18 @@
     });
 
     async function updatePassword() {
+        const translations = get(t);
+        
         if (!password || !confirmPassword) {
-            error = 'Please fill in all fields';
+            error = translations.modals.fill_all_fields;
             return;
         }
         if (password !== confirmPassword) {
-            error = 'Passwords do not match';
+            error = translations.modals.passwords_no_match;
             return;
         }
         if (password.length < 6) {
-            error = 'Password must be at least 6 characters';
+            error = translations.modals.password_min_chars;
             return;
         }
 
@@ -46,7 +50,7 @@
 
         } catch (e: any) {
             console.error('Error updating password:', e);
-            error = e.message || 'Failed to update password';
+            error = e.message || translations.modals.update_error;
         } finally {
             loading = false;
         }
@@ -62,7 +66,7 @@
         <div class="p-6">
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-gray-900">Change Password</h3>
+                <h3 class="text-xl font-bold text-gray-900">{$t.modals.change_password_title}</h3>
                 <button on:click={() => dispatch('close')} class="text-gray-400 hover:text-gray-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -77,27 +81,27 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                     </div>
-                    <h4 class="text-lg font-bold text-gray-900 mb-2">Password Updated!</h4>
-                    <p class="text-sm text-gray-500">Your password has been changed successfully.</p>
+                    <h4 class="text-lg font-bold text-gray-900 mb-2">{$t.modals.password_updated}</h4>
+                    <p class="text-sm text-gray-500">{$t.modals.password_updated_desc}</p>
                 </div>
             {:else}
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">New Password</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{$t.modals.new_password}</label>
                         <input
                             type="password"
                             bind:value={password}
-                            placeholder="Min. 6 characters"
+                            placeholder={$t.modals.password_placeholder}
                             class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-sage/20 focus:border-brand-sage"
                         />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Confirm Password</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{$t.modals.confirm_password}</label>
                         <input
                             type="password"
                             bind:value={confirmPassword}
-                            placeholder="Re-enter password"
+                            placeholder={$t.modals.password_confirm_placeholder}
                             class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-sage/20 focus:border-brand-sage"
                         />
                     </div>
@@ -114,9 +118,9 @@
                         disabled={!password || !confirmPassword || loading}
                     >
                         {#if loading}
-                            Update...
+                            {$t.modals.updating}
                         {:else}
-                            Update Password
+                            {$t.modals.update_password}
                         {/if}
                     </button>
                 </div>

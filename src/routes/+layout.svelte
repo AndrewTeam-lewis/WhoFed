@@ -11,6 +11,7 @@
   import { supabase } from '$lib/supabase';
   import { availableHouseholds, switchHousehold, getStoredHouseholdId } from '$lib/stores/appState';
   import { purchasesService } from '$lib/services/purchases';
+  import { t } from '$lib/services/i18n';
   import Walkthrough from '$lib/components/Walkthrough.svelte';
   import HouseholdSetupModal from '$lib/components/HouseholdSetupModal.svelte';
   import '../app.css';
@@ -26,6 +27,8 @@
       console.log('[DEBUG REACTIVE] currentUser cleared, calling purchasesService.logout()');
       purchasesService.logout(); // Clears native entitlement store
   }
+
+  let isInitializing = true;
 
   onMount(async () => {
     console.log('[DEBUG] === Layout onMount START ===');
@@ -98,8 +101,11 @@
       }
     }
 
+    isInitializing = false;
     console.timeEnd('[DEBUG] Total onMount time');
     console.log('[DEBUG] === Layout onMount END ===');
+
+    // ... (rest of onMount listeners)
 
     // Listen to auth state changes
     const { data: authListener } = authService.onAuthStateChange(async (session) => {
@@ -270,9 +276,16 @@
 
 <div class="min-h-screen bg-gray-50">
 
-  <main>
-    <slot />
-  </main>
+  {#if isInitializing}
+    <div class="h-screen w-screen flex flex-col items-center justify-center bg-white">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-sage mb-4"></div>
+        <div class="text-brand-sage font-bold text-sm tracking-widest uppercase">{$t.common.loading}</div>
+    </div>
+  {:else}
+    <main>
+        <slot />
+    </main>
+  {/if}
   
   <Walkthrough />
   

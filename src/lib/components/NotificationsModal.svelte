@@ -2,6 +2,7 @@
     import { createEventDispatcher } from 'svelte';
     import { supabase } from '$lib/supabase';
     import { currentUser } from '$lib/stores/user';
+    import { t } from '$lib/services/i18n';
 
     const dispatch = createEventDispatcher();
 
@@ -23,8 +24,8 @@
     async function loadInvites() {
         loading = true;
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            // Use store instead of re-fetching auth
+            if (!$currentUser) return;
 
             const { data, error } = await supabase
                 .from('household_invitations')
@@ -36,7 +37,7 @@
                     profiles!household_invitations_invited_by_fkey (first_name, email)
                 `)
                 .eq('status', 'pending')
-                .eq('invited_user_id', user.id)
+                .eq('invited_user_id', $currentUser.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -107,15 +108,15 @@
         }
     }
 
-    function timeAgo(dateStr: string): string {
+    function timeAgo(dateStr: string, translations: any): string {
         const diff = Date.now() - new Date(dateStr).getTime();
         const minutes = Math.floor(diff / 60000);
-        if (minutes < 1) return 'just now';
-        if (minutes < 60) return `${minutes}m ago`;
+        if (minutes < 1) return translations.common.just_now;
+        if (minutes < 60) return translations.common.ago_m.replace('{n}', minutes);
         const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
+        if (hours < 24) return translations.common.ago_h.replace('{n}', hours);
         const days = Math.floor(hours / 24);
-        return `${days}d ago`;
+        return translations.common.ago_d.replace('{n}', days);
     }
 </script>
 
@@ -128,7 +129,7 @@
         <div class="p-6">
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-gray-900">Notifications</h3>
+                <h3 class="text-xl font-bold text-gray-900">{$t.notifications.modal_title}</h3>
                 <button on:click={() => dispatch('close')} class="text-gray-400 hover:text-gray-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -150,8 +151,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                         </svg>
                     </div>
-                    <p class="text-gray-400 text-sm font-medium">No notifications</p>
-                    <p class="text-gray-300 text-xs mt-1">You're all caught up!</p>
+                    <p class="text-gray-400 text-sm font-medium">{$t.notifications.empty_title}</p>
+                    <p class="text-gray-300 text-xs mt-1">{$t.notifications.empty_body}</p>
                 </div>
             {:else}
                 <div class="space-y-3">
@@ -165,15 +166,15 @@
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-medium text-gray-900">
-                                        Household Invite
+                                        {$t.notifications.invite_title}
                                     </p>
                                     <p class="text-xs text-gray-500 mt-0.5">
-                                        <span class="font-semibold">{invite.invited_by_name}</span> invited you to join <span class="font-semibold">{invite.household_name}</span>
+                                        {@html $t.notifications.invite_body.replace('{name}', `<span class="font-semibold">${invite.invited_by_name}</span>`).replace('{household}', `<span class="font-semibold">${invite.household_name}</span>`)}
                                     </p>
                                     {#if invite.invited_by_email}
                                         <p class="text-[10px] text-gray-400 mt-0.5">{invite.invited_by_email}</p>
                                     {/if}
-                                    <p class="text-[10px] text-gray-400 mt-0.5">{timeAgo(invite.created_at)}</p>
+                                    <p class="text-[10px] text-gray-400 mt-0.5">{timeAgo(invite.created_at, $t)}</p>
                                 </div>
                             </div>
                             <div class="flex space-x-2 mt-3">
@@ -182,14 +183,14 @@
                                     on:click={() => declineInvite(invite)}
                                     disabled={actionLoading === invite.id}
                                 >
-                                    Decline
+                                    {$t.notifications.decline}
                                 </button>
                                 <button
                                     class="flex-1 py-2 bg-brand-sage text-white rounded-lg font-semibold text-xs hover:bg-brand-sage/90 transition-colors disabled:opacity-50"
                                     on:click={() => acceptInvite(invite)}
                                     disabled={actionLoading === invite.id}
                                 >
-                                    Accept
+                                    {$t.notifications.accept}
                                 </button>
                             </div>
                         </div>

@@ -3,7 +3,7 @@
   export let size: 'sm' | 'md' | 'lg' | 'xl' = 'md';
   export let extraClasses = '';
 
-  const isImage = icon && (icon.startsWith('http') || icon.startsWith('data:'));
+  const isImage = icon && (icon.startsWith('http') || icon.startsWith('data:') || icon.endsWith('.svg') || icon.startsWith('/'));
 
   const sizeClasses = {
       sm: 'text-xl w-8 h-8',

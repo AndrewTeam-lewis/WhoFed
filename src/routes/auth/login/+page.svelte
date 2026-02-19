@@ -1,13 +1,28 @@
 <script lang="ts">
   import { authService } from '$lib/services/auth';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
 
   let usernameOrEmail = '';
   let password = '';
   let error = '';
   let loading = false;
+  let checkingAuth = true;
 
-  import { page } from '$app/stores';
+  onMount(async () => {
+    try {
+        const session = await authService.getSession();
+        if (session?.user) {
+            goto('/app');
+        } else {
+            checkingAuth = false;
+        }
+    } catch (e) {
+        console.error('Auth check failed', e);
+        checkingAuth = false;
+    }
+  });
 
   async function handleLogin(e: Event) {
     e.preventDefault();
@@ -35,6 +50,11 @@
   }
 </script>
 
+{#if checkingAuth}
+    <div class="min-h-screen flex items-center justify-center bg-gray-50">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-sage"></div>
+    </div>
+{:else}
 <div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
   <div class="w-full max-w-md bg-white rounded-[32px] shadow-xl p-8 animate-fade-in">
     <div class="text-center mb-8">
@@ -113,6 +133,7 @@
     </p>
   </div>
 </div>
+{/if}
 
 <style>
     @keyframes fade-in {

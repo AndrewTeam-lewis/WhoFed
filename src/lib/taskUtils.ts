@@ -62,7 +62,7 @@ export function generateTasksForDate(
                 pet_id: schedule.pet_id,
                 schedule_id: schedule.id,
                 household_id: householdId,
-                label: label || schedule.label || (schedule.task_type === 'feeding' ? 'Feeding' : schedule.task_type === 'litter' ? 'Litter' : 'Medication'),
+                label: label || schedule.label || (schedule.task_type === 'feeding' ? 'Feeding' : schedule.task_type === 'care' ? 'Care' : 'Medication'),
                 task_type: schedule.task_type,
                 status: 'pending',
                 due_at: dueAt.toISOString(),

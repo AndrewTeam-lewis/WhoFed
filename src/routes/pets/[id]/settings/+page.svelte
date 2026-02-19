@@ -1,22 +1,23 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
   import { generateTasksForDate } from '$lib/taskUtils';
   import { ensureDailyTasks } from '$lib/services/taskService';
-  import { availableHouseholds } from '$lib/stores/appState';
+  import { activeHousehold, availableHouseholds } from '$lib/stores/appState';
+  import { currentUser } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
+  import { t } from '$lib/services/i18n';
+  import { get } from 'svelte/store';
 
   let loading = true;
   let saving = false;
   let petId = $page.params.id;
-  
+
   // Form State
   let name = '';
-  let species = '';
+  let icon = '🐱';
   let householdId: string | null = null;
-  let currentUser: any = null;
   let isOwner = false;
   let showDeleteModal = false;
 
@@ -34,7 +35,7 @@
 
   type ScheduleItem = {
       uiId: string; // Temporary ID for UI handling
-      type: 'feeding' | 'medication' | 'litter';
+      type: 'feeding' | 'medication' | 'care';
       label: string;
       isEnabled: boolean;
       frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -59,64 +60,54 @@
       { val: 4, label: 'T' }, { val: 5, label: 'F' }, { val: 6, label: 'S' }, { val: 0, label: 'S' }
   ];
 
-  const SPECIES_OPTIONS = [
-    { id: 'dog', icon: '🐶', label: 'Dog' },
-    { id: 'dog-2', icon: '🐕', label: 'Dog 2' },
-    { id: 'cat', icon: '🐱', label: 'Cat' },
-    { id: 'cat-2', icon: '🐈', label: 'Cat 2' },
-    { id: 'cat-3', icon: '🐈‍⬛', label: 'Cat 3' },
-    { id: 'bird', icon: '🐦', label: 'Bird' },
-    { id: 'hamster', icon: '🐹', label: 'Hamster' },
-    { id: 'rabbit', icon: '🐰', label: 'Rabbit' },
-    { id: 'fish', icon: '🐠', label: 'Fish' },
-    { id: 'iguana', icon: '🦎', label: 'Lizard' },
-    { id: 'snake', icon: '🐍', label: 'Snake' },
-    { id: 'turtle', icon: '🐢', label: 'Turtle' },
+  // Curated Pet Icons (ordered by commonality)
+  const PET_ICONS = [
+      '🐱', // Cat
+      '🐶', // Dog
+      '🐠', // Fish
+      '🦜', // Parrot
+      '🐰', // Rabbit
+      '🐹', // Hamster
+      '🦎', // Lizard
+      '🐍', // Snake
+      '🐢', // Turtle
+      '🐈', // Cat (alternate)
+      '🐕', // Dog (alternate)
+      '🐁', // Mouse
+      '🦔', // Hedgehog
+      '🐾'  // Generic pet
   ];
 
-  let showSpeciesModal = false;
+  let showIconModal = false;
 
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      goto('/auth/login');
-      return;
-    }
-    currentUser = session.user;
-    await loadData();
-  });
+  // Load data as soon as user is available
+  let dataLoaded = false;
+  $: if ($currentUser && !dataLoaded) {
+      dataLoaded = true;
+      loadData();
+  }
 
   async function loadData() {
       loading = true;
       try {
-          const { data: pet, error: petError } = await supabase
-            .from('pets')
-            .select('*')
-            .eq('id', petId)
-            .single();
-          
-          if (petError) throw petError;
-          
+          // Use store for owner check (already loaded by layout — zero network call)
+          isOwner = $activeHousehold?.role === 'owner';
+
+          // Fetch pet and schedules in parallel (1 round trip instead of 2 sequential)
+          const [petRes, schedRes] = await Promise.all([
+              supabase.from('pets').select('*').eq('id', petId).single(),
+              supabase.from('schedules').select('*').eq('pet_id', petId).order('id', { ascending: true })
+          ]);
+
+          if (petRes.error) throw petRes.error;
+          if (schedRes.error) throw schedRes.error;
+
+          const pet = petRes.data;
           name = pet.name;
-          species = pet.species;
+          icon = pet.icon || '🐱';
           householdId = pet.household_id;
-          
-          // Check if current user is household owner
-          const { data: household } = await supabase
-              .from('households')
-              .select('owner_id')
-              .eq('id', pet.household_id)
-              .single();
-          
-          isOwner = household?.owner_id === currentUser?.id;
 
-          const { data: dbSchedules, error: schedError } = await supabase
-            .from('schedules')
-            .select('*')
-            .eq('pet_id', petId);
-            
-          if (schedError) throw schedError;
-
+          const dbSchedules = schedRes.data;
           if (dbSchedules) {
               console.log('Fetched dbSchedules:', dbSchedules);
               groupSchedulesForUi(dbSchedules);
@@ -124,7 +115,7 @@
           }
       } catch (e) {
           console.error("Error loading settings:", e);
-          alert("Failed to load pet settings.");
+          alert(get(t).pet_settings.load_error);
           goto('/');
       } finally {
           loading = false;
@@ -181,6 +172,12 @@
       });
 
       const result = Object.values(groups);
+      // Sort by the first dbId in each group to maintain insertion order
+      result.sort((a, b) => {
+          const aId = a.dbIds[0] || '';
+          const bId = b.dbIds[0] || '';
+          return aId.localeCompare(bId);
+      });
       console.log('Final Groups:', result);
       schedules = result;
   }
@@ -230,7 +227,7 @@
       return { frequency, selectedDays, selectedDayOfMonth, customDates, timeStr };
   }
 
-  function addSchedule(type: 'feeding' | 'medication' | 'litter') {
+  function addSchedule(type: 'feeding' | 'medication' | 'care') {
       schedules = [...schedules, {
           uiId: Math.random().toString(36),
           type,
@@ -327,20 +324,20 @@
   }
 
   async function handleSubmit() {
-      if (!name) return alert('Name required');
+      if (!name) return alert(get(t).pet_settings.name_required);
+
+      // Validate care tasks have names
+      for (const s of schedules) {
+          if (s.isEnabled && s.type === 'care' && !s.label.trim()) {
+              alert(get(t).pet_settings.care_task_name_required);
+              return;
+          }
+      }
+
       saving = true;
 
       try {
-          // Map UI species to DB species (simple check)
-          let dbSpecies = species;
-          if (species.startsWith('dog')) dbSpecies = 'dog';
-          else if (species.startsWith('cat')) dbSpecies = 'cat';
-          
-          // Determine if we can save the specific icon variant. 
-          // If the DB only supports 'dog'/'cat', we lose the icon variant unless we store it elsewhere.
-          // For now, to fix the error, we MUST send a valid constraint value.
-          
-          await supabase.from('pets').update({ name, species: dbSpecies, household_id: householdId }).eq('id', petId);
+          await supabase.from('pets').update({ name, icon, household_id: householdId }).eq('id', petId);
 
           // 1. Calculate active IDs from UI state
           const activeIds = new Set<string>();
@@ -451,7 +448,7 @@
           goto('/');
       } catch (e: any) {
           console.error(e);
-          alert('Error saving: ' + e.message);
+          alert(get(t).pet_settings.save_error + e.message);
       } finally {
           saving = false;
       }
@@ -470,7 +467,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
             </svg>
         </a>
-        <h1 class="text-xl font-bold text-typography-primary">Edit Details</h1>
+        <h1 class="text-xl font-bold text-typography-primary">{$t.pet_settings.title}</h1>
     </header>
 
     <main class="p-6 max-w-lg mx-auto space-y-8">
@@ -482,22 +479,20 @@
             <!-- Avatar Section -->
             <section class="flex flex-col items-center justify-center mb-8 relative z-10">
                 <div class="relative group">
-                    <button 
+                    <button
                         type="button"
-                        on:click={() => showSpeciesModal = true}
+                        on:click={() => showIconModal = true}
                         class="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center relative transition-transform active:scale-95"
                     >
-                        <span class="text-5xl">
-                            {SPECIES_OPTIONS.find(s => s.id === species)?.icon || '🐶'}
-                        </span>
-                        
+                        <PetIcon icon={icon} size="lg" />
+
                         <!-- Edit Overlay -->
                         <div class="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         </div>
                     </button>
-                    <button 
+                    <button
                         type="button"
-                        on:click={() => showSpeciesModal = true}
+                        on:click={() => showIconModal = true}
                         class="absolute bottom-1 right-1 w-8 h-8 bg-brand-sage rounded-full flex items-center justify-center text-white shadow-md hover:bg-brand-sage/90 transition-colors"
                     >
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -505,22 +500,22 @@
                         </svg>
                     </button>
                 </div>
-                
+
                 <!-- Explicit Change Label -->
-                <button 
+                <button
                     type="button"
-                    on:click={() => showSpeciesModal = true}
+                    on:click={() => showIconModal = true}
                     class="mt-3 text-xs font-bold text-brand-sage uppercase tracking-wider hover:underline"
                 >
-                    Change Icon
+                    {$t.pet_settings.change_icon}
                 </button>
-                
+
                 <div class="mt-4 w-full max-w-xs text-center">
-                    <input 
-                        type="text" 
-                        bind:value={name} 
+                    <input
+                        type="text"
+                        bind:value={name}
                         class="block w-full text-center text-2xl font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 placeholder-gray-300 focus:placeholder-gray-200"
-                        placeholder="Name your pet..."
+                        placeholder={$t.pet_settings.name_placeholder}
                     />
                 </div>
             </section>
@@ -529,7 +524,7 @@
             {#if isOwner && $availableHouseholds.length > 1}
             <section class="bg-white rounded-[24px] p-5 shadow-card">
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                    Household
+                    {$t.pet_settings.household}
                 </label>
                 <select
                     bind:value={householdId}
@@ -539,32 +534,29 @@
                         <option value={hh.id}>{hh.name}</option>
                     {/each}
                 </select>
-                <p class="text-xs text-gray-400 mt-2">Move this pet to a different household</p>
+                <p class="text-xs text-gray-400 mt-2">{$t.pet_settings.move_household}</p>
             </section>
             {/if}
 
-            <!-- Species Selection Modal -->
-            {#if showSpeciesModal}
+            <!-- Icon Selection Modal -->
+            {#if showIconModal}
                 <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <!-- Backdrop -->
-                    <button type="button" class="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" on:click={() => showSpeciesModal = false}></button>
-                    
+                    <button type="button" class="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" on:click={() => showIconModal = false}></button>
+
                     <!-- Modal -->
                     <div class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl relative z-10 animate-scale-in max-h-[80vh] overflow-y-auto">
-                        <h3 class="text-center text-lg font-bold text-typography-primary mb-6">Choose Icon</h3>
-                        
-                        <div class="grid grid-cols-3 gap-4">
-                            {#each SPECIES_OPTIONS as opt}
-                                <button 
+                        <h3 class="text-center text-lg font-bold text-typography-primary mb-6">{$t.pet_settings.choose_icon}</h3>
+
+                        <div class="grid grid-cols-5 gap-3">
+                            {#each PET_ICONS as petIcon}
+                                <button
                                     type="button"
-                                    class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all aspect-square
-                                    {species === opt.id ? 'border-brand-sage bg-brand-sage/5 text-brand-sage shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-brand-sage/30'}"
-                                    on:click={() => { species = opt.id; showSpeciesModal = false; }}
+                                    class="flex items-center justify-center p-2 rounded-xl transition-all aspect-square border-2
+                                    {icon === petIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
+                                    on:click={() => { icon = petIcon; showIconModal = false; }}
                                 >
-                                    <span class="text-3xl mb-1 filter {species !== opt.id ? 'grayscale opacity-70' : ''}">
-                                        {opt.icon}
-                                    </span>
-                                    <span class="text-[10px] font-bold uppercase tracking-wider text-center leading-tight">{opt.label}</span>
+                                    <span class="text-3xl">{petIcon}</span>
                                 </button>
                             {/each}
                         </div>
@@ -572,7 +564,7 @@
                 </div>
             {/if}
 
-            <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8">Care Schedules</h3>
+            <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8">{$t.pet_settings.care_schedules}</h3>
 
             <!-- Schedules List -->
             <div class="space-y-6">
@@ -581,13 +573,13 @@
                          <!-- Header -->
                          <div class="flex items-start justify-between mb-6">
                             <div class="flex items-center space-x-4 flex-1">
-                                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : schedule.type === 'litter' ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-500'}">
+                                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : schedule.type === 'care' ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-500'}">
                                      {#if schedule.type === 'feeding'}
                                         <!-- Bowl Icon -->
                                         <span class="text-2xl">🥣</span>
-                                     {:else if schedule.type === 'litter'}
-                                        <!-- Litter Icon -->
-                                        <span class="text-2xl">📥</span>
+                                     {:else if schedule.type === 'care'}
+                                        <!-- Care Task Icon -->
+                                        <span class="text-2xl">❤️</span>
                                      {:else}
                                         <!-- Pill Icon -->
                                         <span class="text-2xl">💊</span>
@@ -598,7 +590,7 @@
                                         type="text" 
                                         bind:value={schedule.label}
                                         class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1"
-                                        placeholder={schedule.type === 'feeding' ? 'Food Name' : schedule.type === 'litter' ? 'Litter Task' : 'Medication Name'}
+                                        placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder : $t.pet_settings.med_name_placeholder}
                                     />
                                     <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -631,14 +623,14 @@
                                     {#each ['daily', 'weekly', 'monthly', 'custom'] as freq}
                                         <button type="button" 
                                             class="flex-1 py-2 text-[10px] font-bold uppercase rounded-lg transition-all {schedule.frequency === freq ? 'bg-brand-sage text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}" 
-                                            on:click={() => schedule.frequency = freq as any}>{freq}</button>
+                                            on:click={() => schedule.frequency = freq as any}>{$t.pet_settings[freq]}</button>
                                     {/each}
                                 </div>
 
                                 <!-- Frequency Specific Controls -->
                                 {#if schedule.frequency === 'weekly'}
                                     <div class="mb-6">
-                                        <label class="block text-sm font-bold text-typography-secondary mb-2">Select Days</label>
+                                        <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.select_days}</label>
                                         <div class="flex justify-between">
                                             {#each DAYS_OF_WEEK as day}
                                                 <button 
@@ -659,9 +651,9 @@
                                     </div>
                                 {:else if schedule.frequency === 'monthly'}
                                     <div class="mb-6">
-                                        <label class="block text-sm font-bold text-typography-secondary mb-2">Day of Month</label>
+                                        <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.day_of_month}</label>
                                         <div class="flex items-center bg-neutral-surface rounded-2xl px-4 py-3 border border-transparent focus-within:border-brand-sage/50">
-                                            <span class="text-sm font-bold text-typography-secondary mr-2">Every</span>
+                                            <span class="text-sm font-bold text-typography-secondary mr-2">{$t.pet_settings.every}</span>
                                             <input 
                                                 type="number" 
                                                 min="1" 
@@ -669,12 +661,12 @@
                                                 bind:value={schedule.selectedDayOfMonth}
                                                 class="bg-transparent border-none text-typography-primary font-bold focus:ring-0 p-0 text-base w-12 text-center"
                                             />
-                                            <span class="text-sm font-bold text-typography-secondary ml-1">of the month</span>
+                                            <span class="text-sm font-bold text-typography-secondary ml-1">{$t.pet_settings.of_the_month}</span>
                                         </div>
                                     </div>
                                 {:else if schedule.frequency === 'custom'}
                                     <div class="mb-6">
-                                        <label class="block text-sm font-bold text-typography-secondary mb-2">Specific Dates</label>
+                                        <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.specific_dates}</label>
                                         <div class="flex items-center space-x-2 mb-3">
                                             <input 
                                                 type="date" 
@@ -712,7 +704,7 @@
                                                 {/each}
                                             </div>
                                         {:else}
-                                            <p class="text-xs text-gray-400 italic">No dates selected</p>
+                                            <p class="text-xs text-gray-400 italic">{$t.pet_settings.no_dates}</p>
                                         {/if}
                                     </div>
                                 {/if}
@@ -720,7 +712,7 @@
                             <!-- Time Rows -->
                             {#if schedule.frequency !== 'monthly'}
                             <div class="space-y-3 mb-6">
-                                <label class="block text-sm font-bold text-typography-secondary mb-2">At these times</label>
+                                <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.at_times}</label>
                                 {#each schedule.times as time, i}
                                 <div class="flex items-center space-x-3 bg-neutral-surface rounded-2xl px-4 py-3 group focus-within:ring-2 focus-within:ring-brand-sage/50 transition-all border border-transparent hover:border-brand-sage/20">
                                      <!-- Label Input (Left) -->
@@ -729,7 +721,7 @@
                                             type="text" 
                                             bind:value={schedule.times[i].label}
                                             class="font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 w-full placeholder-gray-400 text-sm"
-                                            placeholder={i === 0 ? 'Breakfast' : i === 1 ? 'Dinner' : 'Label'}
+                                            placeholder={i === 0 ? $t.pet_settings.breakfast : i === 1 ? $t.pet_settings.dinner : $t.pet_settings.label_placeholder}
                                         />
                                      </div>
 
@@ -765,7 +757,7 @@
                                 class="w-full py-3 border-2 border-dashed border-brand-sage/40 rounded-2xl text-brand-sage text-xs font-bold uppercase flex items-center justify-center space-x-2 hover:bg-brand-sage/5 transition-colors"
                             >
                                 <span class="text-lg leading-none">+</span>
-                                <span>Add {schedule.type} Time</span>
+                                <span>{$t.pet_settings.add_time.replace('{type}', schedule.type)}</span>
                             </button>
                             {/if}
                             </div>
@@ -774,9 +766,9 @@
                 {/each}
                 
                 <div class="grid grid-cols-3 gap-3 opacity-50 hover:opacity-100 transition-opacity">
-			<button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Food</button>
-			<button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Meds</button>
-			<button on:click={() => addSchedule('litter')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Litter</button>
+			<button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">{$t.pet_settings.add_food}</button>
+			<button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">{$t.pet_settings.add_meds}</button>
+			<button on:click={() => addSchedule('care')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">{$t.pet_settings.add_care}</button>
                 </div>
             </div>
 
@@ -786,7 +778,7 @@
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                      </svg>
-                     Remove Pet Profile
+                     {$t.pet_settings.remove_profile}
                  </button>
             </div>
 
@@ -800,7 +792,7 @@
                     {#if saving}
                         <div class="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div>
                     {:else}
-                        Save Changes
+                        {$t.pet_settings.save_changes}
                     {/if}
                 </button>
             </div>

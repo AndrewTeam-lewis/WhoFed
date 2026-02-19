@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { supabase } from '$lib/supabase';
+    import { t } from '$lib/services/i18n';
 
     const dispatch = createEventDispatcher();
 
@@ -47,7 +48,7 @@
 
         } catch (e: any) {
             console.error('Error creating household:', e);
-            error = e.message || 'Failed to create household';
+            error = e.message || $t.common.error;
         } finally {
             loading = false;
         }
@@ -63,7 +64,7 @@
         <div class="p-6">
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-gray-900">New Household</h3>
+                <h3 class="text-xl font-bold text-gray-900">{$t.modals.create_household}</h3>
                 <button on:click={() => dispatch('close')} class="text-gray-400 hover:text-gray-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -73,11 +74,11 @@
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Household Name</label>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{$t.modals.household_name}</label>
                     <input
                         type="text"
                         bind:value={name}
-                        placeholder="e.g. Vacation Home"
+                        placeholder={$t.modals.household_placeholder}
                         class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-sage/20 focus:border-brand-sage"
                         on:keydown={(e) => e.key === 'Enter' && handleSubmit()}
                     />
@@ -95,9 +96,9 @@
                     disabled={!name.trim() || loading}
                 >
                     {#if loading}
-                        Creating...
+                        {$t.modals.sending}
                     {:else}
-                        Create Household
+                        {$t.modals.create_button}
                     {/if}
                 </button>
             </div>

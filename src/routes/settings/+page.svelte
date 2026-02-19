@@ -19,9 +19,17 @@
   import { purchasesService, currentOfferings } from '$lib/services/purchases';
   // Import the new modal
   import ExportOptionsModal from '$lib/components/ExportOptionsModal.svelte';
+  import { currentLanguage, setLanguage, t, type Language } from '$lib/services/i18n';
+  import SelectionModal from '$lib/components/SelectionModal.svelte';
 
   let showExportOptionsModal = false;
   let allPets: any[] = [];
+
+  let showLanguageModal = false;
+  const languages = [
+      { id: 'en', name: 'English', icon: '🇺🇸' },
+      { id: 'pt', name: 'Português', icon: '🇧🇷' }
+  ];
 
   async function openExportModal() {
       if (!$userIsPremium) {
@@ -845,7 +853,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
       </svg>
     </a>
-    <h1 class="text-xl font-bold text-gray-900">Settings</h1>
+    <h1 class="text-xl font-bold text-gray-900">{$t.settings.title}</h1>
     <div class="flex-1"></div>
     <div class="flex items-center space-x-2">
        <!-- Bell removed -->
@@ -855,7 +863,7 @@
   <main class="p-6 max-w-lg mx-auto space-y-6">
       <!-- Profile Settings (Editable via Modal) -->
        <div class="space-y-2">
-         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Personal Identity</div>
+         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.personal_identity}</div>
          <!-- Profile Card -->
          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
              <div class="flex items-center justify-between p-6">
@@ -873,8 +881,8 @@
               <!-- Email Row (Read Only) -->
              <div class="w-full text-left p-4 flex items-center justify-between">
                  <div>
-                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Primary Email</p>
-                     <p class="text-sm font-medium text-gray-900">{profile.email || 'No email set'}</p>
+                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{$t.settings.primary_email}</p>
+                     <p class="text-sm font-medium text-gray-900">{profile.email || $t.settings.no_email_set}</p>
                  </div>
                  <!-- <div class="flex items-center text-brand-sage font-medium text-xs">
                      <span>Change</span>
@@ -884,7 +892,7 @@
              <!-- Password Row -->
              <button class="w-full text-left p-4 flex items-center justify-between hover:bg-gray-50 transition-colors" on:click={() => showChangePasswordModal = true}>
                  <div>
-                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Password</p>
+                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{$t.settings.password}</p>
                      <p class="text-sm font-bold text-gray-900 tracking-widest">••••••••••••</p>
                  </div>
                  <div class="flex items-center text-brand-sage font-medium text-xs">
@@ -893,7 +901,7 @@
              </button>
          </section>
           <p class="text-xs text-gray-400 px-1 leading-relaxed mt-2">
-              Changes to sensitive information may require a secondary verification step to ensure your account's safety.
+              {$t.settings.sensitive_info_warning}
           </p>
        </div>
 
@@ -903,14 +911,14 @@
 
        <!-- Households -->
        <div class="space-y-2">
-         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Households</div>
+         <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.households_title}</div>
          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
              
              <!-- Header / Action -->
              <div class="p-4 flex items-center justify-between">
                  <div>
-                     <h3 class="font-bold text-gray-900 leading-tight">Manage Households</h3>
-                     <p class="text-xs text-gray-500 mt-1">Manage your households and access levels.</p>
+                     <h3 class="font-bold text-gray-900 leading-tight">{$t.settings.manage_households_header}</h3>
+                     <p class="text-xs text-gray-500 mt-1">{$t.settings.manage_households_desc}</p>
                  </div>
                  <button 
                      class="w-8 h-8 rounded-full flex items-center justify-center transition-colors {canAddHousehold ? 'bg-brand-sage/10 text-brand-sage hover:bg-brand-sage/20' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}"
@@ -957,7 +965,7 @@
                                      {/if}
                                  </div>
                                  <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage font-bold' : 'text-gray-400 font-medium'}">
-                                     {hh.role === 'owner' ? 'Owner' : `Member (owner: ${hh.ownerName || 'Unknown'})`}
+                                     {hh.role === 'owner' ? $t.settings.role_owner : $t.settings.member_owner.replace('{name}', hh.ownerName || 'Unknown')}
                                  </div>
                              </div>
                          </div>
@@ -972,7 +980,7 @@
                              <div class="pt-3">
                                  <!-- Members Header -->
                                  <div class="flex items-center justify-between mb-3 px-1">
-                                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Members</div>
+                                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">{$t.settings.members_header}</div>
                                      {#if hh.role === 'owner'}
                                          <button 
                                              class="text-xs font-bold text-brand-sage hover:underline flex items-center space-x-1"
@@ -981,7 +989,7 @@
                                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                                                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
                                              </svg>
-                                             <span>Add Member</span>
+                                             <span>{$t.modals.invite_member}</span>
                                          </button>
                                      {/if}
                                  </div>
@@ -1001,7 +1009,7 @@
                                                              {member.user_id === currentUser?.id ? ' (You)' : ''}
                                                          </div>
                                                          <div class="text-[10px]  font-bold {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
-                                                             {member.role === 'owner' ? 'Owner' : 'Member'}
+                                                             {member.role === 'owner' ? $t.settings.role_owner : $t.settings.role_member}
                                                          </div>
                                                      </div>
                                                  </div>
@@ -1012,7 +1020,7 @@
                                                              <button 
                                                              class="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
                                                              on:click={() => { memberToRemove = { ...member, first_name: member.first_name || 'Member' }; householdIdForAction = hh.id; showRemoveMemberModal = true; }}
-                                                             title="Remove member"
+                                                             title="{$t.settings.remove}"
                                                          >
                                                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1024,7 +1032,7 @@
                                                              class="px-2 py-1 text-[10px] font-bold text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors uppercase tracking-wide"
                                                              on:click={() => { householdIdForAction = hh.id; showLeaveHouseholdModal = true; }}
                                                          >
-                                                             Leave
+                                                             {$t.settings.leave}
                                                          </button>
                                                      {/if}
                                                  </div>
@@ -1032,7 +1040,7 @@
                                          {/each}
                                      </div>
                                  {:else}
-                                     <div class="text-xs text-gray-400 py-2 italic">Loading members...</div>
+                                     <div class="text-xs text-gray-400 py-2 italic">{$t.settings.loading_members}</div>
                                  {/if}
                                  
                                  <!-- Invite Member -->
@@ -1052,7 +1060,7 @@
                                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                              </svg>
-                                             {canInvite ? 'Invite Member' : 'Member Limit Reached'}
+                                              {canInvite ? $t.modals.invite_member : $t.settings.member_limit_reached}
                                          </button>
                                      </div>
                                  {/if}
@@ -1067,7 +1075,7 @@
                                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                              </svg>
-                                             <span>Delete Household</span>
+                                             <span>{$t.settings.delete_household}</span>
                                          </button>
                                      </div>
                                  {/if}
@@ -1095,14 +1103,14 @@
                        </svg>
                     </div>
                     <div>
-                        <div class="font-bold text-gray-900 text-sm">Invitations</div>
+                        <div class="font-bold text-gray-900 text-sm">{$t.settings.invitations}</div>
                         <div class="text-xs text-gray-500">
                             {#if pendingInviteCount > 0}
-                                <span class="text-brand-sage font-bold">{pendingInviteCount} new</span> 
+                                <span class="text-brand-sage font-bold">{$t.settings.invites_new.replace('{n}', pendingInviteCount.toString())}</span> 
                             {:else if sentInviteCount > 0}
-                                <span class="text-gray-400">View sent invites</span>
+                                <span class="text-gray-400">{$t.settings.view_sent_invites}</span>
                             {:else}
-                                <span class="text-gray-400">Manage invitations</span>
+                                <span class="text-gray-400">{$t.settings.manage_invitations}</span>
                             {/if}
                         </div>
                     </div>
@@ -1128,14 +1136,14 @@
                     <!-- INCOMING -->
                     {#if incomingInvites.length > 0}
                         <div class="pt-4">
-                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Received ({incomingInvites.length})</div>
+                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">{$t.settings.received_invites.replace('{n}', incomingInvites.length.toString())}</div>
                             <div class="space-y-2">
                                 {#each incomingInvites as invite}
                                     <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
                                         <div class="flex items-start justify-between">
                                             <div>
                                                 <div class="text-xs text-gray-500">
-                                                    <span class="font-bold text-gray-900">{invite.profiles?.first_name || 'Someone'}</span> invited you to join <span class="font-bold text-gray-900">{invite.households?.name}</span>
+                                                    <span class="font-bold text-gray-900">{invite.profiles?.first_name || $t.common.someone}</span> {$t.settings.invited_you_to_join} <span class="font-bold text-gray-900">{invite.households?.name}</span>
                                                 </div>
                                                 <div class="text-[10px] text-gray-400 mt-1">
                                                     {new Date(invite.created_at).toLocaleDateString()}
@@ -1148,14 +1156,14 @@
                                                 on:click={() => declineInvite(invite.id)}
                                                 disabled={processingInviteId === invite.id}
                                             >
-                                                Decline
+                                                {$t.notifications.decline}
                                             </button>
                                             <button 
                                                 class="flex-1 py-1.5 bg-brand-sage text-white font-bold text-[10px] rounded-lg shadow-sm hover:bg-brand-sage/90 transition-colors"
                                                 on:click={() => acceptInvite(invite.id)}
                                                 disabled={processingInviteId === invite.id}
                                             >
-                                                {processingInviteId === invite.id ? 'Joining...' : 'Accept'}
+                                                {processingInviteId === invite.id ? $t.settings.joining : $t.notifications.accept}
                                             </button>
                                         </div>
                                     </div>
@@ -1167,7 +1175,7 @@
                     <!-- OUTGOING (SENT) -->
                     {#if outgoingInvites.length > 0}
                         <div class="mt-4 pt-4 border-t border-gray-100">
-                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Sent Invites</div>
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">{$t.settings.sent_invites}</div>
                             <div class="space-y-2">
                                 {#each outgoingInvites as invite (invite.id)}
                                     <div class="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between">
@@ -1180,7 +1188,7 @@
                                                      {invite.profiles?.first_name ? `${invite.profiles.first_name} ${invite.profiles.last_name || ''}` : `@${invite.profiles?.username || 'Unknown'}`}
                                                  </div>
                                                  <div class="text-[10px] text-gray-500">
-                                                     Invited to: {invite.households?.name} • 
+                                                      {$t.settings.invited_to.replace('{household}', invite.households?.name)} • 
                                                      <span class="{invite.status === 'pending' ? 'text-orange-500' : (invite.status === 'accepted' ? 'text-green-500' : 'text-red-500')} font-bold capitalize">
                                                          {invite.status}
                                                      </span>
@@ -1196,7 +1204,7 @@
                                                 on:click={() => revokeInvite(invite.id)}
                                                 disabled={processingInviteId === invite.id}
                                             >
-                                                {processingInviteId === invite.id ? '...' : 'Cancel'}
+                                                {processingInviteId === invite.id ? '...' : $t.common.cancel}
                                             </button>
                                         {:else}
                                             <button 
@@ -1226,7 +1234,7 @@
 
                     {#if incomingInvites.length === 0 && outgoingInvites.filter(i => i.status !== 'accepted').length === 0}
                         <div class="text-center py-6">
-                            <p class="text-xs text-gray-400">No active invitations.</p>
+                            <p class="text-xs text-gray-400">{$t.settings.no_invitations}</p>
                         </div>
                     {/if}
 
@@ -1237,7 +1245,7 @@
 
       <!-- Notifications -->
       <div class="space-y-2 mb-8">
-        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Preferences</div>
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.preferences}</div>
         <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
            <div class="p-4 flex items-center justify-between">
                <div class="flex items-center space-x-3">
@@ -1247,8 +1255,8 @@
                        </svg>
                    </div>
                    <div class="flex flex-col">
-                       <span class="font-bold text-sm text-gray-900">Push Notifications</span>
-                       <span class="text-[10px] text-gray-400">Receive reminders on this device</span>
+                       <span class="font-bold text-sm text-gray-900">{$t.settings.push_notifications}</span>
+                       <span class="text-[10px] text-gray-400">{$t.settings.push_desc}</span>
                    </div>
                </div>
                
@@ -1268,16 +1276,38 @@
                     class="w-full flex items-center justify-between text-left group"
                     on:click={openManageReminders}
                 >
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">Manage Schedule Alerts</span>
-                        <span class="text-[10px] text-gray-400">Choose which schedules notify you</span>
-                    </div>
+                     <div class="flex flex-col">
+                         <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">{$t.settings.manage_alerts}</span>
+                         <span class="text-[10px] text-gray-400">{$t.settings.manage_alerts_desc}</span>
+                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 group-hover:text-brand-sage transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
            </div>
            {/if}
+
+           <!-- Language Toggle -->
+           <div class="border-t border-gray-100 p-4 flex items-center justify-between">
+               <div class="flex items-center space-x-3">
+                   <div class="text-2xl">
+                       {languages.find(l => l.id === $currentLanguage)?.icon || '🇺🇸'}
+                   </div>
+                   <div class="flex flex-col">
+                       <span class="font-bold text-sm text-gray-900">{$t.settings.language}</span>
+                       <span class="text-[10px] text-gray-400">{languages.find(l => l.id === $currentLanguage)?.name || 'English'}</span>
+                   </div>
+               </div>
+
+               <button
+                   class="text-brand-sage hover:text-brand-sage/80 transition-colors"
+                   on:click={() => showLanguageModal = true}
+               >
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                   </svg>
+               </button>
+           </div>
         </section>
       </div>
 
@@ -1290,12 +1320,12 @@
 
        <!-- Subscription (Dev Only Toggle) -->
        <div class="space-y-2">
-          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Subscription</div>
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.subscription}</div>
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
              <div class="p-4 flex items-center justify-between">
                  <div>
                      <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {$userIsPremium ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-600'}">
-                        {$userIsPremium ? 'Premium User' : 'Free Tier'}
+                        {$userIsPremium ? $t.settings.premium_user : $t.settings.free_tier}
                      </span>
                  </div>
                  <button
@@ -1317,22 +1347,22 @@
        </div>
              <!-- About -->
        <div class="space-y-2">
-          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">About</div>
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.about}</div>
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
               <a href="/legal/privacy" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                  <span class="text-sm font-medium text-gray-900">Privacy Policy</span>
+                  <span class="text-sm font-medium text-gray-900">{$t.settings.privacy_policy}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
               </a>
               <a href="/legal/tos" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                  <span class="text-sm font-medium text-gray-900">Terms of Service</span>
+                  <span class="text-sm font-medium text-gray-900">{$t.settings.terms_of_service}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
               </a>
               <div class="flex items-center justify-between p-4 bg-gray-50/50">
-                  <span class="text-sm font-medium text-gray-900">Version</span>
+                  <span class="text-sm font-medium text-gray-900">{$t.settings.version}</span>
                   <span class="text-sm text-gray-500">{APP_VERSION}</span>
               </div>
           </section>
@@ -1348,9 +1378,9 @@
                           </svg>
                       </div>
                       <div class="flex flex-col">
-                          <span class="font-medium text-sm">Export Data</span>
+                          <span class="font-medium text-sm">{$t.settings.export_data}</span>
                           {#if !$userIsPremium}
-                              <span class="text-[10px] text-brand-sage font-bold uppercase tracking-wide">Premium</span>
+                              <span class="text-[10px] text-brand-sage font-bold uppercase tracking-wide">{$t.settings.premium_badge}</span>
                           {/if}
                       </div>
                   </div>
@@ -1363,7 +1393,7 @@
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                           </svg>
                       </div>
-                      <span class="font-medium text-sm">Log Out</span>
+                      <span class="font-medium text-sm">{$t.settings.log_out}</span>
                   </div>
               </div>
 
@@ -1377,7 +1407,7 @@
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                       </div>
-                      <span class="font-medium text-sm">Delete Account</span>
+                       <span class="font-medium text-sm">{$t.settings.delete_account}</span>
                   </div>
               </div>
           </section>
@@ -1882,11 +1912,21 @@
   />
 
   {#if showCreateHouseholdModal}
-    <CreateHouseholdModal 
+    <CreateHouseholdModal
         on:close={() => showCreateHouseholdModal = false}
         on:create={handleCreateHousehold}
     />
   {/if}
+
+  <SelectionModal
+      bind:show={showLanguageModal}
+      title="Select Language"
+      items={languages}
+      selectedId={$currentLanguage}
+      on:select={(e) => {
+          setLanguage(e.detail.id as Language);
+      }}
+  />
 
 </div>
 

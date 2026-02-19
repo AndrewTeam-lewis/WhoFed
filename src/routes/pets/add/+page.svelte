@@ -16,7 +16,7 @@
   // Dynamic Schedules
   type ScheduleItem = {
       id: string; 
-      type: 'feeding' | 'medication' | 'litter';
+      type: 'feeding' | 'medication' | 'care';
       label: string;
       isEnabled: boolean;
       frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -43,38 +43,32 @@
       { val: 4, label: 'T' }, { val: 5, label: 'F' }, { val: 6, label: 'S' }, { val: 0, label: 'S' }
   ];
 
-  // Icon Libraries
-  const FREE_ICONS = ['🐶', '🐱', '🐰', '🐦', '🐠', '🐾', '🐕', '🐈', '🐹', '🐢'];
-  const PREMIUM_ICONS = [
-      '🦎', '🐍', '🦄', '🦖', '🦕', '🦂', '🕷️', '🐙', '🦑', '🦐', '🦞', '🦀', 
-      '🐡', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', 
-      '🦒', '🦘', '🐃', '🐏', '🦙', '🐐', '🦌', '🦇', '🦅', '🦆', '🦢', '🦉', 
-      '🦩', '🦚', '🦜', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿️', '🦔',
-      '🐉', '👽', '🤖', '👻', '🤡', '👹', '👺', '☠️', '💩', '👾', '🎃', '🦴'
-  ];
-
-  const QUICK_SPECIES = [
-      { label: 'Dog', icon: '🐶' },
-      { label: 'Cat', icon: '🐱' },
-      { label: 'Bird', icon: '🐦' },
-      { label: 'Hamster', icon: '🐹' },
-      { label: 'Rabbit', icon: '🐰' },
-      { label: 'Fish', icon: '🐠' },
-      { label: 'Lizard', icon: '🦎' },
-      { label: 'Snake', icon: '🐍' },
-      { label: 'Turtle', icon: '🐢' }
+  // Curated Pet Icons (ordered by commonality)
+  const PET_ICONS = [
+      '🐱', // Cat
+      '🐶', // Dog
+      '🐠', // Fish
+      '🦜', // Parrot
+      '🐰', // Rabbit
+      '🐹', // Hamster
+      '🦎', // Lizard
+      '🐍', // Snake
+      '🐢', // Turtle
+      '🐈', // Cat (alternate)
+      '🐕', // Dog (alternate)
+      '🐁', // Mouse
+      '🦔', // Hedgehog
+      '🐾'  // Generic pet
   ];
 
   // State
   let loading = false;
   let name = '';
-  let species = ''; // Now a text input
-  let icon = '🐶'; // Default icon
+  let icon = '🐱'; // Default icon
   let householdId: string | null = null;
   let currentUser: any = null;
-  let showIconModal = false; // Renamed from showSpeciesModal
+  let showIconModal = false;
   let showPremiumModal = false;
-  let pushReminders = true;
   let limitReached = false;
 
   let scheduleNameEditingId: string | null = null;
@@ -143,7 +137,7 @@
       }
   }
 
-  function addSchedule(type: 'feeding' | 'medication' | 'litter') {
+  function addSchedule(type: 'feeding' | 'medication' | 'care') {
       const id = Math.random().toString(36).substr(2, 9);
       schedules = [...schedules, {
           id,
@@ -248,35 +242,19 @@
               }
           }
 
-          // 1. Create Pet
-          // Map UI species to DB species
-          // The DB constraint likely allows 'dog', 'cat', etc. 
-          // We need to map 'Dog 2', 'Cat 3' to basic types.
-          let finalSpecies = species.trim().toLowerCase() || 'pet';
-          
-          if (finalSpecies.includes('dog')) finalSpecies = 'dog';
-          else if (finalSpecies.includes('cat')) finalSpecies = 'cat';
-          else if (finalSpecies.includes('bird')) finalSpecies = 'bird';
-          else if (finalSpecies.includes('fish')) finalSpecies = 'fish';
-          else if (finalSpecies.includes('rabbit')) finalSpecies = 'rabbit';
-          else if (finalSpecies.includes('hamster')) finalSpecies = 'hamster';
-          else if (finalSpecies.includes('lizard') || finalSpecies.includes('iguana')) finalSpecies = 'lizard';
-          else if (finalSpecies.includes('snake')) finalSpecies = 'snake';
-          else if (finalSpecies.includes('turtle')) finalSpecies = 'turtle';
-
-      // 2. Insert Pet
-      const { data: pet, error: petError } = await supabase
-        .from('pets')
-        .insert({
-          name,
-          species: species.toLowerCase(), // Allow mixed case input, strictly save as lowercase
-          icon,
-          household_id: householdId,
-          created_by: currentUser.id,
-          pet_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-        })
-        .select()
-        .single();
+          // 1. Insert Pet
+          const { data: pet, error: petError } = await supabase
+            .from('pets')
+            .insert({
+              name,
+              species: 'pet', // Default species value
+              icon,
+              household_id: householdId,
+              created_by: currentUser.id,
+              pet_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+            })
+            .select()
+            .single();
 
           if (petError) throw petError;
           
@@ -284,6 +262,12 @@
           // 2. Validate Schedules
           for (const s of schedules) {
               if (s.isEnabled) {
+                  // Care tasks MUST have a name
+                  if (s.type === 'care' && !s.label.trim()) {
+                      loading = false;
+                      alert('Please name your care task (e.g., Walk, Litter, Groom)');
+                      return;
+                  }
                   if (s.frequency === 'weekly' && s.selectedDays.length === 0) {
                       loading = false;
                       alert(`Please select at least one day for schedule: ${s.label || s.type}`);
@@ -493,43 +477,13 @@
             
             <div class="mt-4 w-full max-w-xs space-y-4">
                 <!-- Name Input -->
-                <input 
-                    type="text" 
-                    bind:value={name} 
+                <input
+                    type="text"
+                    bind:value={name}
                     data-tour="pet-name-input"
                     class="block w-full text-center text-2xl font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 placeholder-gray-300 focus:placeholder-gray-200"
                     placeholder="Name your pet..."
                 />
-
-                <!-- Species Input & Chips -->
-                <div class="relative">
-                    <input 
-                        type="text" 
-                        bind:value={species}
-                        class="block w-full text-center text-sm font-bold text-typography-secondary bg-transparent border-b border-gray-200 focus:border-brand-sage pb-2 focus:ring-0 placeholder-gray-300"
-                        placeholder="Type or select species (e.g. Dog)"
-                    />
-                    
-                    <!-- Chips -->
-                    <div class="flex flex-wrap justify-center gap-2 mt-3">
-                        {#each QUICK_SPECIES as qs}
-                            <button 
-                                type="button"
-                                class="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-500 hover:border-brand-sage hover:text-brand-sage transition-colors shadow-sm"
-                                on:click={() => {
-                                    species = qs.label;
-                                    // If user hasn't manually picked a premium icon (or if current icon is generic/free),
-                                    // strictly speaking, we could auto-update the icon. 
-                                    // But let's only do it if the icon is presently the default '🐶' or matches another default.
-                                    // Simpler: Just set it. If they want a weird combo (Dog named 'Cat'), they can fix it.
-                                    icon = qs.icon; 
-                                }}
-                            >
-                                {qs.label}
-                            </button>
-                        {/each}
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -543,16 +497,16 @@
                 <div class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl relative z-10 animate-scale-in max-h-[80vh] overflow-y-auto">
                     <h3 class="text-center text-lg font-bold text-typography-primary mb-6">Choose Icon</h3>
                     
-                    <!-- Unified Icon Grid (All Emojis Free) -->
+                    <!-- Icon Grid -->
                     <div class="grid grid-cols-5 gap-3 mb-8">
-                        {#each [...FREE_ICONS, ...PREMIUM_ICONS] as libraryIcon}
-                            <button 
+                        {#each PET_ICONS as petIcon}
+                            <button
                                 type="button"
                                 class="flex items-center justify-center p-2 rounded-xl transition-all aspect-square border-2
-                                {icon === libraryIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
-                                on:click={() => { icon = libraryIcon; showIconModal = false; }}
+                                {icon === petIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
+                                on:click={() => { icon = petIcon; showIconModal = false; }}
                             >
-                                <span class="text-3xl">{libraryIcon}</span>
+                                <span class="text-3xl">{petIcon}</span>
                             </button>
                         {/each}
                     </div>
@@ -604,13 +558,13 @@
                      <!-- Header -->
                      <div class="flex items-start justify-between mb-6">
                         <div class="flex items-center space-x-4 flex-1">
-                             <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : schedule.type === 'litter' ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-500'}">
+                             <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : schedule.type === 'care' ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-500'}">
                                  {#if schedule.type === 'feeding'}
                                     <!-- Bowl Icon -->
                                     <span class="text-2xl">🥣</span>
-                                 {:else if schedule.type === 'litter'}
-                                    <!-- Litter Icon -->
-                                    <span class="text-2xl">📥</span>
+                                 {:else if schedule.type === 'care'}
+                                    <!-- Care Task Icon -->
+                                    <span class="text-2xl">❤️</span>
                                  {:else}
                                     <!-- Pill Icon -->
                                     <span class="text-2xl">💊</span>
@@ -621,7 +575,7 @@
                                     type="text" 
                                     bind:value={schedule.label}
                                     class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1"
-                                    placeholder={schedule.type === 'feeding' ? 'Food Name' : schedule.type === 'litter' ? 'Change Litter' : 'Medication Name'}
+                                    placeholder={schedule.type === 'feeding' ? 'Food Name' : schedule.type === 'care' ? 'Care type (required)' : 'Medication Name'}
                                 />
                                 <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -783,7 +737,7 @@
                                 class="w-full py-3 border-2 border-dashed border-brand-sage/40 rounded-2xl text-brand-sage text-xs font-bold uppercase flex items-center justify-center space-x-2 hover:bg-brand-sage/5 transition-colors"
                             >
                                 <span class="text-lg leading-none">+</span>
-                                <span>Add {schedule.type === 'feeding' ? 'Time' : schedule.type === 'litter' ? 'Check' : 'Dose'}</span>
+                                <span>Add {schedule.type === 'feeding' ? 'Time' : schedule.type === 'care' ? 'Check' : 'Dose'}</span>
                             </button>
                             {/if}
                         </div>
@@ -795,33 +749,9 @@
              <div class="grid grid-cols-3 gap-3 opacity-50 hover:opacity-100 transition-opacity">
                  <button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Food</button>
                  <button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Meds</button>
-                 <button on:click={() => addSchedule('litter')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Litter</button>
+                 <button on:click={() => addSchedule('care')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Care Task</button>
              </div>
         </div>
- 
-        <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8">Preferences</h3>
-        
-        <!-- Preferences Card -->
-        <section class="bg-white rounded-[32px] p-2 shadow-card">
-            <div class="flex items-center p-4">
-               <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 mr-4">
-                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                   </svg>
-               </div>
-               <div class="flex-1">
-                    <div class="text-base font-bold text-typography-primary">Alerts & Reminders</div>
-                    <div class="text-sm font-bold text-typography-secondary">Push notifications enabled</div>
-               </div>
-               <button 
-                   type="button"
-                   class="w-12 h-7 rounded-full transition-all relative {pushReminders ? 'bg-brand-sage' : 'bg-gray-200'}"
-                   on:click={() => pushReminders = !pushReminders}
-               >
-                   <div class="{pushReminders ? 'translate-x-[22px]' : 'translate-x-1'} absolute top-1 left-0 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300"></div>
-               </button>
-            </div>
-        </section>
 
         <!-- Save Button -->
         <div class="pt-6 relative z-10">

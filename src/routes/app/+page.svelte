@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
   import type { Database } from '$lib/database.types';
@@ -20,36 +19,29 @@
   let dailyTasks: DailyTask[] = [];
   let recentActivity: ActivityLog[] = [];
   let loading = true;
-  let currentUser: any = null;
-  let authChecked = false;
 
   let showPremiumModal = false;
   let showHouseholdMenu = false;
-  
+
   // Create Household State
   let showCreateHouseholdModal = false;
   let newHouseholdName = '';
 
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      goto('/auth/login');
-      return;
-    }
-    currentUser = session.user;
-    authChecked = true;
-  });
-
-  $: if (currentUser && $activeHousehold) {
-      fetchDashboardData();
-  }
-  
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
   import { ensureDailyTasks } from '$lib/services/taskService';
-  import { userIsPremium } from '$lib/stores/user';
+  import { currentUser, userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
+
+  // Guard against duplicate fetches when stores update
+  let lastFetchedForHouseholdId: string | null = null;
+
+  $: if ($currentUser && $activeHousehold?.id && $activeHousehold.id !== lastFetchedForHouseholdId) {
+      lastFetchedForHouseholdId = $activeHousehold.id;
+      fetchDashboardData();
+  }
+  import { LocalNotifications } from '@capacitor/local-notifications';
+  import { t } from '$lib/services/i18n';
 
   // Animation State
   let shakingTaskId: string | null = null;
@@ -109,7 +101,7 @@
   }
 
   async function createNewHousehold() {
-      if (!newHouseholdName.trim() || !currentUser) return;
+      if (!newHouseholdName.trim() || !$currentUser) return;
 
       // Premium gate: free users can own max 1 household
       if (!$userIsPremium) {
@@ -127,7 +119,7 @@
               .from('households')
               .insert({
                   name: newHouseholdName.trim(),
-                  owner_id: currentUser.id,
+                  owner_id: $currentUser!.id,
                   subscription_status: 'free'
               })
               .select()
@@ -140,7 +132,7 @@
               .from('household_members')
               .insert({
                   household_id: household.id,
-                  user_id: currentUser.id,
+                  user_id: $currentUser!.id,
                   // role: 'owner', // Removed: column doesn't exist, inferred from household.owner_id
                   can_log: true,
                   can_edit: true,
@@ -171,7 +163,7 @@
   }
   
   // Visual Helper
-  function getTaskVisuals(task: DailyTask) {
+  function getTaskVisuals(task: DailyTask, translations: any) {
       const now = new Date();
       const due = new Date(task.due_at);
       const isDone = task.status === 'completed';
@@ -215,38 +207,38 @@
           // Overdue only if strictly yesterday or earlier
           isOverdue = !isDone && dayDiff < 0; 
           
-          if (isDone) {
-              dueLabel = 'Done';
-          } else if (isOverdue) {
-              dueLabel = 'Overdue';
-          } else if (dayDiff === 0) {
-              dueLabel = 'Due today';
-              isUrgent = true; 
-          } else if (dayDiff === 1) {
-              dueLabel = 'Due tomorrow';
-          } else {
-              dueLabel = `Due in ${dayDiff} days`;
-          }
+           if (isDone) {
+               dueLabel = translations.dashboard.status_done;
+           } else if (isOverdue) {
+               dueLabel = translations.dashboard.status_overdue;
+           } else if (dayDiff === 0) {
+               dueLabel = translations.dashboard.status_due_today;
+               isUrgent = true; 
+           } else if (dayDiff === 1) {
+               dueLabel = translations.dashboard.status_due_tomorrow;
+           } else {
+               dueLabel = translations.dashboard.status_due_days.replace('{n}', Math.abs(dayDiff));
+           }
 
-      } else {
-          // Standard Logic
-          isUrgent = !isDone && (dueDiff <= 7200000); 
-          isOverdue = !isDone && dueDiff < 0;
+       } else {
+           // Standard Logic
+           isUrgent = !isDone && (dueDiff <= 7200000); 
+           isOverdue = !isDone && dueDiff < 0;
 
-          if (isDone) {
-              dueLabel = 'Done';
-          } else if (isOverdue) {
-               dueLabel = 'Overdue';
-          } else if (dueDiff > 0) {
-               if (minsDiff < 30) {
-                   dueLabel = 'Due soon';
-               } else if (hoursDiff < 1) {
-                   dueLabel = 'Due in 1h';
-               } else {
-                   dueLabel = `Due in ${hoursDiff}h`;
-               }
-          }
-      }
+           if (isDone) {
+               dueLabel = translations.dashboard.status_done;
+           } else if (isOverdue) {
+                dueLabel = translations.dashboard.status_overdue;
+           } else if (dueDiff > 0) {
+                if (minsDiff < 30) {
+                    dueLabel = translations.dashboard.status_due_soon;
+                } else if (hoursDiff < 1) {
+                    dueLabel = translations.dashboard.status_due_1h;
+                } else {
+                    dueLabel = translations.dashboard.status_due_hours.replace('{n}', hoursDiff);
+                }
+           }
+       }
 
       return { isUrgent, isOverdue, timeFormatted, dueLabel };
   }
@@ -258,8 +250,8 @@
     try {
       const householdId = $activeHousehold.id;
       
-      // Ensure tasks exist for today (Fix for race condition with eager init)
-      await ensureDailyTasks(householdId);
+      // Ensure tasks exist for today (Non-blocking)
+      const ensurePromise = ensureDailyTasks(householdId);
 
       // Calculate day range
       const startOfDay = new Date();
@@ -269,6 +261,7 @@
       endOfDay.setHours(23, 59, 59, 999);
 
       // Parallel Fetch: Pets & Tasks (Independent)
+      // This runs immediately, showing whatever is currently in DB (instant)
       const [petRes, taskRes, pastMedsRes] = await Promise.all([
           supabase
             .from('pets')
@@ -292,6 +285,26 @@
             .lt('due_at', startOfDay.toISOString())
       ]);
 
+      // Post-load check: Did we generate new tasks?
+      ensurePromise.then(async (didGenerate) => {
+          if (didGenerate) {
+              // Quietly refresh today's tasks
+              const { data: newTasks } = await supabase
+                  .from('daily_tasks')
+                  .select('*, schedules(schedule_mode)')
+                  .eq('household_id', householdId)
+                  .gte('due_at', startOfDay.toISOString())
+                  .lte('due_at', endOfDay.toISOString());
+              
+              if (newTasks) {
+                  // Merge or replace logic would be ideal, but for now just replacing today's tasks portion
+                  // We need to re-merge with pastMeds to keep the view consistent
+                   const pastMeds = pastMedsRes.data || [];
+                   dailyTasks = [...pastMeds, ...newTasks].sort((a,b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+              }
+          }
+      });
+
       // Handle Pets
       pets = petRes.data || [];
 
@@ -308,24 +321,24 @@
       // Combine and Sort
       dailyTasks = [...pastMeds, ...todaysTasks];
 
-      // 4. Get recent activity (Depends on Pets)
+      // 4. Get recent activity in background (non-blocking so tasks show immediately)
+      loading = false;
       if (pets.length > 0) {
-        const { data: logData, error: logError } = await supabase
+        supabase
           .from('activity_log')
           .select('*, profiles(first_name), schedules(label, task_type)')
           .in('pet_id', pets.map(p => p.id))
           .order('performed_at', { ascending: false })
-          .limit(50);
-
-        if (logError) throw logError;
-        recentActivity = logData || [];
+          .limit(50)
+          .then(({ data: logData, error: logError }) => {
+            if (!logError) recentActivity = logData || [];
+          });
       } else {
         recentActivity = [];
       }
 
     } catch (error) {
         console.error('Error fetching dashboard:', error);
-    } finally {
         loading = false;
     }
   }
@@ -358,18 +371,20 @@
       const nowISO = nowFn.toISOString();
 
       if (task.status === 'completed') {
-           // UNDO -> LOG "UN-FED" / "UN-GAVE"
-           const undoActionType = task.task_type === 'feeding' ? 'unfed' : 'unmedicated';
+           // UNDO -> LOG "UN-FED" / "UN-GAVE" / "UN-CARED"
+           const undoActionType = task.task_type === 'feeding' ? 'unfed' :
+                                  task.task_type === 'care' ? 'uncared' :
+                                  'unmedicated';
 
            await supabase
             .from('activity_log')
             .insert({
               pet_id: task.pet_id,
-              schedule_id: task.schedule_id, 
-              user_id: currentUser.id,
+              schedule_id: task.schedule_id,
+              user_id: $currentUser!.id,
               action_type: undoActionType,
               performed_at: nowISO,
-              task_id: task.id 
+              task_id: task.id
             });
 
            // Reset the task status
@@ -396,7 +411,7 @@
             .update({ 
                 status: 'completed', 
                 completed_at: nowISO,
-                user_id: currentUser.id
+                user_id: $currentUser!.id
             })
             .eq('id', task.id);
 
@@ -408,7 +423,7 @@
             .insert({
               pet_id: task.pet_id,
               schedule_id: task.schedule_id, 
-              user_id: currentUser.id,
+              user_id: $currentUser!.id,
               action_type: task.task_type,
               performed_at: nowISO,
               task_id: task.id 
@@ -453,7 +468,7 @@
   let oneTimeForm = {
       label: '',
       time: '',
-      type: 'feeding' as 'feeding' | 'medication'
+      type: 'feeding' as 'feeding' | 'medication' | 'care'
   };
 
   function toggleDropdown(id: string, event: MouseEvent) {
@@ -575,6 +590,27 @@
           
           if (data) {
               dailyTasks = [...dailyTasks, data].sort((a,b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+              
+              // Schedule Local Notification
+              try {
+                  const notifId = parseInt(data.id.replace(/\D/g, '').slice(-8)) || Math.floor(Math.random() * 1000000);
+                  
+                  await LocalNotifications.schedule({
+                      notifications: [{
+                          id: notifId,
+                          title: $t.notifications.onetime_title,
+                          body: $t.notifications.onetime_body.replace('{label}', data.label).replace('{pet}', pet.name),
+                          schedule: { at: dueAt },
+                          sound: 'beep.wav',
+                          extra: {  
+                              taskId: data.id,
+                              petId: pet.id 
+                          }
+                      }]
+                  });
+              } catch (nErr) {
+                  console.error('Failed to schedule notification:', nErr);
+              }
           }
           
           closeOneTimeTaskModal();
@@ -592,7 +628,7 @@
   <title>Dashboard - WhoFed</title>
 </svelte:head>
 
-{#if !authChecked}
+{#if !$currentUser}
   <div class="min-h-screen bg-gray-50 flex items-center justify-center">
     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-sage"></div>
   </div>
@@ -689,43 +725,48 @@
       >
           <div class="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl scale-100 transform transition-all">
               <div class="mb-6">
-                  <h3 class="text-xl font-bold text-gray-900 mb-1">Add One-time Task</h3>
-                  <p class="text-gray-500 text-xs">This adds a task for <span class="font-bold text-brand-sage">{pets.find(p => p.id === petForOneTimeTask)?.name}</span>, today only.</p>
+                  <h3 class="text-xl font-bold text-gray-900 mb-1">{$t.modals.one_time_title}</h3>
+                  <p class="text-gray-500 text-xs">{$t.modals.one_time_desc.replace('{pet}', pets.find(p => p.id === petForOneTimeTask)?.name || '')}</p>
               </div>
 
               <div class="space-y-4 mb-8">
                   <!-- Type Toggle -->
-                  <div class="bg-gray-100 p-1 rounded-xl flex">
-                      <button 
-                          class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all {oneTimeForm.type === 'feeding' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400'}"
+                  <div class="bg-gray-100 p-1 rounded-xl grid grid-cols-3">
+                      <button
+                          class="py-2 rounded-lg text-sm font-bold transition-all {oneTimeForm.type === 'feeding' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400 hover:text-gray-600'}"
                           on:click={() => oneTimeForm.type = 'feeding'}
                       >
-                          Feeding
+                          {$t.modals.feeding}
                       </button>
-                      <button 
-                          class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all {oneTimeForm.type === 'medication' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400'}"
+                      <button
+                          class="py-2 rounded-lg text-sm font-bold transition-all {oneTimeForm.type === 'medication' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400 hover:text-gray-600'}"
                           on:click={() => oneTimeForm.type = 'medication'}
                       >
-                          Medication
+                          {$t.modals.medication}
+                      </button>
+                      <button
+                          class="py-2 rounded-lg text-sm font-bold transition-all {oneTimeForm.type === 'care' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400 hover:text-gray-600'}"
+                          on:click={() => oneTimeForm.type = 'care'}
+                      >
+                          Care
                       </button>
                   </div>
                   
                   <!-- Name Input -->
                   <div>
-                      <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1" for="taskLabel">Task Name</label>
+                      <label class="block text-xs font-bold text-gray-500 mb-1 ml-1" for="taskLabel">{$t.modals.task_name}</label>
                       <input 
                           id="taskLabel"
                           type="text" 
                           bind:value={oneTimeForm.label}
-                          on:input={(e) => oneTimeForm.label = e.currentTarget.value.toUpperCase()}
-                          placeholder="e.g. EXTRA SNACK"
-                          class="w-full bg-gray-50 border-transparent focus:border-brand-sage focus:bg-white focus:ring-0 rounded-2xl px-4 py-3 font-bold text-gray-900 placeholder-gray-300 transition-all uppercase"
+                          placeholder={$t.modals.task_placeholder}
+                          class="w-full bg-gray-50 border-transparent focus:border-brand-sage focus:bg-white focus:ring-0 rounded-2xl px-4 py-3 font-bold text-gray-900 placeholder-gray-300 transition-all"
                       />
                   </div>
                   
                   <!-- Time Input -->
                   <div>
-                      <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1" for="taskTime">Time</label>
+                      <label class="block text-xs font-bold text-gray-500 mb-1 ml-1" for="taskTime">Time</label>
                       <input 
                           id="taskTime"
                           type="time" 
@@ -764,11 +805,11 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                   </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900">Create New Household</h3>
+              <h3 class="text-xl font-bold text-gray-900">{$t.modals.create_household}</h3>
           </div>
           
           <div class="mb-6">
-              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Household Name</label>
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.modals.household_name}</label>
               <input 
                   type="text" 
                   bind:value={newHouseholdName}
@@ -778,12 +819,12 @@
           </div>
           
           <div class="flex space-x-3">
-              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showCreateHouseholdModal = false}>Cancel</button>
+              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showCreateHouseholdModal = false}>{$t.common.cancel}</button>
               <button 
                   class="flex-1 py-3 bg-brand-sage text-white rounded-xl font-semibold hover:bg-brand-sage/90 disabled:opacity-50" 
                   on:click={createNewHousehold}
                   disabled={!newHouseholdName.trim()}
-              >Create</button>
+              >{$t.common.save}</button>
           </div>
       </div>
   </div>
@@ -792,7 +833,7 @@
   <!-- Header -->
   <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex justify-between items-center relative z-30">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+      <h1 class="text-2xl font-bold text-gray-900">{$t.nav.dashboard}</h1>
       
        <!-- Household Toggle Dropdown -->
        <div class="relative inline-block">
@@ -800,7 +841,7 @@
                class="flex items-center space-x-1 text-brand-sage font-medium hover:text-brand-sage/80 transition-colors"
                on:click|stopPropagation={() => showHouseholdMenu = !showHouseholdMenu}
             >
-                <span>{$activeHousehold?.name || currentUser?.user_metadata?.first_name || 'My Household'}</span>
+                <span>{$activeHousehold?.name || $currentUser?.user_metadata?.first_name || 'My Household'}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform {showHouseholdMenu ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -838,7 +879,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
-                                New Household
+                                {$t.dashboard.new_household}
                              </button>
                         </div>
                    </div>
@@ -846,7 +887,7 @@
            {/if}
        </div>
     </div>
-    <a href="/settings" class="p-2 text-gray-400 hover:text-gray-600" aria-label="Settings">
+    <a href="/settings" class="p-2 text-gray-400 hover:text-gray-600" aria-label={$t.dashboard.settings_label}>
       <!-- Settings Icon -->
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -863,13 +904,13 @@
     {:else if pets.length === 0}
       <div class="text-center py-10 bg-white rounded-2xl p-6 shadow-sm">
         {#if $activeHousehold?.role === 'owner'}
-        <p class="text-gray-500 mb-4">You haven't added any pets yet.</p>
+        <p class="text-gray-500 mb-4">{$t.dashboard.no_pets}</p>
         <button
            data-tour="add-pet-btn"
            class="bg-brand-sage text-white px-6 py-2 rounded-full font-medium hover:bg-brand-sage/90 transition-colors inline-block"
            on:click={() => goto('/pets/add')}
         >
-          Add Your First Pet
+          {$t.dashboard.add_first_pet}
         </button>
         {:else}
         <p class="text-gray-500 mb-4">No pets have been added to this household yet. Ask the household owner to add pets.</p>
@@ -880,7 +921,7 @@
                 class="text-sm text-gray-400 hover:text-brand-sage font-medium underline"
                 on:click={() => onboarding.showWelcome()}
             >
-                Show me around
+                {$t.dashboard.show_me_around}
             </button>
         </div>
       </div>
@@ -935,7 +976,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-brand-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                             </svg>
-                            Add to Today
+                            {$t.pet_settings.add_to_today}
                         </button>
                     
                         <a 
@@ -947,7 +988,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
-                            Edit Pet
+                            {$t.pet_settings.edit_pet}
                         </a>
                         <a 
                             href="/pets/{pet.id}/history" 
@@ -959,7 +1000,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            History
+                            {$t.pet_settings.history}
                         </a>
                         {#if $activeHousehold?.role === 'owner'}
                         <button
@@ -970,7 +1011,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            Remove Pet
+                            {$t.pet_settings.remove_pet}
                         </button>
                         {/if}
                     </div>
@@ -981,7 +1022,7 @@
              <!-- Action Buttons (Powered by daily_tasks) -->
              <div class="mt-4 space-y-2">
                 {#each tasks as task (task.id)}
-                    {@const visuals = getTaskVisuals(task)}
+                    {@const visuals = getTaskVisuals(task, $t)}
                     {@const isDone = task.status === 'completed'}
                     {@const { isLocked, blockerId } = getTaskConstraints(task, tasks)}
                     
@@ -1012,7 +1053,7 @@
 
                 {#if tasks.length === 0}
                     <div class="text-center py-3 bg-gray-50 rounded-xl border border-dashed border-gray-100 text-gray-400 text-xs w-full">
-                        No schedules set
+                        {$t.dashboard.no_schedules}
                     </div>
                 {/if}
              </div>

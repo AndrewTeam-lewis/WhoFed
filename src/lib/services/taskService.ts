@@ -2,7 +2,7 @@ import { supabase } from '$lib/supabase';
 import { generateTasksForDate } from '$lib/taskUtils';
 
 // Helper to ensure tasks exist for today
-export const ensureDailyTasks = async (householdId: string) => {
+export const ensureDailyTasks = async (householdId: string): Promise<boolean> => {
     try {
         const date = new Date();
         const startOfDay = new Date(date);
@@ -11,40 +11,41 @@ export const ensureDailyTasks = async (householdId: string) => {
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
 
-        // 1. Get all pets in the household
-        const { data: pets } = await supabase.from('pets').select('id').eq('household_id', householdId);
-        if (!pets || pets.length === 0) return;
-        const petIds = pets.map(p => p.id);
+        // Optimization: Run queries in parallel
+        // 1. Get enabled schedules (joined with pets to filter by household)
+        // 2. Get existing tasks for today
+        const [schedulesRes, tasksRes] = await Promise.all([
+            supabase
+                .from('schedules')
+                .select('*, pets!inner(household_id)')
+                .eq('pets.household_id', householdId)
+                .eq('is_enabled', true),
 
-        // 2. Get all ENABLED schedules
-        const { data: activeSchedules } = await supabase
-            .from('schedules')
-            .select('*')
-            .eq('is_enabled', true)
-            .in('pet_id', petIds);
+            supabase
+                .from('daily_tasks')
+                .select('schedule_id, due_at')
+                .eq('household_id', householdId)
+                .gte('due_at', startOfDay.toISOString())
+                .lte('due_at', endOfDay.toISOString())
+        ]);
 
-        if (!activeSchedules || activeSchedules.length === 0) return;
+        const activeSchedules = schedulesRes.data || [];
+        if (activeSchedules.length === 0) return false;
 
-        // 3. Get existing tasks for today to avoid duplicates
-        const { data: existingTasks } = await supabase
-            .from('daily_tasks')
-            .select('schedule_id, due_at')
-            .eq('household_id', householdId)
-            .gte('due_at', startOfDay.toISOString())
-            .lte('due_at', endOfDay.toISOString());
-
-        const existingMap = new Set(existingTasks?.map(t => {
+        const existingTasks = tasksRes.data || [];
+        const existingMap = new Set(existingTasks.map(t => {
             const time = new Date(t.due_at).getTime();
-            return `${t.schedule_id}-${time}`;
+            return `${t.schedule_id} -${time} `;
         }));
 
-        // 4. Generate candidate tasks
-        const candidateTasks = generateTasksForDate(activeSchedules, date, householdId);
+        // 3. Generate candidate tasks
+        // Cast to any to avoid TS issues with the joined 'pets' property
+        const candidateTasks = generateTasksForDate(activeSchedules as any, date, householdId);
 
-        // 5. Filter out ones that already exist (using timestamp comparison)
+        // 4. Filter out ones that already exist
         const toInsert = candidateTasks.filter(t => {
             const time = new Date(t.due_at).getTime();
-            return !existingMap.has(`${t.schedule_id}-${time}`);
+            return !existingMap.has(`${t.schedule_id} -${time} `);
         });
 
         if (toInsert.length > 0) {
@@ -55,15 +56,17 @@ export const ensureDailyTasks = async (householdId: string) => {
 
             if (insertError) {
                 console.error("Error generating tasks:", insertError);
+                return false;
             } else {
                 console.log(`Successfully generated ${toInsert.length} new tasks.`);
+                return true;
             }
-        } else {
-            // console.log("All schedules have tasks generated for today.");
         }
 
+        return false;
     } catch (e) {
         console.error("ensureDailyTasks failed:", e);
+        return false;
     }
 };
 

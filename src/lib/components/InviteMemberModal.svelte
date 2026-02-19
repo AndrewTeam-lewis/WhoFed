@@ -3,6 +3,7 @@
     import { supabase } from '$lib/supabase';
     import { currentUser } from '$lib/stores/user';
     import QRCode from 'qrcode';
+    import { t } from '$lib/services/i18n';
 
     export let householdId: string;
     export let canInvite: boolean;
@@ -129,8 +130,8 @@
         if (!inviteUrl) return;
 
         const shareData = {
-            title: 'Join my Household on WhoFed',
-            text: 'Help me take care of the pets! Join my household here:',
+            title: $t.invite.title,
+            text: $t.invite.scan_text,
             url: inviteUrl
         };
 
@@ -139,7 +140,7 @@
                 await navigator.share(shareData);
             } else {
                 await navigator.clipboard.writeText(inviteUrl);
-                alert('Link copied to clipboard!');
+                alert($t.common.success);
             }
         } catch (err) {
             console.error('Error sharing:', err);
@@ -165,7 +166,7 @@
 
             if (result.success) {
                 inviteStatus = 'success';
-                inviteMessage = `Invite sent to ${identifier}`;
+                inviteMessage = $t.invite.sent_success.replace('{name}', identifier);
                 identifierInput = '';
 
                 // NEW: Send Push Notification
@@ -182,8 +183,8 @@
                         supabase.functions.invoke('send-push', {
                             body: {
                                 user_id: invitedUserId,
-                                title: 'New Invitation',
-                                body: `${senderName} invited you to join a household!`,
+                                title: $t.invite.push_title,
+                                body: $t.invite.push_body.replace('{name}', senderName),
                                 url: '/settings'
                             }
                         }).then(({ error }) => {
@@ -195,12 +196,12 @@
                 }
             } else {
                 inviteStatus = 'error';
-                inviteMessage = result.error || 'Failed to send invite';
+                inviteMessage = result.error || $t.invite.send_error;
             }
         } catch (e: any) {
             console.error('Error sending invite:', e);
             inviteStatus = 'error';
-            inviteMessage = e.message || 'Failed to send invite';
+            inviteMessage = e.message || $t.invite.send_error;
         }
     }
 </script>
@@ -214,7 +215,7 @@
         <div class="p-6">
             <!-- Header -->
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-xl font-bold text-gray-900">Invite Member</h3>
+                <h3 class="text-xl font-bold text-gray-900">{$t.invite.title}</h3>
                 <button on:click={() => dispatch('close')} class="text-gray-400 hover:text-gray-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -228,13 +229,13 @@
                     class="flex-1 py-2 text-sm font-bold rounded-lg transition-all {activeTab === 'link' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}"
                     on:click={() => activeTab = 'link'}
                 >
-                    Share Link
+                    {$t.invite.tab_link}
                 </button>
                 <button
                     class="flex-1 py-2 text-sm font-bold rounded-lg transition-all {activeTab === 'email' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}"
                     on:click={() => activeTab = 'email'}
                 >
-                    By Email
+                    {$t.invite.tab_email}
                 </button>
             </div>
 
@@ -256,7 +257,7 @@
                         {/if}
                     </div>
 
-                    <p class="text-xs text-gray-400 text-center">Scan this code or share the link below to invite someone to your household.</p>
+                    <p class="text-xs text-gray-400 text-center">{$t.invite.scan_text}</p>
 
                     <button
                         class="w-full flex items-center justify-center space-x-2 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 active:scale-95 transition-transform"
@@ -265,7 +266,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
-                        <span>Share Invite Link</span>
+                        <span>{$t.invite.share_button}</span>
                     </button>
                 </div>
             {/if}
@@ -273,15 +274,15 @@
             <!-- Tab Content: By Email -->
             {#if activeTab === 'email'}
                 <div class="space-y-4">
-                    <p class="text-sm text-gray-500">Enter an email address. They'll receive a notification if they are already on WhoFed.</p>
+                    <p class="text-sm text-gray-500">{$t.invite.email_desc}</p>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Email</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{$t.invite.email_label}</label>
                         <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-brand-sage/20 focus-within:border-brand-sage">
                             <input
                                 type="email"
                                 bind:value={identifierInput}
-                                placeholder="name@example.com"
+                                placeholder={$t.invite.placeholder}
                                 class="flex-1 p-3 text-sm text-gray-900 outline-none pl-3"
                                 on:keydown={(e) => { if (e.key === 'Enter') sendInvite(); }}
                             />
@@ -291,11 +292,11 @@
                     <!-- Suggested Members -->
                     {#if loadingSuggestions}
                         <div class="text-center py-2">
-                             <span class="text-xs text-gray-400">Loading suggestions...</span>
+                             <span class="text-xs text-gray-400">{$t.invite.suggestions_loading}</span>
                         </div>
                     {:else if suggestedUsers.length > 0}
                         <div class="space-y-2">
-                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Previously Added</div>
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">{$t.invite.suggestions_header}</div>
                             <div class="max-h-32 overflow-y-auto space-y-1">
                                 {#each suggestedUsers as user}
                                     <button 
@@ -309,7 +310,7 @@
                                             <span class="text-[10px] text-gray-400">{user.email || ''}</span>
                                         </div>
                                         <div class="text-brand-sage opacity-0 group-hover:opacity-100 text-xs font-bold">
-                                            Select
+                                            {$t.invite.select}
                                         </div>
                                     </button>
                                 {/each}
@@ -335,10 +336,10 @@
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <span>Sending...</span>
+                                <span>{$t.invite.button_sending}</span>
                             </span>
                         {:else}
-                            Send Invite
+                            {$t.invite.button_send}
                         {/if}
                     </button>
                 </div>
