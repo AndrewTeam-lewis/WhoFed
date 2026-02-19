@@ -189,7 +189,9 @@ export default {
         password_confirm_placeholder: 'Re-enter password',
         update_password: 'Update Password',
         updating: 'Updating...',
-        fill_all_fields: 'Please fill in all fields'
+        fill_all_fields: 'Please fill in all fields',
+        check_pricing: 'Check Pricing',
+        maybe_later: 'Maybe Later'
     },
     pet_settings: {
         title: 'Edit Details',
@@ -261,6 +263,10 @@ export default {
         species_placeholder: 'e.g. Dog',
         icon_label: 'Icon',
         add_btn: 'Add Pet',
-        saving: 'Saving...'
+        saving: 'Saving...',
+        page_title: 'New Pet',
+        cancel_setup: 'Cancel Setup',
+        limit_reached: 'Limit Reached',
+        upload_custom: 'Upload Custom Photo'
     }
 };

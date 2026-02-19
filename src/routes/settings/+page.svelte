@@ -6,7 +6,7 @@
   import { APP_VERSION } from '$lib/version';
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
-  import { userIsPremium } from '$lib/stores/user';
+  import { currentUser, userIsPremium } from '$lib/stores/user';
   import CreateHouseholdModal from '$lib/components/CreateHouseholdModal.svelte';
   import InviteMemberModal from '$lib/components/InviteMemberModal.svelte';
   import PremiumFeatureModal from '$lib/components/PremiumFeatureModal.svelte';
@@ -65,7 +65,6 @@
       user_id: string;
       role: 'owner' | 'member'; // derived
       first_name: string | null;
-      last_name: string | null;
       email: string | null;
       can_log: boolean;
       can_edit: boolean;
@@ -74,7 +73,6 @@
 
   let loading = true;
   let members: MemberProfile[] = [];
-  let currentUser: any = null;
   let householdId: string | null = null;
   let isOwner = false;
   let canInvite = false;
@@ -220,7 +218,7 @@
 
       try {
           const updates = {
-              id: currentUser.id,
+              id: $currentUser.id,
               first_name: profile.first_name,
               updated_at: new Date().toISOString()
           };
@@ -250,65 +248,64 @@
       window.location.reload();
   }
 
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      goto('/auth/login');
-      return;
+  onMount(() => {
+    // Initialize notifications from cache immediately
+    const cachedNotif = localStorage.getItem('notificationsEnabled');
+    if (cachedNotif !== null) {
+        notificationsEnabled = cachedNotif === 'true';
     }
-    currentUser = session.user;
 
-    await loadSettings();
-    
-    // Check notification status
-    notificationsEnabled = await notificationService.checkSubscriptionState();
+    // Verify actual notification status in background
+    notificationService.checkSubscriptionState().then(enabled => {
+        notificationsEnabled = enabled;
+        localStorage.setItem('notificationsEnabled', String(enabled));
+    });
   });
 
+  // Load settings as soon as user and household are available
+  let settingsLoaded = false;
+  $: if (currentUser && $activeHousehold?.id && !settingsLoaded) {
+      settingsLoaded = true;
+      loadSettings();
+  }
+
   async function openManageReminders() {
-      // Changed: Fetch for ALL households I am in
       loading = true;
       try {
-          // 1. Get my households
-          const { data: myHHs } = await supabase.from('household_members').select('household_id').eq('user_id', currentUser.id);
-          const hhIds = myHHs?.map(h => h.household_id) || [];
-          
-          
+          // Use store — household IDs already loaded by layout (zero network call)
+          const hhIds = $availableHouseholds.map(h => h.id);
+          const households = $availableHouseholds.map(h => ({ id: h.id, name: h.name }));
+
           if (hhIds.length === 0) {
             reminderSchedules = [];
             showManageRemindersModal = true;
             return;
           }
 
-          // 2. Get Households Info (for grouping)
-          const { data: households } = await supabase.from('households').select('id, name').in('id', hhIds);
-          
-          // 3. Get all pets in these households
-          const { data: myPets, error: petsError } = await supabase
-            .from('pets')
-            .select('id, name, icon, species, household_id')
-            .in('household_id', hhIds);
-          
-          if (petsError) throw petsError;
-          const petIds = myPets.map(p => p.id);
+          // Fetch pets and reminder settings in parallel
+          const [petsRes, settingsRes] = await Promise.all([
+              supabase.from('pets').select('id, name, icon, species, household_id').in('household_id', hhIds),
+              supabase.from('reminder_settings').select('schedule_id, is_enabled').eq('user_id', $currentUser.id)
+          ]);
 
-          // 4. Get all schedules for these pets
+          if (petsRes.error) throw petsRes.error;
+          if (settingsRes.error) throw settingsRes.error;
+
+          const myPets = petsRes.data || [];
+          const petIds = myPets.map((p: any) => p.id);
+
+          // Fetch schedules (needs pet IDs from above)
           const { data: scheds, error: schedError } = await supabase
             .from('schedules')
             .select('*')
             .in('pet_id', petIds)
-            .eq('is_enabled', true); 
-          
+            .eq('is_enabled', true);
+
           if (schedError) throw schedError;
 
-          // 4. Get my personal reminder settings
-          const { data: settings, error: setError } = await supabase
-            .from('reminder_settings')
-            .select('schedule_id, is_enabled')
-            .eq('user_id', currentUser.id);
+          const settings = settingsRes.data || [];
 
-          if (setError) throw setError;
-
-          // 5. Build State
+          // Build State
           const settingsMap: Record<string, boolean> = {};
           settings?.forEach(s => settingsMap[s.schedule_id] = s.is_enabled);
 
@@ -323,7 +320,7 @@
                   pet: pet,
                   household_name: hh?.name || 'Unknown Household',
                   // Fallback title logic
-                  display_label: s.label || (s.task_type === 'medication' ? 'Medication' : s.task_type === 'litter' ? 'Change Litter' : 'Feeding'),
+                  display_label: s.label || (s.task_type === 'medication' ? 'Medication' : s.task_type === 'care' ? 'Care Task' : 'Feeding'),
                   my_enabled: settingsMap[s.id] !== undefined ? settingsMap[s.id] : true
               };
           });
@@ -357,7 +354,7 @@
           const { error } = await supabase
             .from('reminder_settings')
             .upsert({ 
-                user_id: currentUser.id, 
+                user_id: $currentUser.id, 
                 schedule_id: scheduleId, 
                 is_enabled: newVal 
             }, { onConflict: 'user_id, schedule_id' });
@@ -392,78 +389,61 @@
   async function loadSettings() {
     loading = true;
     try {
-        // 0. Get My Profile
-        const { data: myProfile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single();
-            
-        if (profileError) throw profileError;
-        if (myProfile) {
-            // Prioritize Auth email (source of truth)
-            const realEmail = currentUser.email || '';
-            const profileEmail = myProfile.email || '';
-            
-            profile = {
-                first_name: myProfile.first_name || '',
-                email: realEmail || profileEmail // Use auth email if available
-            };
+        // Get profile from currentUser (already loaded by layout)
+        const realEmail = $currentUser.email || '';
+        profile = {
+            first_name: $currentUser.user_metadata?.first_name || '',
+            email: realEmail
+        };
 
-            // Lazy Sync: If auth email changed but profile is stale, update it
-            if (realEmail && realEmail !== profileEmail) {
-                console.log('Syncing profile email to auth email...');
-                supabase.from('profiles').update({ email: realEmail }).eq('id', currentUser.id).then(({ error }) => {
-                   if (error) console.error('Failed to sync profile email:', error);
-                });
-            }
-        }
-
-        // 1. Get household from active store (already set by layout)
+        // Use household from store (already loaded by layout — zero network call)
         const currentHousehold = $activeHousehold;
         if (!currentHousehold) {
             console.error('No active household');
             return;
         }
         householdId = currentHousehold.id;
+        isOwner = currentHousehold.role === 'owner';
 
-        // 2. Check if I am owner
-        const { data: household, error: hhError } = await supabase
-            .from('households')
-            .select('owner_id')
-            .eq('id', householdId)
-            .single();
+        // Fetch all remaining data in parallel (1 round trip instead of 4 sequential)
+        const [hhRes, memberRes, petRes, incRes, outRes] = await Promise.all([
+            // Need owner_id to label each member correctly
+            supabase.from('households').select('owner_id').eq('id', householdId).single(),
 
-        if (hhError) throw hhError;
-        isOwner = household.owner_id === currentUser.id;
-
-        // 3. Get all members
-        const { data: memberData, error: memberError } = await supabase
-            .from('household_members')
-            .select(`
+            supabase.from('household_members').select(`
                 user_id,
                 can_log,
                 can_edit,
                 is_active,
-                profiles (first_name, email)
-            `)
-            .eq('household_id', householdId);
+                profiles (first_name, last_name, email)
+            `).eq('household_id', householdId).limit(100),
 
-        if (memberError) throw memberError;
+            supabase.from('pets').select('*').eq('household_id', householdId).order('name').limit(100),
 
-        // 4. Get Pets
-        const { data: petData, error: petError } = await supabase
-            .from('pets')
-            .select('*')
-            .eq('household_id', householdId)
-            .order('name');
+            supabase.from('household_invitations').select(`
+                id,
+                household_id,
+                created_at,
+                households (name),
+                profiles!household_invitations_invited_by_fkey (first_name, email)
+            `).eq('invited_user_id', $currentUser.id).eq('status', 'pending').order('created_at', { ascending: false }).limit(20),
 
-        if (petError) throw petError;
-        pets = petData || [];
+            supabase.from('household_invitations').select(`
+                id,
+                household_id,
+                created_at,
+                status,
+                households (name),
+                profiles!household_invitations_invited_user_id_fkey (first_name, email)
+            `).eq('invited_by', $currentUser.id).order('created_at', { ascending: false }).limit(50)
+        ]);
 
-        members = (memberData || []).map((m: any) => ({
+        const ownerId = hhRes.data?.owner_id;
+        pets = petRes.data || [];
+
+        members = ((memberRes.data || []) as any[]).map((m: any) => ({
             user_id: m.user_id,
-            role: m.user_id === household.owner_id ? 'owner' : 'member',
+            role: m.user_id === ownerId ? 'owner' : 'member',
             first_name: m.profiles?.first_name || 'Unknown',
             last_name: m.profiles?.last_name || null,
             email: m.profiles?.email || '',
@@ -471,48 +451,14 @@
             can_edit: m.can_edit,
             is_active: m.is_active
         }));
-        
-        // Monetization Check: Free tier limit is 2 members
-        const MEMBER_LIMIT = 2;
-        canInvite = $userIsPremium || members.length < MEMBER_LIMIT;
 
-        // 5. Get pending invite count for current user (INCOMING)
-        const { data: incInvites, error: incError } = await supabase
-            .from('household_invitations')
-            .select(`
-                id,
-                household_id,
-                created_at,
-                households (name),
-                profiles!household_invitations_invited_by_fkey (first_name, last_name, email)
-            `)
-            .eq('invited_user_id', currentUser.id)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false });
+        canInvite = $userIsPremium || members.length < 2;
 
-        if (incError) console.error('Error fetching incoming invites:', incError);
-        incomingInvites = incInvites || [];
+        incomingInvites = incRes.data || [];
         pendingInviteCount = incomingInvites.length;
 
-        // 6. Get pending invite count sent BY me (OUTGOING)
-        const { data: outInvites, error: outError } = await supabase
-            .from('household_invitations')
-            .select(`
-                id,
-                household_id,
-                created_at,
-                status,
-                households (name),
-                profiles!household_invitations_invited_user_id_fkey (first_name, last_name, email, username)
-            `)
-            .eq('invited_by', currentUser.id)
-            .order('created_at', { ascending: false });
-
-        if (outError) console.error('Error fetching outgoing invites:', outError);
-        outgoingInvites = outInvites || [];
-        // Count only pending/active ones if desired, or all? User asked for "sent invitations that have not been accepted".
-        // Let's filter for display logic but keep data.
-        sentInviteCount = outgoingInvites.filter(i => i.status === 'pending').length;
+        outgoingInvites = outRes.data || [];
+        sentInviteCount = outgoingInvites.filter((i: any) => i.status === 'pending').length;
         
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -611,7 +557,7 @@
               .from('household_members')
               .delete()
               .eq('household_id', householdIdForAction)
-              .eq('user_id', currentUser.id);
+              .eq('user_id', $currentUser.id);
           
           if (error) throw error;
           
@@ -655,7 +601,7 @@
   }
 
   async function deleteHousehold() {
-      console.log('Attempting DELETE:', { householdIdForAction, ownerId: currentUser.id });
+      console.log('Attempting DELETE:', { householdIdForAction, ownerId: $currentUser.id });
 
       if (!householdIdForAction) return; 
       try {
@@ -664,7 +610,7 @@
               .from('households')
               .delete({ count: 'exact' })
               .eq('id', householdIdForAction)
-              .eq('owner_id', currentUser.id)
+              .eq('owner_id', $currentUser.id)
               .select(); // Select to see what was deleted
           
           console.log('DELETE Result:', { error, count, data });
@@ -672,7 +618,7 @@
           if (error) throw error;
           
           if (count === 0) {
-              alert(`Delete failed silently. Debug Info:\nTarget ID: ${householdIdForAction}\nOwner Match: ${currentUser.id}\nRLS Policy likely blocking DELETE.`);
+              alert(`Delete failed silently. Debug Info:\nTarget ID: ${householdIdForAction}\nOwner Match: ${$currentUser.id}\nRLS Policy likely blocking DELETE.`);
               return;
           }
 
@@ -726,7 +672,6 @@
               user_id: m.user_id,
               role: hh?.owner_id === m.user_id ? 'owner' : 'member',
               first_name: (m.profiles as any)?.first_name || 'Unknown',
-              last_name: (m.profiles as any)?.last_name || null,
               email: (m.profiles as any)?.email || null,
               can_log: m.can_log ?? true,
               can_edit: m.can_edit ?? false,
@@ -848,7 +793,7 @@
 <div class="min-h-screen bg-gray-50 pb-20">
   <!-- Header -->
   <header class="bg-gray-50 px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center">
-    <a href="/" class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all">
+    <a href="/" class="mr-4 p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all" aria-label="Back">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
       </svg>
@@ -868,14 +813,15 @@
          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
              <div class="flex items-center justify-between p-6">
                  <h2 class="text-xl font-bold text-gray-900">{profile.first_name}</h2>
-                 <button 
-                     class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors rounded-full"
-                     on:click={() => showEditProfileModal = true}
-                 >
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                     </svg>
-                 </button>
+                <button 
+                    class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors rounded-full"
+                    on:click={() => showEditProfileModal = true}
+                    aria-label="Edit Profile"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                </button>
              </div>
 
               <!-- Email Row (Read Only) -->
@@ -954,14 +900,15 @@
                                  <div class="font-bold text-gray-900 text-sm flex items-center space-x-2">
                                      <span>{hh.name}</span>
                                      {#if hh.role === 'owner'}
-                                         <button
-                                             on:click|stopPropagation={() => openEditHouseholdModal(hh)}
-                                             class="text-gray-400 hover:text-brand-sage p-0.5"
-                                         >
-                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                             </svg>
-                                         </button>
+                                        <button
+                                            on:click|stopPropagation={() => openEditHouseholdModal(hh)}
+                                            class="text-gray-400 hover:text-brand-sage p-0.5"
+                                            aria-label="Edit Household"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                            </svg>
+                                        </button>
                                      {/if}
                                  </div>
                                  <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage font-bold' : 'text-gray-400 font-medium'}">
@@ -1005,8 +952,8 @@
                                                      </div>
                                                      <div>
                                                          <div class="font-bold text-gray-900 text-xs">
-                                                             {[member.first_name, member.last_name].filter(Boolean).join(' ')}
-                                                             {member.user_id === currentUser?.id ? ' (You)' : ''}
+                                                             {member.first_name || 'Unknown'}
+                                                             {member.user_id === $currentUser?.id ? ' (You)' : ''}
                                                          </div>
                                                          <div class="text-[10px]  font-bold {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
                                                              {member.role === 'owner' ? $t.settings.role_owner : $t.settings.role_member}
@@ -1016,7 +963,7 @@
                                                  
                                                  <!-- Actions -->
                                                  <div class="flex items-center space-x-1">
-                                                     {#if hh.role === 'owner' && member.user_id !== currentUser?.id}
+                                                     {#if hh.role === 'owner' && member.user_id !== $currentUser?.id}
                                                              <button 
                                                              class="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
                                                              on:click={() => { memberToRemove = { ...member, first_name: member.first_name || 'Member' }; householdIdForAction = hh.id; showRemoveMemberModal = true; }}
@@ -1027,7 +974,7 @@
                                                              </svg>
                                                          </button>
                                                      {/if}
-                                                     {#if hh.role !== 'owner' && member.user_id === currentUser?.id}
+                                                     {#if hh.role !== 'owner' && member.user_id === $currentUser?.id}
                                                          <button 
                                                              class="px-2 py-1 text-[10px] font-bold text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors uppercase tracking-wide"
                                                              on:click={() => { householdIdForAction = hh.id; showLeaveHouseholdModal = true; }}
@@ -1181,11 +1128,11 @@
                                     <div class="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between">
                                         <div class="flex items-center space-x-3">
                                              <div class="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 font-bold text-xs">
-                                                {(invite.profiles?.first_name?.[0] || invite.profiles?.username?.[0] || '?').toUpperCase()}
+                                                {(invite.profiles?.first_name?.[0] || invite.profiles?.email?.[0] || '?').toUpperCase()}
                                              </div>
                                              <div>
                                                  <div class="text-xs font-bold text-gray-900">
-                                                     {invite.profiles?.first_name ? `${invite.profiles.first_name} ${invite.profiles.last_name || ''}` : `@${invite.profiles?.username || 'Unknown'}`}
+                                                     {invite.profiles?.first_name ? invite.profiles.first_name : (invite.profiles?.email || 'Unknown')}
                                                  </div>
                                                  <div class="text-[10px] text-gray-500">
                                                       {$t.settings.invited_to.replace('{household}', invite.households?.name)} • 
@@ -1263,6 +1210,7 @@
                <button 
                   class="relative w-11 h-6 rounded-full transition-colors {notificationsEnabled ? 'bg-brand-sage' : 'bg-gray-200'}"
                   on:click={toggleNotifications}
+                  aria-label="Toggle Push Notifications"
                >
                    <span 
                        class="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm {notificationsEnabled ? 'translate-x-5' : 'translate-x-0'}"
@@ -1302,6 +1250,7 @@
                <button
                    class="text-brand-sage hover:text-brand-sage/80 transition-colors"
                    on:click={() => showLanguageModal = true}
+                   aria-label="Change Language"
                >
                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -1312,9 +1261,7 @@
       </div>
 
        <!-- Test Notification Button (Hidden unless toggled?) No, explicit request -->
-       {#if notificationsEnabled}
 
-       {/if}
 
 
 
@@ -1335,7 +1282,7 @@
                             const newTier = $userIsPremium ? 'free' : 'premium';
                             console.log('Toggling user tier to:', newTier);
                             // ... toggle logic ...
-                            const { data: updatedRows, error: updateError } = await supabase.from('profiles').update({ tier: newTier }).eq('id', currentUser.id).select();
+                            const { data: updatedRows, error: updateError } = await supabase.from('profiles').update({ tier: newTier }).eq('id', $currentUser.id).select();
                             if (updateError) { alert('Failed: ' + updateError.message); } else { window.location.reload(); }
                         } catch (e: any) { alert('Error: ' + e.message); }
                     }}
@@ -1370,7 +1317,7 @@
        
        <div class="space-y-2">
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-              <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={openExportModal}>
+              <button class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer text-left" on:click={openExportModal}>
                   <div class="flex items-center space-x-3 text-gray-700">
                       <div class="p-2 bg-green-50 text-green-600 rounded-lg">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1384,9 +1331,9 @@
                           {/if}
                       </div>
                   </div>
-              </div>
+              </button>
               
-              <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer" on:click={handleLogout}>
+              <button class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer text-left" on:click={handleLogout}>
                   <div class="flex items-center space-x-3 text-gray-600">
                       <div class="p-2 bg-gray-100 rounded-lg">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1395,10 +1342,10 @@
                       </div>
                       <span class="font-medium text-sm">{$t.settings.log_out}</span>
                   </div>
-              </div>
+              </button>
 
               <!-- Danger Zone: Delete Account -->
-              <div class="flex items-center justify-between p-4 hover:bg-red-50 transition-colors cursor-pointer" 
+              <button class="w-full flex items-center justify-between p-4 hover:bg-red-50 transition-colors cursor-pointer text-left" 
                   on:click={() => showDeleteAccountModal = true}
               >
                   <div class="flex items-center space-x-3 text-red-600">
@@ -1409,7 +1356,7 @@
                       </div>
                        <span class="font-medium text-sm">{$t.settings.delete_account}</span>
                   </div>
-              </div>
+              </button>
           </section>
        </div>
  
@@ -1418,13 +1365,13 @@
   <!-- Edit Pet Modal -->
   {#if showEditPetModal && editingPet}
   <div class="fixed inset-0 z-[120] flex items-center justify-center p-4">
-      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" on:click={() => showEditPetModal = false}></button>
+      <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" on:click={() => showEditPetModal = false} aria-label="Close"></button>
       
       <div class="bg-white rounded-[32px] w-full max-w-sm relative z-10 animate-scale-in max-h-[85vh] overflow-y-auto flex flex-col">
           <div class="p-6">
                <div class="flex items-center justify-between mb-6">
                    <h3 class="text-xl font-bold text-gray-900">Edit Pet</h3>
-                   <button on:click={() => showEditPetModal = false} class="text-gray-400 hover:text-gray-600">
+                   <button on:click={() => showEditPetModal = false} class="text-gray-400 hover:text-gray-600" aria-label="Close">
                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                        </svg>
@@ -1481,12 +1428,12 @@
 
                <div class="space-y-4">
                    <div>
-                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Name</label>
-                       <input type="text" bind:value={editPetName} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
+                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="editPetName">Name</label>
+                       <input id="editPetName" type="text" bind:value={editPetName} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
                    </div>
                    <div>
-                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Species</label>
-                       <input type="text" bind:value={editPetSpecies} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
+                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="editPetSpecies">Species</label>
+                       <input id="editPetSpecies" type="text" bind:value={editPetSpecies} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
                    </div>
                </div>
 
@@ -1516,7 +1463,7 @@
   {#if showEditProfileModal}
     <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-sm p-6 relative animate-fade-in">
-             <button class="absolute top-4 right-4 text-gray-400" on:click={() => showEditProfileModal = false}>
+             <button class="absolute top-4 right-4 text-gray-400" on:click={() => showEditProfileModal = false} aria-label="Close">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                  </svg>
@@ -1568,7 +1515,7 @@
   {#if showPremiumModal}
   <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <!-- Backdrop -->
-      <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showPremiumModal = false}></button>
+      <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showPremiumModal = false} aria-label="Close"></button>
       
       <!-- Modal -->
       <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
@@ -1631,7 +1578,7 @@
   {#if showDeleteAccountModal}
   <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <!-- Backdrop -->
-      <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showDeleteAccountModal = false}></button>
+      <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showDeleteAccountModal = false} aria-label="Close"></button>
       
       <!-- Modal -->
       <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
@@ -1658,7 +1605,7 @@
                       on:click={async () => {
                           try {
                               showDeleteAccountModal = false;
-                              const { error } = await supabase.from('profiles').delete().eq('id', currentUser.id);
+                              const { error } = await supabase.from('profiles').delete().eq('id', $currentUser.id);
                               if (error) throw error;
                               await supabase.auth.signOut();
                               window.location.href = '/auth/login';
@@ -1900,7 +1847,7 @@
 
   {#if showChangeEmailModal}
     <ChangeEmailModal 
-        currentEmail={currentUser?.email || ''} 
+        currentEmail={$currentUser?.email || ''} 
         on:close={() => showChangeEmailModal = false} 
     />
   {/if}

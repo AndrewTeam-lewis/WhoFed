@@ -5,6 +5,7 @@
   import { generateTasksForDate } from '$lib/taskUtils';
   import { activeHousehold } from '$lib/stores/appState';
   import { userIsPremium } from '$lib/stores/user';
+  import { t } from '$lib/services/i18n';
 
 
 
@@ -419,7 +420,7 @@
 </script>
 
 <svelte:head>
-  <title>New Pet - WhoFed</title>
+  <title>{$t.add_pet.page_title} - WhoFed</title>
 </svelte:head>
 
 <div class="min-h-screen bg-[#FDFDFD] pb-32 font-sans text-typography-primary">
@@ -431,7 +432,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
                 </svg>
             </button>
-            <h1 class="text-xl font-bold text-typography-primary">New Pet</h1>
+            <h1 class="text-xl font-bold text-typography-primary">{$t.add_pet.page_title}</h1>
         </div>
         <button class="p-2 text-typography-secondary hover:text-brand-sage transition-colors">
              <span class="text-2xl leading-none mb-3 block">...</span>
@@ -472,7 +473,7 @@
                 on:click={() => showIconModal = true}
                 class="mt-3 text-xs font-bold text-brand-sage uppercase tracking-wider hover:underline"
             >
-                Change Icon
+                {$t.pet_settings.change_icon}
             </button>
             
             <div class="mt-4 w-full max-w-xs space-y-4">
@@ -482,7 +483,7 @@
                     bind:value={name}
                     data-tour="pet-name-input"
                     class="block w-full text-center text-2xl font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 placeholder-gray-300 focus:placeholder-gray-200"
-                    placeholder="Name your pet..."
+                    placeholder={$t.pet_settings.name_placeholder}
                 />
             </div>
         </section>
@@ -495,7 +496,7 @@
                 
                 <!-- Modal -->
                 <div class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl relative z-10 animate-scale-in max-h-[80vh] overflow-y-auto">
-                    <h3 class="text-center text-lg font-bold text-typography-primary mb-6">Choose Icon</h3>
+                    <h3 class="text-center text-lg font-bold text-typography-primary mb-6">{$t.pet_settings.choose_icon}</h3>
                     
                     <!-- Icon Grid -->
                     <div class="grid grid-cols-5 gap-3 mb-8">
@@ -531,7 +532,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
-                                <span>Upload Custom Photo</span>
+                                <span>{$t.add_pet.upload_custom}</span>
                             {/if}
                             {#if !$userIsPremium}
                                 <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">PREMIUM</span>
@@ -549,7 +550,7 @@
             </div>
         {/if}
 
-        <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8" data-tour="pet-schedules">Care Schedules</h3>
+        <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8" data-tour="pet-schedules">{$t.pet_settings.care_schedules}</h3>
 
         <!-- Schedules List -->
         <div class="space-y-6">
@@ -575,7 +576,7 @@
                                     type="text" 
                                     bind:value={schedule.label}
                                     class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1"
-                                    placeholder={schedule.type === 'feeding' ? 'Food Name' : schedule.type === 'care' ? 'Care type (required)' : 'Medication Name'}
+                                    placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder : $t.pet_settings.med_name_placeholder}
                                 />
                                 <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -603,14 +604,14 @@
                                 {#each ['daily', 'weekly', 'monthly', 'custom'] as freq}
                                     <button type="button" 
                                         class="flex-1 py-2 text-[10px] font-bold uppercase rounded-lg transition-all {schedule.frequency === freq ? 'bg-brand-sage text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}" 
-                                        on:click={() => schedule.frequency = freq as any}>{freq}</button>
+                                        on:click={() => schedule.frequency = freq as any}>{$t.pet_settings[freq]}</button>
                                 {/each}
                             </div>
 
                             <!-- Frequency Specific Controls -->
                             {#if schedule.frequency === 'weekly'}
                                 <div class="mb-6">
-                                    <label class="block text-sm font-bold text-typography-secondary mb-2">Select Days</label>
+                                    <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.select_days}</label>
                                     <div class="flex justify-between">
                                         {#each DAYS_OF_WEEK as day}
                                             <button 
@@ -631,9 +632,9 @@
                                 </div>
                             {:else if schedule.frequency === 'monthly'}
                                 <div class="mb-6">
-                                    <label class="block text-sm font-bold text-typography-secondary mb-2">Day of Month</label>
+                                    <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.day_of_month}</label>
                                     <div class="flex items-center bg-neutral-surface rounded-2xl px-4 py-3 border border-transparent focus-within:border-brand-sage/50">
-                                        <span class="text-sm font-bold text-typography-secondary mr-2">Every</span>
+                                        <span class="text-sm font-bold text-typography-secondary mr-2">{$t.pet_settings.every}</span>
                                         <input 
                                             type="number" 
                                             min="1" 
@@ -641,12 +642,12 @@
                                             bind:value={schedule.selectedDayOfMonth}
                                             class="bg-transparent border-none text-typography-primary font-bold focus:ring-0 p-0 text-base w-12 text-center"
                                         />
-                                        <span class="text-sm font-bold text-typography-secondary ml-1">of the month</span>
+                                        <span class="text-sm font-bold text-typography-secondary ml-1">{$t.pet_settings.of_the_month}</span>
                                     </div>
                                 </div>
                             {:else if schedule.frequency === 'custom'}
                                 <div class="mb-6">
-                                    <label class="block text-sm font-bold text-typography-secondary mb-2">Specific Dates</label>
+                                    <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.specific_dates}</label>
                                     <div class="flex items-center space-x-2 mb-3">
                                         <input 
                                             type="date" 
@@ -684,7 +685,7 @@
                                             {/each}
                                         </div>
                                     {:else}
-                                        <p class="text-xs text-gray-400 italic">No dates selected</p>
+                                        <p class="text-xs text-gray-400 italic">{$t.pet_settings.no_dates}</p>
                                     {/if}
                                 </div>
                             {/if}
@@ -692,7 +693,7 @@
                             <!-- Time Rows -->
                             {#if schedule.frequency !== 'monthly'}
                             <div class="space-y-3 mb-6">
-                                <label class="block text-sm font-bold text-typography-secondary mb-2">At these times</label>
+                                <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.at_times}</label>
                                 {#each schedule.times as time, i}
                                     <div class="flex items-center space-x-3 bg-neutral-surface rounded-2xl px-4 py-3 group focus-within:ring-2 focus-within:ring-brand-sage/50 transition-all border border-transparent hover:border-brand-sage/20">
                                          <!-- Label Input (Left) -->
@@ -701,7 +702,7 @@
                                                 type="text" 
                                                 bind:value={schedule.times[i].label}
                                                 class="font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 w-full placeholder-gray-400 text-sm"
-                                                placeholder={i === 0 ? 'Breakfast' : i === 1 ? 'Dinner' : 'Label'}
+                                                placeholder={i === 0 ? $t.pet_settings.breakfast : i === 1 ? $t.pet_settings.dinner : $t.pet_settings.label_placeholder}
                                             />
                                          </div>
 
@@ -737,7 +738,7 @@
                                 class="w-full py-3 border-2 border-dashed border-brand-sage/40 rounded-2xl text-brand-sage text-xs font-bold uppercase flex items-center justify-center space-x-2 hover:bg-brand-sage/5 transition-colors"
                             >
                                 <span class="text-lg leading-none">+</span>
-                                <span>Add {schedule.type === 'feeding' ? 'Time' : schedule.type === 'care' ? 'Check' : 'Dose'}</span>
+                                <span>{$t.pet_settings.add_time.replace('{type}', schedule.type === 'feeding' ? $t.modals.feeding : schedule.type === 'medication' ? $t.modals.medication : 'Care')}</span>
                             </button>
                             {/if}
                         </div>
@@ -747,9 +748,9 @@
             
             <!-- Quick Add Buttons -->
              <div class="grid grid-cols-3 gap-3 opacity-50 hover:opacity-100 transition-opacity">
-                 <button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Food</button>
-                 <button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Meds</button>
-                 <button on:click={() => addSchedule('care')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">+ Care Task</button>
+                 <button on:click={() => addSchedule('feeding')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">{$t.pet_settings.add_food}</button>
+                 <button on:click={() => addSchedule('medication')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">{$t.pet_settings.add_meds}</button>
+                 <button on:click={() => addSchedule('care')} class="py-3 text-sm font-bold text-typography-secondary border border-dashed border-gray-300 rounded-2xl hover:border-brand-sage hover:text-brand-sage">{$t.pet_settings.add_care}</button>
              </div>
         </div>
 
@@ -764,7 +765,7 @@
                 {#if loading}
                     <div class="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div>
                 {:else}
-                    {limitReached ? 'Limit Reached' : 'Save Changes'}
+                    {limitReached ? $t.add_pet.limit_reached : $t.pet_settings.save_changes}
                 {/if}
             </button>
             
@@ -773,7 +774,7 @@
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                      </svg>
-                     Cancel Setup
+                     {$t.add_pet.cancel_setup}
                  </button>
             </div>
         </div>
@@ -799,11 +800,11 @@
             </div>
             
             <div class="p-8 text-center">
-                <h3 class="text-2xl font-bold text-gray-900 mb-2">Upgrade to Premium</h3>
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">{$t.modals.upgrade_title}</h3>
                 <p class="text-gray-500 mb-6 leading-relaxed">
-                    You've reached the limit of the Free plan.
+                    {$t.modals.upgrade_desc}
                     <br>
-                    <span class="font-bold text-gray-800">Unlock unlimited pets, members & history!</span>
+                    <span class="font-bold text-gray-800">{$t.modals.upgrade_feature}</span>
                 </p>
                 
                 <div class="space-y-3">
@@ -814,13 +815,13 @@
                             showPremiumModal = false;
                         }}
                     >
-                        Check Pricing
+                        {$t.modals.check_pricing}
                     </button>
                     <button 
                         class="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600"
                         on:click={() => showPremiumModal = false}
                     >
-                        Maybe Later
+                        {$t.modals.maybe_later}
                     </button>
                 </div>
             </div>
