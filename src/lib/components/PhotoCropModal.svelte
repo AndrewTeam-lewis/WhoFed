@@ -13,19 +13,39 @@
   let saving = false;
   let error = '';
   let rotation = 0;
+  let initialized = false;
 
-  onMount(() => {
+  // Reactive statement to handle initialization when modal opens
+  $: if (open && cropContainer && imageDataUrl && !initialized) {
     initializeCroppie();
-  });
+  }
+
+  // Clean up when modal closes
+  $: if (!open && croppieInstance) {
+    cleanupCroppie();
+  }
 
   onDestroy(() => {
-    if (croppieInstance) {
-      croppieInstance.destroy();
-    }
+    cleanupCroppie();
   });
 
+  function cleanupCroppie() {
+    if (croppieInstance) {
+      try {
+        croppieInstance.destroy();
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+      croppieInstance = null;
+      initialized = false;
+    }
+  }
+
   function initializeCroppie() {
-    if (!cropContainer || !imageDataUrl) return;
+    if (!cropContainer || !imageDataUrl || initialized) return;
+
+    // Clean up any existing instance first
+    cleanupCroppie();
 
     // Validate image size
     const sizeInMB = (imageDataUrl.length * 3 / 4) / (1024 * 1024);
@@ -47,8 +67,10 @@
       });
 
       croppieInstance.bind({ url: imageDataUrl });
+      initialized = true;
     } catch (err: any) {
       error = err.message || 'Failed to initialize crop tool';
+      cleanupCroppie();
     }
   }
 
