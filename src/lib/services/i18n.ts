@@ -57,3 +57,46 @@ export function replaceParams(text: string, params: Record<string, string>) {
     }
     return result;
 }
+
+// 6. Localized Time Formatter
+// Returns a function, so components can call it reactively: $formatTime(date)
+export const formatTime = derived(currentLanguage, ($lang) => {
+    return (dateInput: Date | string) => {
+        if (!dateInput) return '';
+        const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+
+        if ($lang === 'pt') {
+            // Brazilian 24-hour format
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+        } else {
+            // US 12-hour AM/PM format
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+    };
+});
+
+export const formatDate = derived(currentLanguage, ($lang) => {
+    return (dateInput: Date | string) => {
+        if (!dateInput) return '';
+        const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+
+        if ($lang === 'pt') {
+            return date.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
+        } else {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+    };
+});
+
+export const formatDateTime = derived(currentLanguage, ($lang) => {
+    return (dateInput: Date | string) => {
+        if (!dateInput) return '';
+        const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+
+        if ($lang === 'pt') {
+            return date.toLocaleString('pt-BR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+        } else {
+            return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+    };
+});

@@ -11,11 +11,26 @@
       lg: 'text-6xl w-32 h-32',
       xl: 'text-8xl w-40 h-40'
   };
+
+  let imageLoaded = false;
+  let imageError = false;
 </script>
 
 <div class="flex items-center justify-center rounded-full overflow-hidden bg-gray-100 {sizeClasses[size]} {extraClasses} flex-shrink-0 relative">
   {#if isImage}
-      <img src={icon} alt="Pet Icon" class="w-full h-full object-cover" />
+      {#if !imageLoaded && !imageError}
+          <div class="animate-pulse bg-gray-200 w-full h-full rounded-full"></div>
+      {/if}
+      <img
+          src={icon}
+          alt="Pet Icon"
+          class="w-full h-full object-cover {imageLoaded ? '' : 'hidden'}"
+          on:load={() => imageLoaded = true}
+          on:error={() => imageError = true}
+      />
+      {#if imageError}
+          <span class="leading-none flex items-center justify-center h-full pb-1">🐾</span>
+      {/if}
   {:else}
       <span class="leading-none flex items-center justify-center h-full pb-1">{icon || '🐾'}</span>
   {/if}

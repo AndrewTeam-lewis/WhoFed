@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { currentLanguage, setLanguage, type Language } from '$lib/services/i18n';
+  import { t, currentLanguage, setLanguage, type Language } from '$lib/services/i18n';
   import { scale } from 'svelte/transition';
 
   let showDropdown = false;
@@ -35,7 +35,7 @@
   <button
     on:click|stopPropagation={toggleDropdown}
     class="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:shadow-md transition-all border border-gray-200 hover:border-brand-sage/30"
-    aria-label="Change language"
+    aria-label={$t.settings.select_language}
     aria-expanded={showDropdown}
   >
     <span class="text-xl">{currentLang.icon}</span>

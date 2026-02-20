@@ -6,6 +6,9 @@
   import { activeHousehold } from '$lib/stores/appState';
   import { userIsPremium } from '$lib/stores/user';
   import { t } from '$lib/services/i18n';
+  import PhotoSourceModal from '$lib/components/PhotoSourceModal.svelte';
+  import PhotoCropModal from '$lib/components/PhotoCropModal.svelte';
+  import { uploadPetAvatar } from '$lib/services/imageUploadService';
 
 
 
@@ -71,6 +74,10 @@
   let showIconModal = false;
   let showPremiumModal = false;
   let limitReached = false;
+  let showPhotoSourceModal = false;
+  let showPhotoCropModal = false;
+  let selectedImageDataUrl: string | null = null;
+  let uploadingPhoto = false;
 
   let scheduleNameEditingId: string | null = null;
 
@@ -377,42 +384,20 @@
   import PetIcon from '$lib/components/PetIcon.svelte';
 
   let fileInput: HTMLInputElement;
-  let isUploading = false;
+  async function handleCroppedPhoto(event: CustomEvent) {
+      const { blob } = event.detail;
+      uploadingPhoto = true;
 
-  async function handleFileUpload(e: Event) {
-      const target = e.target as HTMLInputElement;
-      const file = target.files?.[0];
-      if (!file) return;
-      
-      if (!householdId && currentUser) {
-          // Edge case: if creating a new household, we might not have ID yet.
-          // But user should be auth'd. We can use user ID for folder structure.
-      }
-
-      isUploading = true;
       try {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Date.now()}.${fileExt}`;
-          const filePath = `${currentUser.id}/${fileName}`;
-          
-          const { error: uploadError } = await supabase.storage
-              .from('pet-avatars')
-              .upload(filePath, file);
-
-          if (uploadError) throw uploadError;
-
-          const { data: { publicUrl } } = supabase.storage
-              .from('pet-avatars')
-              .getPublicUrl(filePath);
-
+          const { publicUrl } = await uploadPetAvatar(currentUser.id, blob);
           icon = publicUrl;
+          showPhotoCropModal = false;
           showIconModal = false;
-
       } catch (error: any) {
           console.error('Upload failed:', error);
-          alert('Failed to upload image: ' + error.message);
+          alert(`Upload failed: ${error.message}`);
       } finally {
-          isUploading = false;
+          uploadingPhoto = false;
       }
   }
 </script>
@@ -432,9 +417,6 @@
             </button>
             <h1 class="text-xl font-bold text-typography-primary">{$t.add_pet.page_title}</h1>
         </div>
-        <button class="p-2 text-typography-secondary hover:text-brand-sage transition-colors">
-             <span class="text-2xl leading-none mb-3 block">...</span>
-        </button>
     </header>
 
     <main class="p-6 max-w-lg mx-auto space-y-8">
@@ -512,18 +494,18 @@
 
                     <!-- Custom Upload (Premium Only) -->
                     <div class="border-t border-gray-100 pt-6">
-                        <button 
+                        <button
                             type="button"
                             class="w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-bold hover:border-brand-sage hover:text-brand-sage transition-all flex items-center justify-center space-x-2"
                             on:click={() => {
                                 if ($userIsPremium) {
-                                    fileInput.click();
+                                    showPhotoSourceModal = true;
                                 } else {
                                     showPremiumModal = true;
                                 }
                             }}
                         >
-                            {#if isUploading}
+                            {#if uploadingPhoto}
                                 <span class="animate-spin">⏳</span>
                                 <span>Uploading...</span>
                             {:else}
@@ -536,16 +518,33 @@
                                 <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">PREMIUM</span>
                             {/if}
                         </button>
-                        <input 
-                            bind:this={fileInput}
-                            type="file" 
-                            accept="image/*" 
-                            class="hidden"
-                            on:change={handleFileUpload}
-                        />
                     </div>
                 </div>
             </div>
+        {/if}
+
+        <!-- Photo Source Modal -->
+        <PhotoSourceModal
+            open={showPhotoSourceModal}
+            on:select={(e) => {
+                selectedImageDataUrl = e.detail;
+                showPhotoSourceModal = false;
+                showPhotoCropModal = true;
+            }}
+            on:close={() => showPhotoSourceModal = false}
+        />
+
+        <!-- Photo Crop Modal -->
+        {#if showPhotoCropModal && selectedImageDataUrl}
+            <PhotoCropModal
+                imageDataUrl={selectedImageDataUrl}
+                open={showPhotoCropModal}
+                on:save={handleCroppedPhoto}
+                on:cancel={() => {
+                    showPhotoCropModal = false;
+                    selectedImageDataUrl = null;
+                }}
+            />
         {/if}
 
         <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8" data-tour="pet-schedules">{$t.pet_settings.care_schedules}</h3>

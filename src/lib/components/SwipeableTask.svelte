@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { swipe } from '$lib/actions';
   import type { Database } from '$lib/database.types';
-  import { t } from '$lib/services/i18n';
+  import { t, formatTime } from '$lib/services/i18n';
 
   type DailyTask = Database['public']['Tables']['daily_tasks']['Row'] & {
       schedule_id?: string
@@ -143,7 +143,7 @@
                 {/if}
             {:else if task.completed_at}
                 <div class="text-[10px] font-bold text-gray-400 ml-2 whitespace-nowrap">
-                    {new Date(task.completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    {$formatTime(task.completed_at)}
                 </div>
             {/if}
         </button>

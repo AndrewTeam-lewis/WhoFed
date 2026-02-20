@@ -6,7 +6,7 @@
   import { APP_VERSION } from '$lib/version';
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
-  import { currentUser, userIsPremium } from '$lib/stores/user';
+  import { currentUser, currentProfile, userIsPremium } from '$lib/stores/user';
   import CreateHouseholdModal from '$lib/components/CreateHouseholdModal.svelte';
   import InviteMemberModal from '$lib/components/InviteMemberModal.svelte';
   import PremiumFeatureModal from '$lib/components/PremiumFeatureModal.svelte';
@@ -389,10 +389,10 @@
   async function loadSettings() {
     loading = true;
     try {
-        // Get profile from currentUser (already loaded by layout)
+        // Get profile from currentUser and currentProfile (already loaded by layout)
         const realEmail = $currentUser.email || '';
         profile = {
-            first_name: $currentUser.user_metadata?.first_name || '',
+            first_name: $currentProfile?.first_name || '',
             email: realEmail
         };
 
@@ -1236,7 +1236,7 @@
            {/if}
 
            <!-- Language Toggle -->
-           <div class="border-t border-gray-100 p-4 flex items-center justify-between">
+           <button class="w-full border-t border-gray-100 p-4 flex items-center justify-between hover:bg-gray-50 transition-colors text-left" on:click={() => showLanguageModal = true}>
                <div class="flex items-center space-x-3">
                    <div class="text-2xl">
                        {languages.find(l => l.id === $currentLanguage)?.icon || '🇺🇸'}
@@ -1247,16 +1247,10 @@
                    </div>
                </div>
 
-               <button
-                   class="text-brand-sage hover:text-brand-sage/80 transition-colors"
-                   on:click={() => showLanguageModal = true}
-                   aria-label="Change Language"
-               >
-                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                   </svg>
-               </button>
-           </div>
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+               </svg>
+           </button>
         </section>
       </div>
 
@@ -1817,11 +1811,11 @@
       <button type="button" class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={() => showEditHouseholdModal = false}></button>
       <div class="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
           <div class="text-center mb-6">
-              <h3 class="text-xl font-bold text-gray-900">Rename Household</h3>
+              <h3 class="text-xl font-bold text-gray-900">{$t.settings.rename_household}</h3>
           </div>
           
           <div class="mb-6">
-              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Household Name</label>
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.settings.household_name}</label>
               <input 
                   type="text" 
                   bind:value={editingHousehold.name}
@@ -1867,7 +1861,7 @@
 
   <SelectionModal
       bind:show={showLanguageModal}
-      title="Select Language"
+      title={$t.settings.select_language}
       items={languages}
       selectedId={$currentLanguage}
       on:select={(e) => {

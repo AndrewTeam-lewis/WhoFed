@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
   import { userIsPremium } from '$lib/stores/user';
+  import { t, formatDateTime } from '$lib/services/i18n';
   import type { Database } from '$lib/database.types';
 
   type ActivityLog = Database['public']['Tables']['activity_log']['Row'] & {
@@ -96,8 +97,7 @@
   }
 
   function formatTimeAgo(isoString: string) {
-    const date = new Date(isoString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return $formatDateTime(isoString);
   }
 </script>
 

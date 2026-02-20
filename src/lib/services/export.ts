@@ -2,7 +2,7 @@
 import { supabase } from '$lib/supabase';
 import type { Database } from '$lib/database.types';
 import { get } from 'svelte/store';
-import { t } from '$lib/services/i18n';
+import { t, formatDateTime } from '$lib/services/i18n';
 
 export type ExportScope = 'all' | 'household' | 'pet';
 
@@ -108,7 +108,8 @@ export const exportService = {
 
             doc.setFontSize(10);
             doc.setTextColor(100, 100, 100);
-            doc.text(`${currentT?.generated_on || 'Generated on'}: ${new Date().toLocaleString()}`, 14, 28);
+            const formatDT = get(formatDateTime);
+            doc.text(`${currentT?.generated_on || 'Generated on'}: ${formatDT(new Date())}`, 14, 28);
             if (options.medicalOnly) {
                 doc.setTextColor(220, 53, 69); // Red for emphasis
                 doc.text(currentT?.medical_only || 'Medical Records Only', 14, 34);
@@ -132,7 +133,7 @@ export const exportService = {
 
             const tableRows = filteredData.map((row: any) => {
                 const date = new Date(row.performed_at);
-                const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                const dateStr = formatDT(date);
 
                 let details = row.schedules?.label || row.daily_tasks?.label || '-';
 

@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-export type TooltipId = 'add-family' | null;
+export type TooltipId = 'add-family' | 'members-role' | 'onetime-task' | null;
 
 type OnboardingState = {
     showWelcome: boolean;

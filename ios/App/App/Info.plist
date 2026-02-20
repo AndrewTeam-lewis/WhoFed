@@ -47,5 +47,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>WhoFed needs camera access to take photos of your pets</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>WhoFed needs photo library access to choose pet pictures</string>
 </dict>
 </plist>

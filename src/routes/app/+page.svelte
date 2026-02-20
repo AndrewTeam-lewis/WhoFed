@@ -40,8 +40,7 @@
       lastFetchedForHouseholdId = $activeHousehold.id;
       fetchDashboardData();
   }
-  import { LocalNotifications } from '@capacitor/local-notifications';
-  import { t } from '$lib/services/i18n';
+  import { t, formatTime, formatDate, formatDateTime } from '$lib/services/i18n';
 
   // Animation State
   let shakingTaskId: string | null = null;
@@ -163,7 +162,7 @@
   }
   
   // Visual Helper
-  function getTaskVisuals(task: DailyTask, translations: any) {
+  function getTaskVisuals(task: DailyTask, translations: any, fmtDate: (d: Date) => string, fmtTime: (d: Date) => string, fmtDateTime: (d: Date) => string) {
       const now = new Date();
       const due = new Date(task.due_at);
       const isDone = task.status === 'completed';
@@ -184,10 +183,10 @@
       const isPastDate = due < startOfToday;
 
       const timeFormatted = isMonthly 
-          ? due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) 
+          ? fmtDate(due)
           : (isPastDate && !isDone)
-              ? due.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-              : due.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+              ? fmtDateTime(due)
+              : fmtTime(due);
       
       let dueLabel = 'Due';
       let isUrgent = false;
@@ -463,9 +462,6 @@
     }
   }
 
-  function formatTime(isoString: string) {
-    return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  }
 
   function formatTimeAgo(isoString: string) {
     const date = new Date(isoString);
@@ -607,30 +603,8 @@
             .single();
             
           if (error) throw error;
-          
           if (data) {
               dailyTasks = [...dailyTasks, data].sort((a,b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
-              
-              // Schedule Local Notification
-              try {
-                  const notifId = parseInt(data.id.replace(/\D/g, '').slice(-8)) || Math.floor(Math.random() * 1000000);
-                  
-                  await LocalNotifications.schedule({
-                      notifications: [{
-                          id: notifId,
-                          title: $t.notifications.onetime_title,
-                          body: $t.notifications.onetime_body.replace('{label}', data.label).replace('{pet}', pet.name),
-                          schedule: { at: dueAt },
-                          sound: 'beep.wav',
-                          extra: {  
-                              taskId: data.id,
-                              petId: pet.id 
-                          }
-                      }]
-                  });
-              } catch (nErr) {
-                  console.error('Failed to schedule notification:', nErr);
-              }
           }
           
           closeOneTimeTaskModal();
@@ -1042,7 +1016,7 @@
              <!-- Action Buttons (Powered by daily_tasks) -->
              <div class="mt-4 space-y-2">
                 {#each tasks as task (task.id)}
-                    {@const visuals = getTaskVisuals(task, $t)}
+                    {@const visuals = getTaskVisuals(task, $t, $formatDate, $formatTime, $formatDateTime)}
                     {@const isDone = task.status === 'completed'}
                     {@const { isLocked, blockerId } = getTaskConstraints(task, tasks)}
                     

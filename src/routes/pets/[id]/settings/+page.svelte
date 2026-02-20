@@ -9,6 +9,10 @@
   import PetIcon from '$lib/components/PetIcon.svelte';
   import { t } from '$lib/services/i18n';
   import { get } from 'svelte/store';
+  import PhotoSourceModal from '$lib/components/PhotoSourceModal.svelte';
+  import PhotoCropModal from '$lib/components/PhotoCropModal.svelte';
+  import { uploadPetAvatar } from '$lib/services/imageUploadService';
+  import { userIsPremium } from '$lib/stores/user';
 
   let loading = true;
   let saving = false;
@@ -20,6 +24,12 @@
   let householdId: string | null = null;
   let isOwner = false;
   let showDeleteModal = false;
+  let showIconModal = false;
+  let showPremiumModal = false;
+  let showPhotoSourceModal = false;
+  let showPhotoCropModal = false;
+  let selectedImageDataUrl: string | null = null;
+  let uploadingPhoto = false;
 
   // Calendar State
   const today = new Date();
@@ -77,8 +87,6 @@
       '🦔', // Hedgehog
       '🐾'  // Generic pet
   ];
-
-  let showIconModal = false;
 
   // Load data as soon as user is available
   let dataLoaded = false;
@@ -320,6 +328,23 @@
        };
   }
 
+  async function handleCroppedPhoto(event: CustomEvent) {
+      const { blob } = event.detail;
+      uploadingPhoto = true;
+
+      try {
+          const { publicUrl } = await uploadPetAvatar($currentUser.id, blob, petId);
+          icon = publicUrl;
+          showPhotoCropModal = false;
+          showIconModal = false;
+      } catch (error: any) {
+          console.error('Upload failed:', error);
+          alert(`Upload failed: ${error.message}`);
+      } finally {
+          uploadingPhoto = false;
+      }
+  }
+
   async function handleSubmit() {
       if (!name) return alert(get(t).pet_settings.name_required);
 
@@ -556,6 +581,113 @@
                                     <span class="text-3xl">{petIcon}</span>
                                 </button>
                             {/each}
+                        </div>
+
+                        <!-- Custom Upload (Premium Only) -->
+                        <div class="border-t border-gray-100 pt-4 mt-4">
+                            <button
+                                type="button"
+                                class="w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-bold hover:border-brand-sage hover:text-brand-sage transition-all flex items-center justify-center space-x-2"
+                                on:click={() => {
+                                    if ($userIsPremium) {
+                                        showIconModal = false;
+                                        showPhotoSourceModal = true;
+                                    } else {
+                                        showPremiumModal = true;
+                                    }
+                                }}
+                            >
+                                {#if uploadingPhoto}
+                                    <span class="animate-spin">⏳</span>
+                                    <span>Uploading...</span>
+                                {:else}
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>Upload Photo</span>
+                                {/if}
+                                {#if !$userIsPremium}
+                                    <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">PREMIUM</span>
+                                {/if}
+                            </button>
+
+                            <!-- Remove Photo Button (only if using custom photo) -->
+                            {#if icon && icon.startsWith('http')}
+                                <button
+                                    type="button"
+                                    class="w-full mt-2 py-2 text-sm text-red-500 hover:text-red-600 font-medium transition-colors"
+                                    on:click={() => { icon = '🐱'; showIconModal = false; }}
+                                >
+                                    Remove Photo
+                                </button>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+            {/if}
+
+            <!-- Photo Source Modal -->
+            <PhotoSourceModal
+                open={showPhotoSourceModal}
+                on:select={(e) => {
+                    selectedImageDataUrl = e.detail;
+                    showPhotoSourceModal = false;
+                    showPhotoCropModal = true;
+                }}
+                on:close={() => showPhotoSourceModal = false}
+            />
+
+            <!-- Photo Crop Modal -->
+            {#if showPhotoCropModal && selectedImageDataUrl}
+                <PhotoCropModal
+                    imageDataUrl={selectedImageDataUrl}
+                    open={showPhotoCropModal}
+                    on:save={handleCroppedPhoto}
+                    on:cancel={() => {
+                        showPhotoCropModal = false;
+                        selectedImageDataUrl = null;
+                    }}
+                />
+            {/if}
+
+            <!-- Premium Feature Modal -->
+            {#if showPremiumModal}
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showPremiumModal = false}></button>
+
+                    <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
+                        <div class="h-32 bg-brand-sage flex items-center justify-center relative overflow-hidden">
+                            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+                            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-lg relative z-10">
+                                💎
+                            </div>
+                        </div>
+
+                        <div class="p-8 text-center">
+                            <h3 class="text-2xl font-bold text-gray-900 mb-2">Premium Feature</h3>
+                            <p class="text-gray-500 mb-6 leading-relaxed">
+                                Custom pet photos are available for Premium users.
+                                <br>
+                                <span class="font-bold text-gray-800">Upgrade to unlock this and more.</span>
+                            </p>
+
+                            <div class="space-y-3">
+                                <button
+                                    class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95"
+                                    on:click={() => {
+                                        alert('Payment Flow would start here!');
+                                        showPremiumModal = false;
+                                    }}
+                                >
+                                    Check Pricing
+                                </button>
+                                <button
+                                    class="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600"
+                                    on:click={() => showPremiumModal = false}
+                                >
+                                    Maybe Later
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
