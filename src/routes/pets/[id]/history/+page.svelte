@@ -110,7 +110,7 @@
             </svg>
         </button>
         <div>
-            <h1 class="text-xl font-bold text-typography-primary">Activity History</h1>
+            <h1 class="text-xl font-bold text-typography-primary">{$t.history.page_title}</h1>
             <p class="text-sm text-gray-500">{petName}</p>
         </div>
     </header>
@@ -131,28 +131,27 @@
                                 <div class="flex-shrink-0 w-2 h-2 rounded-full bg-gray-800"></div>
 
                                 <div class="text-sm truncate text-gray-800">
-                                    <span>{log.profiles?.first_name || 'Someone'}</span>
+                                    <span>{log.profiles?.first_name || $t.history.someone}</span>
                                     
 
-
                                     {#if log.action_type === 'feeding'}
-                                        fed <span class="text-gray-900">{petName}</span>
+                                        {$t.history.fed} <span class="text-gray-900">{petName}</span>
                                         {#if label && label !== 'feeding' && label !== 'food'}
                                             <span class="text-gray-900 capitalize"> {label}</span>
                                         {/if}
                                     {:else if log.action_type === 'unfed'}
-                                        <span class="text-red-500">un-fed</span> <span class="text-gray-900">{petName}</span>
+                                        <span class="text-red-500">{$t.history.un_fed}</span> <span class="text-gray-900">{petName}</span>
                                     {:else if log.action_type === 'medication'}
-                                        gave <span class="text-gray-900">{petName}</span>
+                                        {$t.history.gave} <span class="text-gray-900">{petName}</span>
                                         {#if label && label !== 'medication' && label !== 'meds'}
                                             <span class="text-gray-900 capitalize"> {label}</span>
                                         {:else}
-                                             medication
+                                             {$t.history.medication}
                                         {/if}
                                     {:else if log.action_type === 'unmedicated'}
-                                        <span class="text-red-500">un-gave</span> <span class="text-gray-900">{petName}</span> medication
+                                        <span class="text-red-500">{$t.history.un_gave}</span> <span class="text-gray-900">{petName}</span> {$t.history.medication}
                                     {:else if log.action_type === 'care'}
-                                        cleaned up after <span class="text-gray-900">{petName}</span>
+                                        {$t.history.cleaned_up} <span class="text-gray-900">{petName}</span>
                                     {:else}
                                         <span>{log.action_type}</span>
                                     {/if}
@@ -178,13 +177,13 @@
                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                  </svg>
                             </div>
-                            <h3 class="font-bold text-gray-900 mb-1">Unlock Full History</h3>
-                            <p class="text-xs text-gray-500 mb-4 max-w-[200px]">Upgrade to Premium to see unlimited medication and feeding history. Great for vet visits!</p>
+                            <h3 class="font-bold text-gray-900 mb-1">{$t.history.unlock_title}</h3>
+                            <p class="text-xs text-gray-500 mb-4 max-w-[200px]">{$t.history.unlock_desc}</p>
                             <button 
                                 class="bg-brand-sage text-white text-sm font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-brand-sage/90 transition-all"
                                 on:click={() => alert('Premium Upgrade coming soon!')}
                             >
-                                Upgrade Now
+                                {$t.history.upgrade_now}
                             </button>
                         </div>
                     </div>

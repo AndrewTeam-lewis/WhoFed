@@ -11,7 +11,7 @@
   import { get } from 'svelte/store';
   import PhotoSourceModal from '$lib/components/PhotoSourceModal.svelte';
   import PhotoCropModal from '$lib/components/PhotoCropModal.svelte';
-  import { uploadPetAvatar, deletePetAvatar } from '$lib/services/imageUploadService';
+  import { uploadPetAvatar, uploadPetPhotos, deletePetAvatar, fetchOriginalPhoto } from '$lib/services/imageUploadService';
   import { userIsPremium } from '$lib/stores/user';
 
   let loading = true;
@@ -328,6 +328,82 @@
        };
   }
 
+  // Helper function to convert dataUrl to Blob
+  function dataUrlToBlob(dataUrl: string): Blob {
+      const arr = dataUrl.split(',');
+      const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+  }
+
+  // Helper function to convert Blob to dataUrl
+  function blobToDataUrl(blob: Blob): Promise<string> {
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+      });
+  }
+
+  // Helper function to resize and compress image blob
+  async function resizeImageBlob(blob: Blob, maxDimension: number = 1920, quality: number = 0.85): Promise<Blob> {
+      return new Promise((resolve, reject) => {
+          const img = new Image();
+          const url = URL.createObjectURL(blob);
+
+          img.onload = () => {
+              // Calculate new dimensions
+              let width = img.width;
+              let height = img.height;
+
+              if (width > maxDimension || height > maxDimension) {
+                  if (width > height) {
+                      height = (height / width) * maxDimension;
+                      width = maxDimension;
+                  } else {
+                      width = (width / height) * maxDimension;
+                      height = maxDimension;
+                  }
+              }
+
+              // Create canvas and resize
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+
+              // Convert to blob
+              canvas.toBlob(
+                  (resizedBlob) => {
+                      URL.revokeObjectURL(url);
+                      if (resizedBlob) {
+                          console.log(`[resizeImageBlob] Resized from ${(blob.size / 1024).toFixed(1)}KB to ${(resizedBlob.size / 1024).toFixed(1)}KB`);
+                          resolve(resizedBlob);
+                      } else {
+                          reject(new Error('Failed to resize image'));
+                      }
+                  },
+                  'image/jpeg',
+                  quality
+              );
+          };
+
+          img.onerror = () => {
+              URL.revokeObjectURL(url);
+              reject(new Error('Failed to load image'));
+          };
+
+          img.src = url;
+      });
+  }
+
   // Helper function to save icon to database immediately
   async function saveIconToDatabase(newIcon: string) {
       const { error: updateError } = await supabase
@@ -344,39 +420,94 @@
 
   async function handleCroppedPhoto(event: CustomEvent) {
       const { blob } = event.detail;
+      const startTime = performance.now();
+
+      // Save the old icon URL before replacing it
+      const oldIcon = icon;
+
+      // 🚀 INSTANT FEEDBACK: Show the cropped image immediately using object URL
+      const tempObjectUrl = URL.createObjectURL(blob);
+      icon = tempObjectUrl;
+      showPhotoCropModal = false;
+      showIconModal = false;
+      console.log('[handleCroppedPhoto] ✨ Showing temporary image immediately for instant feedback');
+
       uploadingPhoto = true;
 
       try {
           // If there's an existing photo, delete it first
-          if (icon && icon.startsWith('http')) {
-              console.log('[handleCroppedPhoto] Current icon URL:', icon);
+          if (oldIcon && oldIcon.startsWith('http')) {
+              const deleteStart = performance.now();
+              console.log('[handleCroppedPhoto] Old icon URL:', oldIcon);
               // Remove cache-busting parameter if present
-              const cleanUrl = icon.split('?')[0];
+              const cleanUrl = oldIcon.split('?')[0];
               // Extract the file path from the URL
               // URL format: https://.../storage/v1/object/public/pet-avatars/{userId}/{petId}.jpg
               const urlParts = cleanUrl.split('/pet-avatars/');
               console.log('[handleCroppedPhoto] URL parts after split:', urlParts);
               if (urlParts.length > 1) {
                   const oldFilePath = urlParts[1];
-                  console.log('[handleCroppedPhoto] Deleting old file:', oldFilePath);
+                  console.log('[handleCroppedPhoto] Deleting old files:', oldFilePath);
                   await deletePetAvatar(oldFilePath);
-                  console.log('[handleCroppedPhoto] Old file deleted');
+                  const deleteEnd = performance.now();
+                  console.log(`[handleCroppedPhoto] ⏱️ Delete took ${(deleteEnd - deleteStart).toFixed(0)}ms`);
               }
           }
 
-          console.log('[handleCroppedPhoto] Uploading new photo...');
-          const result = await uploadPetAvatar($currentUser.id, blob, petId);
-          console.log('[handleCroppedPhoto] New photo uploaded:', result.publicUrl);
+          const uploadStart = performance.now();
+          console.log('[handleCroppedPhoto] Converting original to blob...');
+          // Convert the original dataUrl to a blob
+          let originalBlob = dataUrlToBlob(selectedImageDataUrl!);
+          console.log(`[handleCroppedPhoto] Original blob size before resize: ${(originalBlob.size / 1024).toFixed(1)}KB`);
+
+          // Resize the original to max 1920px to reduce upload size
+          const resizeStart = performance.now();
+          originalBlob = await resizeImageBlob(originalBlob, 1920, 0.85);
+          const resizeEnd = performance.now();
+          console.log(`[handleCroppedPhoto] ⏱️ Resize took ${(resizeEnd - resizeStart).toFixed(0)}ms`);
+          console.log(`[handleCroppedPhoto] Original blob size after resize: ${(originalBlob.size / 1024).toFixed(1)}KB`);
+          console.log(`[handleCroppedPhoto] Thumbnail blob size: ${(blob.size / 1024).toFixed(1)}KB`);
+
+          console.log('[handleCroppedPhoto] Uploading original and thumbnail in background...');
+          const result = await uploadPetPhotos($currentUser.id, originalBlob, blob, petId);
+          const uploadEnd = performance.now();
+          console.log(`[handleCroppedPhoto] ⏱️ Upload took ${(uploadEnd - uploadStart).toFixed(0)}ms`);
+          console.log('[handleCroppedPhoto] Photos uploaded:', result.publicUrl);
 
           // Add cache-busting parameter to force browser to reload the image
           const cacheBustedUrl = `${result.publicUrl}?v=${Date.now()}`;
           console.log('[handleCroppedPhoto] Cache-busted URL:', cacheBustedUrl);
 
+          const dbStart = performance.now();
           await saveIconToDatabase(cacheBustedUrl);
-          console.log('[handleCroppedPhoto] Icon saved to database');
+          const dbEnd = performance.now();
+          console.log(`[handleCroppedPhoto] ⏱️ Database save took ${(dbEnd - dbStart).toFixed(0)}ms`);
 
-          showPhotoCropModal = false;
-          showIconModal = false;
+          // Preload the uploaded image so it's cached when user navigates to other pages
+          const preloadStart = performance.now();
+          await new Promise<void>((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                  const preloadEnd = performance.now();
+                  console.log(`[handleCroppedPhoto] ⏱️ Image preload took ${(preloadEnd - preloadStart).toFixed(0)}ms`);
+                  console.log('[handleCroppedPhoto] ✅ Image cached - will load instantly on other pages');
+                  resolve();
+              };
+              img.onerror = () => {
+                  console.warn('[handleCroppedPhoto] ⚠️ Image preload failed, but continuing anyway');
+                  resolve(); // Don't block on preload failure
+              };
+              img.src = cacheBustedUrl;
+          });
+
+          const totalTime = performance.now() - startTime;
+          console.log(`[handleCroppedPhoto] ⏱️ TOTAL TIME: ${(totalTime / 1000).toFixed(2)}s`);
+
+          // Clean up the temporary object URL now that we have the real one
+          URL.revokeObjectURL(tempObjectUrl);
+          console.log('[handleCroppedPhoto] 🗑️ Cleaned up temporary object URL');
+
+          selectedImageDataUrl = null;
       } catch (error: any) {
           console.error('Upload failed:', error);
           alert(`Upload failed: ${error.message}`);
@@ -392,6 +523,31 @@
       } catch (error: any) {
           console.error('Icon save failed:', error);
           alert(`Failed to save icon: ${error.message}`);
+      }
+  }
+
+  async function handleEditPhoto() {
+      try {
+          uploadingPhoto = true;
+          console.log('[handleEditPhoto] Fetching original photo for editing...');
+
+          // Fetch the original photo from storage
+          const originalBlob = await fetchOriginalPhoto($currentUser.id, petId);
+
+          // Convert blob to dataUrl for Croppie
+          const dataUrl = await blobToDataUrl(originalBlob);
+
+          // Set the dataUrl and open the crop modal
+          selectedImageDataUrl = dataUrl;
+          showIconModal = false;
+          showPhotoCropModal = true;
+
+          console.log('[handleEditPhoto] Original photo loaded, opening crop modal');
+      } catch (error: any) {
+          console.error('Edit photo failed:', error);
+          alert(`Failed to load photo for editing: ${error.message}`);
+      } finally {
+          uploadingPhoto = false;
       }
   }
 
@@ -649,20 +805,38 @@
                             >
                                 {#if uploadingPhoto}
                                     <span class="animate-spin">⏳</span>
-                                    <span>Uploading...</span>
+                                    <span>Processing...</span>
                                 {:else}
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
-                                    <span>Upload Photo</span>
+                                    <span>Add Photo</span>
                                 {/if}
                                 {#if !$userIsPremium}
                                     <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">PREMIUM</span>
                                 {/if}
                             </button>
 
-                            <!-- Remove Photo Button (only if using custom photo) -->
+                            <!-- Edit Photo Button (only if using custom photo) -->
                             {#if icon && icon.startsWith('http')}
+                                <button
+                                    type="button"
+                                    class="w-full mt-2 py-3 rounded-xl border-2 border-brand-sage text-brand-sage font-bold hover:bg-brand-sage hover:text-white transition-all flex items-center justify-center space-x-2"
+                                    on:click={handleEditPhoto}
+                                    disabled={uploadingPhoto}
+                                >
+                                    {#if uploadingPhoto}
+                                        <span class="animate-spin">⏳</span>
+                                        <span>Loading...</span>
+                                    {:else}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <span>Edit Photo</span>
+                                    {/if}
+                                </button>
+
+                                <!-- Remove Photo Button -->
                                 <button
                                     type="button"
                                     class="w-full mt-2 py-2 text-sm text-red-500 hover:text-red-600 font-medium transition-colors"

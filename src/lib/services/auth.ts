@@ -32,11 +32,8 @@ export const authService = {
         if (error) throw error;
         if (!authData.user) throw new Error('Registration failed');
 
-        // Create profile
-        await this.createProfile(authData.user.id, {
-            first_name: data.firstName,
-            username: null // helper for TS, though optional
-        });
+        // Note: The public.profiles row is automatically created by the handle_new_user Postgres trigger
+        // We do not need to manually call createProfile here to avoid a 409 Conflict.
 
         return authData;
     },

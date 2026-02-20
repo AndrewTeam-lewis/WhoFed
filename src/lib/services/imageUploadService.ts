@@ -6,6 +6,65 @@ export interface UploadResult {
 }
 
 /**
+ * Upload both original and thumbnail for a pet avatar
+ * @param userId - The user's ID (used for folder structure)
+ * @param originalBlob - The original full-resolution image blob
+ * @param thumbnailBlob - The cropped thumbnail blob (256x256)
+ * @param petId - Optional pet ID for consistent naming (uses timestamp if not provided)
+ * @returns Promise with publicUrl and storage paths
+ */
+export async function uploadPetPhotos(
+  userId: string,
+  originalBlob: Blob,
+  thumbnailBlob: Blob,
+  petId?: string
+): Promise<{ publicUrl: string; originalPath: string; thumbnailPath: string }> {
+  const baseName = petId || Date.now();
+  const originalPath = `${userId}/${baseName}-original.jpg`;
+  const thumbnailPath = `${userId}/${baseName}.jpg`;
+
+  // Upload original with retry logic
+  const uploadOriginal = async () => {
+    const start = performance.now();
+    const { error } = await supabase.storage
+      .from('pet-avatars')
+      .upload(originalPath, originalBlob, {
+        upsert: true,
+        contentType: 'image/jpeg'
+      });
+    const end = performance.now();
+    console.log(`[uploadPetPhotos] ⏱️ Original upload took ${(end - start).toFixed(0)}ms (${(originalBlob.size / 1024).toFixed(1)}KB)`);
+    if (error) throw new Error(error.message || 'Original upload failed');
+  };
+
+  // Upload thumbnail with retry logic
+  const uploadThumbnail = async () => {
+    const start = performance.now();
+    const { error } = await supabase.storage
+      .from('pet-avatars')
+      .upload(thumbnailPath, thumbnailBlob, {
+        upsert: true,
+        contentType: 'image/jpeg'
+      });
+    const end = performance.now();
+    console.log(`[uploadPetPhotos] ⏱️ Thumbnail upload took ${(end - start).toFixed(0)}ms (${(thumbnailBlob.size / 1024).toFixed(1)}KB)`);
+    if (error) throw new Error(error.message || 'Thumbnail upload failed');
+  };
+
+  // Upload both in parallel for better performance
+  await Promise.all([
+    retryWithBackoff(uploadOriginal, 3),
+    retryWithBackoff(uploadThumbnail, 3)
+  ]);
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('pet-avatars')
+    .getPublicUrl(thumbnailPath);
+
+  return { publicUrl, originalPath, thumbnailPath };
+}
+
+/**
  * Upload a pet avatar image to Supabase Storage with retry logic
  * @param userId - The user's ID (used for folder structure)
  * @param imageBlob - The image blob to upload (should be optimized JPEG)
@@ -45,11 +104,13 @@ export async function uploadPetAvatar(
 }
 
 /**
- * Delete a pet avatar from Supabase Storage
- * @param filePath - The storage path of the file to delete
+ * Delete a pet avatar from Supabase Storage (both thumbnail and original)
+ * @param filePath - The storage path of the thumbnail file to delete
  */
 export async function deletePetAvatar(filePath: string): Promise<void> {
   console.log('[deletePetAvatar] Attempting to delete:', filePath);
+
+  // Delete thumbnail
   const { error, data } = await supabase.storage
     .from('pet-avatars')
     .remove([filePath]);
@@ -57,10 +118,47 @@ export async function deletePetAvatar(filePath: string): Promise<void> {
   if (error) {
     console.error('[deletePetAvatar] Failed to delete pet avatar:', error);
     console.error('[deletePetAvatar] Error details:', JSON.stringify(error));
-    // Don't throw - deletion failure is non-critical
   } else {
-    console.log('[deletePetAvatar] Successfully deleted:', data);
+    console.log('[deletePetAvatar] Successfully deleted thumbnail:', data);
   }
+
+  // Also delete original (if it exists)
+  // Convert path like "userId/petId.jpg" to "userId/petId-original.jpg"
+  const originalPath = filePath.replace(/\.jpg$/, '-original.jpg');
+  console.log('[deletePetAvatar] Attempting to delete original:', originalPath);
+
+  const { error: origError, data: origData } = await supabase.storage
+    .from('pet-avatars')
+    .remove([originalPath]);
+
+  if (origError) {
+    console.error('[deletePetAvatar] Failed to delete original (may not exist):', origError);
+  } else {
+    console.log('[deletePetAvatar] Successfully deleted original:', origData);
+  }
+}
+
+/**
+ * Fetch the original full-resolution photo for editing
+ * @param userId - The user's ID
+ * @param petId - The pet's ID
+ * @returns Promise with the original photo as a Blob
+ */
+export async function fetchOriginalPhoto(userId: string, petId: string): Promise<Blob> {
+  const originalPath = `${userId}/${petId}-original.jpg`;
+  console.log('[fetchOriginalPhoto] Fetching original from:', originalPath);
+
+  const { data, error } = await supabase.storage
+    .from('pet-avatars')
+    .download(originalPath);
+
+  if (error || !data) {
+    console.error('[fetchOriginalPhoto] Failed to fetch original:', error);
+    throw new Error('Failed to fetch original photo. It may have been uploaded before the edit feature was added.');
+  }
+
+  console.log('[fetchOriginalPhoto] Successfully fetched original, size:', data.size);
+  return data;
 }
 
 /**

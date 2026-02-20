@@ -8,7 +8,7 @@
   import { t } from '$lib/services/i18n';
   import PhotoSourceModal from '$lib/components/PhotoSourceModal.svelte';
   import PhotoCropModal from '$lib/components/PhotoCropModal.svelte';
-  import { uploadPetAvatar } from '$lib/services/imageUploadService';
+  import { uploadPetAvatar, uploadPetPhotos } from '$lib/services/imageUploadService';
 
 
 
@@ -384,15 +384,95 @@
   import PetIcon from '$lib/components/PetIcon.svelte';
 
   let fileInput: HTMLInputElement;
+  // Helper function to convert dataUrl to Blob
+  function dataUrlToBlob(dataUrl: string): Blob {
+      const arr = dataUrl.split(',');
+      const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+  }
+
+  // Helper function to resize and compress image blob
+  async function resizeImageBlob(blob: Blob, maxDimension: number = 1920, quality: number = 0.85): Promise<Blob> {
+      return new Promise((resolve, reject) => {
+          const img = new Image();
+          const url = URL.createObjectURL(blob);
+
+          img.onload = () => {
+              // Calculate new dimensions
+              let width = img.width;
+              let height = img.height;
+
+              if (width > maxDimension || height > maxDimension) {
+                  if (width > height) {
+                      height = (height / width) * maxDimension;
+                      width = maxDimension;
+                  } else {
+                      width = (width / height) * maxDimension;
+                      height = maxDimension;
+                  }
+              }
+
+              // Create canvas and resize
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+
+              // Convert to blob
+              canvas.toBlob(
+                  (resizedBlob) => {
+                      URL.revokeObjectURL(url);
+                      if (resizedBlob) {
+                          console.log(`[resizeImageBlob] Resized from ${(blob.size / 1024).toFixed(1)}KB to ${(resizedBlob.size / 1024).toFixed(1)}KB`);
+                          resolve(resizedBlob);
+                      } else {
+                          reject(new Error('Failed to resize image'));
+                      }
+                  },
+                  'image/jpeg',
+                  quality
+              );
+          };
+
+          img.onerror = () => {
+              URL.revokeObjectURL(url);
+              reject(new Error('Failed to load image'));
+          };
+
+          img.src = url;
+      });
+  }
+
   async function handleCroppedPhoto(event: CustomEvent) {
       const { blob } = event.detail;
       uploadingPhoto = true;
 
       try {
-          const result = await uploadPetAvatar(currentUser.id, blob);
+          console.log('[handleCroppedPhoto] Converting original to blob...');
+          // Convert the original dataUrl to a blob
+          let originalBlob = dataUrlToBlob(selectedImageDataUrl!);
+          console.log(`[handleCroppedPhoto] Original blob size before resize: ${(originalBlob.size / 1024).toFixed(1)}KB`);
+
+          // Resize the original to max 1920px to reduce upload size
+          originalBlob = await resizeImageBlob(originalBlob, 1920, 0.85);
+          console.log(`[handleCroppedPhoto] Original blob size after resize: ${(originalBlob.size / 1024).toFixed(1)}KB`);
+          console.log(`[handleCroppedPhoto] Thumbnail blob size: ${(blob.size / 1024).toFixed(1)}KB`);
+
+          console.log('[handleCroppedPhoto] Uploading original and thumbnail...');
+          const result = await uploadPetPhotos(currentUser.id, originalBlob, blob);
           icon = result.publicUrl;
+          console.log('[handleCroppedPhoto] Photos uploaded:', result.publicUrl);
+
           showPhotoCropModal = false;
           showIconModal = false;
+          selectedImageDataUrl = null;
       } catch (error: any) {
           console.error('Upload failed:', error);
           alert(`Upload failed: ${error.message}`);

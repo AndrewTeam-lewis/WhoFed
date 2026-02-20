@@ -270,7 +270,7 @@ export default {
         page_title: 'New Pet',
         cancel_setup: 'Cancel Setup',
         limit_reached: 'Limit Reached',
-        upload_custom: 'Upload Custom Photo'
+        upload_custom: 'Add Photo'
     },
     export: {
         title: 'Export Data',

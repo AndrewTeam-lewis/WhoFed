@@ -118,10 +118,13 @@
   async function handleSave() {
     if (!croppieInstance) return;
 
+    const startTime = performance.now();
     saving = true;
     error = '';
 
     try {
+      console.log('[PhotoCropModal] Starting blob generation...');
+      const blobStart = performance.now();
       const blob = await croppieInstance.result({
         type: 'blob',
         size: 'viewport',
@@ -129,6 +132,9 @@
         quality: 0.85,
         circle: false  // We want square output with transparent corners handled by CSS
       }) as Blob;
+      const blobEnd = performance.now();
+      console.log(`[PhotoCropModal] ⏱️ Blob generation took ${(blobEnd - blobStart).toFixed(0)}ms`);
+      console.log(`[PhotoCropModal] Blob size: ${(blob.size / 1024).toFixed(1)}KB`);
 
       if (!blob) {
         throw new Error('Failed to generate image');
@@ -138,6 +144,9 @@
       if (blob.size > 5 * 1024 * 1024) {
         throw new Error('Cropped image too large. Please zoom in more.');
       }
+
+      const totalTime = performance.now() - startTime;
+      console.log(`[PhotoCropModal] ⏱️ Total handleSave time: ${(totalTime).toFixed(0)}ms`);
 
       dispatch('save', { blob });
     } catch (err: any) {

@@ -270,7 +270,7 @@ export default {
         page_title: 'Novo Pet',
         cancel_setup: 'Cancelar Configuração',
         limit_reached: 'Limite Atingido',
-        upload_custom: 'Enviar Foto Personalizada'
+        upload_custom: 'Adicionar Foto'
     },
     export: {
         title: 'Exportar Dados',

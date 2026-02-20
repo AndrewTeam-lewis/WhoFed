@@ -8,7 +8,7 @@
   let { icon, size = 'md', extraClasses = '' }: Props = $props();
 
   // Use $derived for reactivity in Svelte 5
-  const isImage = $derived(icon && (icon.startsWith('http') || icon.startsWith('data:') || icon.endsWith('.svg') || icon.startsWith('/')));
+  const isImage = $derived(icon && (icon.startsWith('http') || icon.startsWith('blob:') || icon.startsWith('data:') || icon.endsWith('.svg') || icon.startsWith('/')));
 
   const sizeClasses = {
       sm: 'text-xl w-8 h-8',
@@ -40,9 +40,9 @@
           on:error={() => imageError = true}
       />
       {#if imageError}
-          <span class="leading-none flex items-center justify-center h-full pb-1">🐾</span>
+          <span class="leading-none flex items-center justify-center h-full">🐾</span>
       {/if}
   {:else}
-      <span class="leading-none flex items-center justify-center h-full pb-1">{icon || '🐾'}</span>
+      <span class="leading-none flex items-center justify-center h-full">{icon || '🐾'}</span>
   {/if}
 </div>

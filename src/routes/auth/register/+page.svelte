@@ -119,7 +119,7 @@
                 id="terms" 
                 type="checkbox" 
                 bind:checked={termsAccepted}
-                class="w-4 h-4 text-brand-sage bg-gray-50 border-gray-300 rounded focus:ring-brand-sage focus:ring-2" 
+                class="w-4 h-4 accent-brand-sage text-brand-sage bg-gray-50 border-gray-300 rounded focus:ring-brand-sage focus:ring-2" 
                 required
             />
         </div>

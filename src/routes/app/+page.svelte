@@ -856,8 +856,13 @@
             
             <!-- Dropdown Menu -->
            {#if showHouseholdMenu}
+               <!-- Invisible overlay to close dropdown on outside click -->
+               <!-- svelte-ignore a11y-click-events-have-key-events -->
+               <!-- svelte-ignore a11y-no-static-element-interactions -->
+               <div class="fixed inset-0 z-40" on:click|stopPropagation={() => showHouseholdMenu = false}></div>
+               
                <div 
-                   class="absolute top-full left-0 mt-2 w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-scale-in origin-top-left"
+                   class="absolute top-full left-0 mt-2 w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-scale-in origin-top-left z-50"
                >
                    <div class="py-1">
                        {#each $availableHouseholds as hh}
@@ -942,8 +947,8 @@
              <div class="flex items-start justify-between mb-4 relative">
                <div class="flex items-center space-x-4">
                  <!-- Circular pet icon with border -->
-                 <div class="w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                    <PetIcon icon={pet.icon} extraClasses="!w-full !h-full" />
+                 <div class="w-20 h-20 rounded-full border-2 border-white shadow-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <PetIcon icon={pet.icon} extraClasses="!w-full !h-full !text-5xl" />
                  </div>
                  <div>
                    <h3 class="font-bold text-xl text-gray-900 leading-tight">{pet.name}</h3>
