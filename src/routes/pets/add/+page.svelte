@@ -536,15 +536,17 @@
 
         <!-- Photo Crop Modal -->
         {#if showPhotoCropModal && selectedImageDataUrl}
-            <PhotoCropModal
-                imageDataUrl={selectedImageDataUrl}
-                open={showPhotoCropModal}
-                on:save={handleCroppedPhoto}
-                on:cancel={() => {
-                    showPhotoCropModal = false;
-                    selectedImageDataUrl = null;
-                }}
-            />
+            {#key selectedImageDataUrl}
+                <PhotoCropModal
+                    imageDataUrl={selectedImageDataUrl}
+                    open={showPhotoCropModal}
+                    on:save={handleCroppedPhoto}
+                    on:cancel={() => {
+                        showPhotoCropModal = false;
+                        selectedImageDataUrl = null;
+                    }}
+                />
+            {/key}
         {/if}
 
         <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8" data-tour="pet-schedules">{$t.pet_settings.care_schedules}</h3>

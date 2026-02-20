@@ -639,15 +639,17 @@
 
             <!-- Photo Crop Modal -->
             {#if showPhotoCropModal && selectedImageDataUrl}
-                <PhotoCropModal
-                    imageDataUrl={selectedImageDataUrl}
-                    open={showPhotoCropModal}
-                    on:save={handleCroppedPhoto}
-                    on:cancel={() => {
-                        showPhotoCropModal = false;
-                        selectedImageDataUrl = null;
-                    }}
-                />
+                {#key selectedImageDataUrl}
+                    <PhotoCropModal
+                        imageDataUrl={selectedImageDataUrl}
+                        open={showPhotoCropModal}
+                        on:save={handleCroppedPhoto}
+                        on:cancel={() => {
+                            showPhotoCropModal = false;
+                            selectedImageDataUrl = null;
+                        }}
+                    />
+                {/key}
             {/if}
 
             <!-- Premium Feature Modal -->
