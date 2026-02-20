@@ -1,6 +1,8 @@
 
 import { supabase } from '$lib/supabase';
 import type { Database } from '$lib/database.types';
+import { get } from 'svelte/store';
+import { t } from '$lib/services/i18n';
 
 export type ExportScope = 'all' | 'household' | 'pet';
 
@@ -18,6 +20,7 @@ export const exportService = {
             let query: any = supabase
                 .from('activity_log')
                 .select(`
+                    task_id,
                     performed_at,
                     action_type,
                     pets (name, household_id),
@@ -34,6 +37,7 @@ export const exportService = {
                 query = supabase
                     .from('activity_log')
                     .select(`
+                        task_id,
                         performed_at,
                         action_type,
                         pets!inner (name, household_id),
@@ -60,8 +64,28 @@ export const exportService = {
             const { data, error } = await query;
             if (error) throw error;
 
-            if (!data || data.length === 0) {
-                throw new Error('No history found to export for the selected criteria.');
+            // Filter out undone actions
+            const undoneTaskIds = new Set<string>();
+            const filteredData = [];
+
+            for (const row of (data || [])) {
+                if (row.action_type.startsWith('un')) {
+                    if (row.task_id) {
+                        undoneTaskIds.add(row.task_id);
+                    }
+                    continue; // Skip the un- action
+                }
+                if (row.task_id && undoneTaskIds.has(row.task_id)) {
+                    // This is the original action that was cancelled
+                    undoneTaskIds.delete(row.task_id);
+                    continue; // Skip original action
+                }
+                filteredData.push(row);
+            }
+
+            if (filteredData.length === 0) {
+                const currentT = get(t);
+                throw new Error(currentT.export?.error_no_history || 'No history found to export for the selected criteria.');
             }
 
             // 2. Generate PDF
@@ -70,36 +94,43 @@ export const exportService = {
             const autoTable = (await import('jspdf-autotable')).default;
 
             const doc = new jsPDF();
+            const currentT = get(t).export;
 
             // Title & Header
             doc.setFontSize(22);
             doc.setTextColor(47, 79, 79); // Dark Sage
 
-            let title = 'WhoFed Export';
-            if (options.scope === 'household') title = 'Household History';
-            if (options.scope === 'pet') title = options.medicalOnly ? 'Medical History' : 'Pet History';
+            let title = currentT?.pdf_title || 'WhoFed Export';
+            if (options.scope === 'household') title = currentT?.pdf_title_household || 'Household History';
+            if (options.scope === 'pet') title = options.medicalOnly ? (currentT?.pdf_title_medical || 'Medical History') : (currentT?.pdf_title_pet || 'Pet History');
 
             doc.text(title, 14, 20);
 
             doc.setFontSize(10);
             doc.setTextColor(100, 100, 100);
-            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+            doc.text(`${currentT?.generated_on || 'Generated on'}: ${new Date().toLocaleString()}`, 14, 28);
             if (options.medicalOnly) {
                 doc.setTextColor(220, 53, 69); // Red for emphasis
-                doc.text('Medical Records Only', 14, 34);
+                doc.text(currentT?.medical_only || 'Medical Records Only', 14, 34);
             }
 
             // Table Data
-            const tableHeaders = [['Date', 'Pet', 'Action', 'Details', 'Performed By']];
+            const tableHeaders = [[
+                currentT?.col_date || 'Date',
+                currentT?.col_pet || 'Pet',
+                currentT?.col_action || 'Action',
+                currentT?.col_details || 'Details',
+                currentT?.col_performed_by || 'Performed By'
+            ]];
 
             const formatAction = (action: string) => {
-                if (action === 'unfed') return 'un-fed';
-                if (action === 'unmedicated') return 'X MISSED MED';
-                if (action === 'medication') return 'Medication';
+                if (action === 'unfed') return currentT?.action_unfed || 'un-fed';
+                if (action === 'unmedicated') return currentT?.action_unmedicated || 'X MISSED MED';
+                if (action === 'medication') return currentT?.action_medication || 'Medication';
                 return action.charAt(0).toUpperCase() + action.slice(1);
             }
 
-            const tableRows = data.map((row: any) => {
+            const tableRows = filteredData.map((row: any) => {
                 const date = new Date(row.performed_at);
                 const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
@@ -107,10 +138,10 @@ export const exportService = {
 
                 return [
                     dateStr,
-                    row.pets?.name || 'Unknown Pet',
+                    row.pets?.name || currentT?.unknown_pet || 'Unknown Pet',
                     formatAction(row.action_type),
                     details,
-                    row.profiles?.first_name || 'Unknown User'
+                    row.profiles?.first_name || currentT?.unknown_user || 'Unknown User'
                 ];
             });
 

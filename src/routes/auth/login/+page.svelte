@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { t } from '$lib/services/i18n';
+  import LanguagePicker from '$lib/components/LanguagePicker.svelte';
 
   let usernameOrEmail = '';
   let password = '';
@@ -58,11 +60,11 @@
 <div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
   <div class="w-full max-w-md bg-white rounded-[32px] shadow-xl p-8 animate-fade-in">
     <div class="text-center mb-8">
-      <div class="w-16 h-16 bg-brand-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span class="text-4xl">🐾</span>
+      <div class="w-24 h-24 mx-auto mb-4">
+        <img src="/whofed_logo.png" alt="WhoFed Logo" class="w-full h-full object-contain" />
       </div>
-      <h1 class="text-3xl font-black text-gray-900 tracking-tight">Welcome Back</h1>
-      <p class="text-brand-sage font-bold uppercase tracking-widest text-xs mt-2">Log in to WhoFed</p>
+      <h1 class="text-3xl font-black text-gray-900 tracking-tight">{$t.auth.welcome_back}</h1>
+      <p class="text-brand-sage font-bold uppercase tracking-widest text-xs mt-2">{$t.auth.log_in_subtitle}</p>
     </div>
 
     {#if error}
@@ -71,7 +73,7 @@
 
     <form on:submit={handleLogin} class="space-y-5">
       <div>
-        <label for="usernameOrEmail" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Email or Username</label>
+        <label for="usernameOrEmail" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">{$t.auth.email_username_label}</label>
         <input 
           id="usernameOrEmail"
           type="text" 
@@ -83,7 +85,7 @@
       </div>
 
       <div>
-        <label for="password" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Password</label>
+        <label for="password" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">{$t.auth.password_login_label}</label>
         <input 
           id="password"
           type="password" 
@@ -99,7 +101,7 @@
         disabled={loading}
         class="w-full py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg shadow-brand-sage/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? 'Logging in...' : 'Log In'}
+        {loading ? $t.auth.logging_in : $t.auth.log_in_link}
       </button>
     </form>
 
@@ -109,7 +111,7 @@
           <div class="w-full border-t border-gray-100"></div>
         </div>
         <div class="relative flex justify-center text-sm">
-          <span class="px-4 bg-white text-gray-400 font-medium text-xs uppercase tracking-wider">Or continue with</span>
+          <span class="px-4 bg-white text-gray-400 font-medium text-xs uppercase tracking-wider">{$t.auth.or_continue_with}</span>
         </div>
       </div>
 
@@ -124,16 +126,25 @@
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
         </svg>
-        Sign in with Google
+        {$t.auth.sign_in_google}
       </button>
     </div>
 
-    <p class="text-center text-sm text-gray-500">
-      Don't have an account? <a href="/auth/register" class="text-brand-sage font-bold hover:underline">Create Account</a>
-    </p>
+    <div class="text-center text-sm text-gray-500 mt-6 space-y-2">
+      <p>
+        {$t.auth.dont_have_account} <a href="/auth/register" class="text-brand-sage font-bold hover:underline">{$t.auth.create_account_btn}</a>
+      </p>
+      <div class="flex justify-center items-center space-x-3 text-xs text-gray-400">
+        <a href="/legal/tos" class="hover:text-brand-sage transition-colors">{$t.settings?.terms_of_service || 'Terms of Service'}</a>
+        <span>&bull;</span>
+        <a href="/legal/privacy" class="hover:text-brand-sage transition-colors">{$t.settings?.privacy_policy || 'Privacy Policy'}</a>
+      </div>
+    </div>
   </div>
 </div>
 {/if}
+
+<LanguagePicker />
 
 <style>
     @keyframes fade-in {

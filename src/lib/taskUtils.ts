@@ -19,12 +19,10 @@ export function generateTasksForDate(
         if (!schedule.is_enabled) return;
         if (!schedule.target_times || schedule.target_times.length === 0) return;
 
-        let activeTimes: { time: string, label?: string }[] = [];
+        let activeTimes: { time: string }[] = [];
 
         schedule.target_times.forEach(encodedString => {
-            // Split out optional label: "TimeStr|Label"
-            const [timeStr, labelStr] = encodedString.split('|');
-            const parts = timeStr.split(':');
+            const parts = encodedString.split(':');
 
             if (parts.length >= 3) {
                 // Encoded format
@@ -34,36 +32,36 @@ export function generateTasksForDate(
                     // Weekly: W:Day:HH:MM
                     const sDay = parseInt(parts[1]);
                     const time = `${parts[2]}:${parts[3]}`;
-                    if (sDay === dayOfWeek) activeTimes.push({ time, label: labelStr });
+                    if (sDay === dayOfWeek) activeTimes.push({ time });
                 } else if (prefix === 'M') {
                     // Monthly: M:Day:HH:MM
                     const sDay = parseInt(parts[1]);
                     const time = `${parts[2]}:${parts[3]}`;
-                    if (sDay === dayOfMonth) activeTimes.push({ time, label: labelStr });
+                    if (sDay === dayOfMonth) activeTimes.push({ time });
                 } else if (prefix === 'C') {
                     // Custom: C:YYYY-MM-DD:HH:MM
                     const sDate = parts[1];
                     const time = `${parts[2]}:${parts[3]}`;
-                    if (sDate === dateStr) activeTimes.push({ time, label: labelStr });
+                    if (sDate === dateStr) activeTimes.push({ time });
                 }
             } else {
                 // Daily: HH:MM - Implicitly active every day
-                activeTimes.push({ time: timeStr, label: labelStr });
+                activeTimes.push({ time: encodedString });
             }
         });
 
         // Create task objects for each time
-        activeTimes.forEach(({ time, label }) => {
+        activeTimes.forEach(({ time }) => {
             const [h, m] = time.split(':');
             const dueAt = new Date(date);
             dueAt.setHours(parseInt(h), parseInt(m), 0, 0);
 
             tasks.push({
-                pet_id: schedule.pet_id,
+                pet_id: schedule.pet_id || '',
                 schedule_id: schedule.id,
                 household_id: householdId,
-                label: label || schedule.label || (schedule.task_type === 'feeding' ? 'Feeding' : schedule.task_type === 'care' ? 'Care' : 'Medication'),
-                task_type: schedule.task_type,
+                label: schedule.label || (schedule.task_type === 'feeding' ? 'Feeding' : schedule.task_type === 'care' ? 'Care' : 'Medication'),
+                task_type: schedule.task_type || 'care',
                 status: 'pending',
                 due_at: dueAt.toISOString(),
                 created_at: new Date().toISOString()

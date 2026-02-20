@@ -171,6 +171,10 @@ export const authService = {
     async logout() {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('whofed_lang');
+        }
     },
 
     // Listen to auth state changes

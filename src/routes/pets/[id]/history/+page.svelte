@@ -51,7 +51,6 @@
           startTime.setDate(now.getDate() - 3);
       }
 
-      // 1. Fetch Visible Logs
       const { data } = await supabase
         .from('activity_log')
         .select('*, profiles(first_name), schedules(label, task_type), daily_tasks(label)')
@@ -60,7 +59,26 @@
         .order('performed_at', { ascending: false })
         .limit(100); // Sanity limit
 
-      logs = data || [];
+      // Filter out undone actions
+      const undoneTaskIds = new Set<string>();
+      const filteredLogs = [];
+
+      for (const row of (data || [])) {
+          if (row.action_type.startsWith('un')) {
+              if (row.task_id) {
+                  undoneTaskIds.add(row.task_id);
+              }
+              continue; // Skip the un- action
+          }
+          if (row.task_id && undoneTaskIds.has(row.task_id)) {
+              // This is the original action that was cancelled
+              undoneTaskIds.delete(row.task_id);
+              continue; // Skip original action
+          }
+          filteredLogs.push(row);
+      }
+
+      logs = filteredLogs;
 
       // 2. Check if we should show the "Unlock" banner
       if (!$userIsPremium) {

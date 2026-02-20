@@ -162,10 +162,9 @@
           console.log(`Row ${row.id} times:`, times);
 
           times.forEach((t: string) => {
-               const { time, label } = extractTimeAndLabel(t, frequency);
+               const { time } = extractTimeAndLabel(t, frequency);
                groups[key].times.push({
                    value: time,
-                   label,
                    scheduleId: row.id // This maps THIS specific time to THIS db row
                });
           });
@@ -238,7 +237,7 @@
           selectedDays: [], 
           selectedDayOfMonth: 1, 
           customDates: [], 
-          times: [{ value: '08:00', label: '' }] // New time
+          times: [{ value: '08:00' }] // New time
       }];
   }
 
@@ -248,7 +247,7 @@
   }
 
   function addTime(schedule: ScheduleItem) {
-      schedule.times = [...schedule.times, { value: '12:00', label: '', scheduleId: undefined }];
+      schedule.times = [...schedule.times, { value: '12:00', scheduleId: undefined }];
       schedules = [...schedules];
   }
 
@@ -293,12 +292,11 @@
       let encodedTimes: string[] = [];
 
        if (s.frequency === 'daily') {
-           encodedTimes = timesToSave.map(t => t.label ? `${t.value}|${t.label}` : t.value);
+           encodedTimes = timesToSave.map(t => t.value);
        } else if (s.frequency === 'weekly') {
            s.selectedDays.forEach(day => {
                 timesToSave.forEach(t => {
-                     const timeStr = t.label ? `${t.value}|${t.label}` : t.value;
-                     encodedTimes.push(`W:${day}:${timeStr}`);
+                     encodedTimes.push(`W:${day}:${t.value}`);
                 });
            });
        } else if (s.frequency === 'monthly') {
@@ -307,8 +305,7 @@
        } else if (s.frequency === 'custom') {
            s.customDates.forEach(date => {
                 timesToSave.forEach(t => {
-                     const timeStr = t.label ? `${t.value}|${t.label}` : t.value;
-                     encodedTimes.push(`C:${date}:${timeStr}`);
+                     encodedTimes.push(`C:${date}:${t.value}`);
                 });
            });
        }
@@ -715,25 +712,13 @@
                                 <label class="block text-sm font-bold text-typography-secondary mb-2">{$t.pet_settings.at_times}</label>
                                 {#each schedule.times as time, i}
                                 <div class="flex items-center space-x-3 bg-neutral-surface rounded-2xl px-4 py-3 group focus-within:ring-2 focus-within:ring-brand-sage/50 transition-all border border-transparent hover:border-brand-sage/20">
-                                     <!-- Label Input (Left) -->
-                                     <div class="flex-1">
-                                         <input 
-                                            type="text" 
-                                            bind:value={schedule.times[i].label}
-                                            class="font-bold text-typography-primary bg-transparent border-none p-0 focus:ring-0 w-full placeholder-gray-400 text-sm"
-                                            placeholder={i === 0 ? $t.pet_settings.breakfast : i === 1 ? $t.pet_settings.dinner : $t.pet_settings.label_placeholder}
-                                        />
-                                     </div>
 
-                                     <!-- Vertical Divider -->
-                                     <div class="w-px h-6 bg-gray-200"></div>
-
-                                     <!-- Time Input (Right) -->
-                                     <div class="relative">
+                                     <!-- Time Input (Left) -->
+                                     <div class="relative flex-1">
                                          <input 
                                             type="time" 
                                             bind:value={schedule.times[i].value}
-                                            class="bg-white rounded-lg px-3 py-1.5 border border-gray-100 text-typography-primary font-bold focus:ring-2 focus:ring-brand-sage/20 p-0 text-base w-36 text-center shadow-sm cursor-pointer accent-brand-sage"
+                                            class="w-full bg-white rounded-lg px-3 py-1.5 border border-gray-100 text-typography-primary font-bold focus:ring-2 focus:ring-brand-sage/20 p-0 text-base text-center shadow-sm cursor-pointer accent-brand-sage"
                                         />
                                      </div>
                                      

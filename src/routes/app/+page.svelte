@@ -362,7 +362,27 @@
         .in('pet_id', pets.map(p => p.id))
         .order('performed_at', { ascending: false })
         .limit(50);
-      recentActivity = logData || [];
+
+      // Filter out undone actions
+      const undoneTaskIds = new Set<string>();
+      const filteredLogs = [];
+
+      for (const row of (logData || [])) {
+          if (row.action_type.startsWith('un')) {
+              if (row.task_id) {
+                  undoneTaskIds.add(row.task_id);
+              }
+              continue; // Skip the un- action
+          }
+          if (row.task_id && undoneTaskIds.has(row.task_id)) {
+              // This is the original action that was cancelled
+              undoneTaskIds.delete(row.task_id);
+              continue; // Skip original action
+          }
+          filteredLogs.push(row);
+      }
+
+      recentActivity = filteredLogs;
   }
 
   async function handleLogAction(task: DailyTask) {
