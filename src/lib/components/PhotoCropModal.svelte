@@ -15,25 +15,61 @@
   let rotation = 0;
 
   onMount(() => {
-    // Small delay to ensure DOM is ready
+    console.log('[PhotoCropModal] onMount called');
+    console.log('[PhotoCropModal] cropContainer:', !!cropContainer);
+    console.log('[PhotoCropModal] imageDataUrl:', !!imageDataUrl);
+
+    // Wait for next tick to ensure DOM is ready
     setTimeout(() => {
+      console.log('[PhotoCropModal] setTimeout fired, calling initializeCroppie');
       initializeCroppie();
-    }, 100);
+    }, 50);
   });
 
   onDestroy(() => {
+    console.log('[PhotoCropModal] onDestroy called');
+    console.log('[PhotoCropModal] croppieInstance exists:', !!croppieInstance);
+
     if (croppieInstance) {
       try {
+        console.log('[PhotoCropModal] Destroying Croppie instance...');
         croppieInstance.destroy();
+        console.log('[PhotoCropModal] Croppie destroyed successfully');
       } catch (e) {
-        console.error('Error destroying croppie:', e);
+        console.error('[PhotoCropModal] Error destroying croppie:', e);
       }
       croppieInstance = null;
+    }
+
+    // Clean up element state
+    if (cropContainer) {
+      // Clear any Croppie data from the element
+      if ((cropContainer as any).croppie) {
+        console.log('[PhotoCropModal] Cleaning up element.croppie property');
+        delete (cropContainer as any).croppie;
+      }
+      // Clear the element's children to remove all Croppie DOM
+      console.log('[PhotoCropModal] Clearing element innerHTML');
+      cropContainer.innerHTML = '';
     }
   });
 
   function initializeCroppie() {
-    if (!cropContainer || !imageDataUrl) return;
+    console.log('[PhotoCropModal] initializeCroppie called');
+    console.log('[PhotoCropModal] croppieInstance exists:', !!croppieInstance);
+    console.log('[PhotoCropModal] cropContainer exists:', !!cropContainer);
+    console.log('[PhotoCropModal] imageDataUrl exists:', !!imageDataUrl);
+
+    // Guard: If we already have an instance, don't create another one
+    if (croppieInstance) {
+      console.warn('[PhotoCropModal] Croppie instance already exists, skipping initialization');
+      return;
+    }
+
+    if (!cropContainer || !imageDataUrl) {
+      console.warn('[PhotoCropModal] Missing cropContainer or imageDataUrl, aborting');
+      return;
+    }
 
     // Validate image size
     const sizeInMB = (imageDataUrl.length * 3 / 4) / (1024 * 1024);
@@ -43,7 +79,16 @@
     }
 
     try {
-      croppieInstance = new Croppie(cropContainer, {
+      // ALWAYS clear the container and create a fresh div
+      console.log('[PhotoCropModal] Clearing container and creating fresh element...');
+      cropContainer.innerHTML = '';
+
+      // Create a completely new div element for Croppie
+      const croppieElement = document.createElement('div');
+      cropContainer.appendChild(croppieElement);
+
+      console.log('[PhotoCropModal] Creating new Croppie instance on fresh element...');
+      croppieInstance = new Croppie(croppieElement, {
         viewport: { width: 256, height: 256, type: 'circle' },
         boundary: { width: 300, height: 300 },
         showZoomer: true,
@@ -54,9 +99,12 @@
         mouseWheelZoom: false
       });
 
+      console.log('[PhotoCropModal] Binding image to Croppie...');
       croppieInstance.bind({ url: imageDataUrl });
+      console.log('[PhotoCropModal] Croppie initialized successfully!');
     } catch (err: any) {
       error = err.message || 'Failed to initialize crop tool';
+      console.error('[PhotoCropModal] Croppie initialization error:', err);
     }
   }
 
@@ -110,7 +158,12 @@
 </script>
 
 {#if open}
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" on:click={handleBackdropClick}>
+  <div 
+    class="fixed inset-0 z-50 flex items-center justify-center p-4" 
+    on:click={handleBackdropClick}
+    on:keydown={(e) => e.key === 'Escape' && handleCancel()}
+    role="presentation"
+  >
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"></div>
 

@@ -11,7 +11,7 @@
   import { get } from 'svelte/store';
   import PhotoSourceModal from '$lib/components/PhotoSourceModal.svelte';
   import PhotoCropModal from '$lib/components/PhotoCropModal.svelte';
-  import { uploadPetAvatar } from '$lib/services/imageUploadService';
+  import { uploadPetAvatar, deletePetAvatar } from '$lib/services/imageUploadService';
   import { userIsPremium } from '$lib/stores/user';
 
   let loading = true;
@@ -328,13 +328,53 @@
        };
   }
 
+  // Helper function to save icon to database immediately
+  async function saveIconToDatabase(newIcon: string) {
+      const { error: updateError } = await supabase
+          .from('pets')
+          .update({ icon: newIcon })
+          .eq('id', petId);
+
+      if (updateError) {
+          throw new Error(updateError.message);
+      }
+
+      icon = newIcon;
+  }
+
   async function handleCroppedPhoto(event: CustomEvent) {
       const { blob } = event.detail;
       uploadingPhoto = true;
 
       try {
-          const { publicUrl } = await uploadPetAvatar($currentUser.id, blob, petId);
-          icon = publicUrl;
+          // If there's an existing photo, delete it first
+          if (icon && icon.startsWith('http')) {
+              console.log('[handleCroppedPhoto] Current icon URL:', icon);
+              // Remove cache-busting parameter if present
+              const cleanUrl = icon.split('?')[0];
+              // Extract the file path from the URL
+              // URL format: https://.../storage/v1/object/public/pet-avatars/{userId}/{petId}.jpg
+              const urlParts = cleanUrl.split('/pet-avatars/');
+              console.log('[handleCroppedPhoto] URL parts after split:', urlParts);
+              if (urlParts.length > 1) {
+                  const oldFilePath = urlParts[1];
+                  console.log('[handleCroppedPhoto] Deleting old file:', oldFilePath);
+                  await deletePetAvatar(oldFilePath);
+                  console.log('[handleCroppedPhoto] Old file deleted');
+              }
+          }
+
+          console.log('[handleCroppedPhoto] Uploading new photo...');
+          const result = await uploadPetAvatar($currentUser.id, blob, petId);
+          console.log('[handleCroppedPhoto] New photo uploaded:', result.publicUrl);
+
+          // Add cache-busting parameter to force browser to reload the image
+          const cacheBustedUrl = `${result.publicUrl}?v=${Date.now()}`;
+          console.log('[handleCroppedPhoto] Cache-busted URL:', cacheBustedUrl);
+
+          await saveIconToDatabase(cacheBustedUrl);
+          console.log('[handleCroppedPhoto] Icon saved to database');
+
           showPhotoCropModal = false;
           showIconModal = false;
       } catch (error: any) {
@@ -342,6 +382,16 @@
           alert(`Upload failed: ${error.message}`);
       } finally {
           uploadingPhoto = false;
+      }
+  }
+
+  async function handleIconSelect(newIcon: string) {
+      try {
+          await saveIconToDatabase(newIcon);
+          showIconModal = false;
+      } catch (error: any) {
+          console.error('Icon save failed:', error);
+          alert(`Failed to save icon: ${error.message}`);
       }
   }
 
@@ -576,7 +626,7 @@
                                     type="button"
                                     class="flex items-center justify-center p-2 rounded-xl transition-all aspect-square border-2
                                     {icon === petIcon ? 'border-brand-sage bg-brand-sage/5 shadow-sm scale-110' : 'border-transparent hover:bg-gray-50'}"
-                                    on:click={() => { icon = petIcon; showIconModal = false; }}
+                                    on:click={() => handleIconSelect(petIcon)}
                                 >
                                     <span class="text-3xl">{petIcon}</span>
                                 </button>
@@ -616,7 +666,7 @@
                                 <button
                                     type="button"
                                     class="w-full mt-2 py-2 text-sm text-red-500 hover:text-red-600 font-medium transition-colors"
-                                    on:click={() => { icon = '🐱'; showIconModal = false; }}
+                                    on:click={() => handleIconSelect('🐱')}
                                 >
                                     Remove Photo
                                 </button>

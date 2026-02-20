@@ -389,8 +389,8 @@
       uploadingPhoto = true;
 
       try {
-          const { publicUrl } = await uploadPetAvatar(currentUser.id, blob);
-          icon = publicUrl;
+          const result = await uploadPetAvatar(currentUser.id, blob);
+          icon = result.publicUrl;
           showPhotoCropModal = false;
           showIconModal = false;
       } catch (error: any) {

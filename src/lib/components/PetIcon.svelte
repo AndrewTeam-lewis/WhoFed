@@ -1,9 +1,14 @@
 <script lang="ts">
-  export let icon: string;
-  export let size: 'sm' | 'md' | 'lg' | 'xl' = 'md';
-  export let extraClasses = '';
+  interface Props {
+    icon: string;
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+    extraClasses?: string;
+  }
 
-  const isImage = icon && (icon.startsWith('http') || icon.startsWith('data:') || icon.endsWith('.svg') || icon.startsWith('/'));
+  let { icon, size = 'md', extraClasses = '' }: Props = $props();
+
+  // Use $derived for reactivity in Svelte 5
+  const isImage = $derived(icon && (icon.startsWith('http') || icon.startsWith('data:') || icon.endsWith('.svg') || icon.startsWith('/')));
 
   const sizeClasses = {
       sm: 'text-xl w-8 h-8',
@@ -12,8 +17,14 @@
       xl: 'text-8xl w-40 h-40'
   };
 
-  let imageLoaded = false;
-  let imageError = false;
+  let imageLoaded = $state(false);
+  let imageError = $state(false);
+
+  // Reset image state when icon changes
+  $effect(() => {
+    imageLoaded = false;
+    imageError = false;
+  });
 </script>
 
 <div class="flex items-center justify-center rounded-full overflow-hidden bg-gray-100 {sizeClasses[size]} {extraClasses} flex-shrink-0 relative">

@@ -365,5 +365,18 @@ export default {
         error_display_name_required: 'Display name is required',
         error_all_fields_required: 'Please fill in all required fields',
         error_accept_terms: 'Please accept the Terms of Service and Privacy Policy to continue.'
+    },
+    history: {
+        page_title: 'Activity History',
+        fed: 'fed',
+        un_fed: 'un-fed',
+        gave: 'gave',
+        medication: 'medication',
+        un_gave: 'un-gave',
+        cleaned_up: 'cleaned up after',
+        someone: 'Someone',
+        unlock_title: 'Unlock Full History',
+        unlock_desc: 'Upgrade to Premium to see unlimited medication and feeding history. Great for vet visits!',
+        upgrade_now: 'Upgrade Now'
     }
 };

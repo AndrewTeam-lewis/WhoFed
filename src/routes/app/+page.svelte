@@ -719,8 +719,21 @@
       >
           <div class="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl scale-100 transform transition-all">
               <div class="mb-6">
-                  <h3 class="text-xl font-bold text-gray-900 mb-1">{$t.modals.one_time_title}</h3>
-                  <p class="text-gray-500 text-xs">{$t.modals.one_time_desc.replace('{pet}', pets.find(p => p.id === petForOneTimeTask)?.name || '')}</p>
+                  <div class="flex flex-col mb-1">
+                      <div class="flex items-center space-x-2">
+                          <h3 class="text-xl font-bold text-gray-900">{$t.modals.one_time_title}</h3>
+                          <button 
+                              class="text-gray-400 hover:text-brand-sage transition-colors p-1"
+                              on:click={() => onboarding.showTooltip('onetime-task')}
+                              aria-label="What is a one-time task?"
+                          >
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                          </button>
+                      </div>
+                      <p class="text-gray-500 text-xs mt-1">{$t.modals.one_time_desc.replace('{pet}', pets.find(p => p.id === petForOneTimeTask)?.name || '')}</p>
+                  </div>
               </div>
 
               <div class="space-y-4 mb-8">
@@ -928,14 +941,9 @@
              <!-- Top Row: Icon, Name, status -->
              <div class="flex items-start justify-between mb-4 relative">
                <div class="flex items-center space-x-4">
-                 <div class="bg-primary-5 p-3 rounded-2xl">
-                  <div class="bg-primary-5 p-3 rounded-2xl border-2 border-white shadow-sm">
-                    <!-- Icon from DB -->
-                    <!-- Icon from DB -->
-                    <div class="w-[36px] h-[36px] flex items-center justify-center overflow-hidden rounded-full">
-                        <PetIcon icon={pet.icon} size="sm" />
-                    </div>
-                  </div>
+                 <!-- Circular pet icon with border -->
+                 <div class="w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <PetIcon icon={pet.icon} extraClasses="!w-full !h-full" />
                  </div>
                  <div>
                    <h3 class="font-bold text-xl text-gray-900 leading-tight">{pet.name}</h3>

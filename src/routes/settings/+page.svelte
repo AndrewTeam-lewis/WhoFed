@@ -863,7 +863,18 @@
              <!-- Header / Action -->
              <div class="p-4 flex items-center justify-between">
                  <div>
-                     <h3 class="font-bold text-gray-900 leading-tight">{$t.settings.manage_households_header}</h3>
+                     <div class="flex items-center space-x-2">
+                         <h3 class="font-bold text-gray-900 leading-tight">{$t.settings.manage_households_header}</h3>
+                         <button 
+                             class="text-gray-400 hover:text-brand-sage transition-colors p-1"
+                             on:click={() => onboarding.showTooltip('members-role')}
+                             aria-label="Info about household roles"
+                         >
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                             </svg>
+                         </button>
+                     </div>
                      <p class="text-xs text-gray-500 mt-1">{$t.settings.manage_households_desc}</p>
                  </div>
                  <button 
@@ -1260,31 +1271,62 @@
 
 
        <!-- Subscription (Dev Only Toggle) -->
+       <!-- Subscription Card -->
        <div class="space-y-2">
           <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.subscription}</div>
+          
+          {#if !$userIsPremium}
+          <button 
+              class="w-full bg-gradient-to-br from-brand-sage to-emerald-700 rounded-2xl p-5 text-left shadow-lg shadow-brand-sage/20 relative overflow-hidden transition-transform active:scale-[0.98]"
+              on:click={() => showPremiumModal = true}
+          >
+              <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+              
+              <div class="relative z-10 flex items-start justify-between">
+                  <div>
+                      <h3 class="text-lg font-black text-white mb-1 flex items-center">
+                          WhoFed Premium <span class="ml-2 text-xl">💎</span>
+                      </h3>
+                      <p class="text-white/80 text-xs font-medium max-w-[200px]">Unlock unlimited pets, multiple households, and PDF exports!</p>
+                  </div>
+                  <div class="flex flex-col items-end space-y-2">
+                      <div class="bg-white/20 backdrop-blur-md rounded-full px-3 py-1">
+                          <span class="text-white text-[10px] font-bold tracking-wider uppercase">Upgrade</span>
+                      </div>
+                       <div
+                          role="button"
+                          tabindex="0"
+                          class="text-[10px] text-white/50 hover:text-white transition-colors underline cursor-pointer"
+                          on:click|stopPropagation={async () => {
+                              try {
+                                  const { error: updateError } = await supabase.from('profiles').update({ tier: 'premium' }).eq('id', $currentUser.id).select();
+                                  if (updateError) { alert('Failed: ' + updateError.message); } else { window.location.reload(); }
+                              } catch (e: any) { alert('Error: ' + e.message); }
+                          }}
+                          on:keydown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.currentTarget.click();
+                              }
+                          }}
+                       >
+                          [Dev: Toggle]
+                       </div>
+                  </div>
+              </div>
+          </button>
+          {:else}
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
              <div class="p-4 flex items-center justify-between">
                  <div>
-                     <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {$userIsPremium ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-600'}">
-                        {$userIsPremium ? $t.settings.premium_user : $t.settings.free_tier}
+                     <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-sage/10 text-brand-sage">
+                        {$t.settings.premium_user}
                      </span>
                  </div>
-                 <button
-                    class="text-xs text-blue-500 hover:underline"
-                    on:click={async () => {
-                        try {
-                            const newTier = $userIsPremium ? 'free' : 'premium';
-                            console.log('Toggling user tier to:', newTier);
-                            // ... toggle logic ...
-                            const { data: updatedRows, error: updateError } = await supabase.from('profiles').update({ tier: newTier }).eq('id', $currentUser.id).select();
-                            if (updateError) { alert('Failed: ' + updateError.message); } else { window.location.reload(); }
-                        } catch (e: any) { alert('Error: ' + e.message); }
-                    }}
-                 >
-                    [Dev: Toggle]
-                 </button>
+                 <button class="text-xs text-blue-500 hover:underline" on:click={async () => { try { const { error } = await supabase.from('profiles').update({ tier: 'free' }).eq('id', $currentUser.id); if (!error) window.location.reload(); } catch (e) {} }}>[Dev: Toggle]</button>
              </div>
           </section>
+          {/if}
        </div>
              <!-- About -->
        <div class="space-y-2">
@@ -1522,13 +1564,50 @@
               </div>
           </div>
           
-          <div class="p-8 text-center">
+          <div class="p-6 text-center">
               <h3 class="text-2xl font-bold text-gray-900 mb-2">Upgrade to Premium</h3>
-              <p class="text-gray-500 mb-6 leading-relaxed">
-                  You've reached the limit of the Free plan.
-                  <br>
-                  <span class="font-bold text-gray-800">Unlock unlimited pets, members & history!</span>
+              <p class="text-gray-500 mb-6 leading-relaxed text-sm">
+                  Get the ultimate WhoFed experience and support the app!
               </p>
+              
+              <ul class="text-left space-y-4 mb-8">
+                  <li class="flex items-start">
+                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                      <div>
+                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">Unlimited Pets</span>
+                          <span class="text-[11px] text-gray-500 leading-tight block">Track care for every furry friend freely.</span>
+                      </div>
+                  </li>
+                  <li class="flex items-start">
+                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                      <div>
+                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">Custom Pet Photos</span>
+                          <span class="text-[11px] text-gray-500 leading-tight block">Upload real adorable photos for pet icons.</span>
+                      </div>
+                  </li>
+                  <li class="flex items-start">
+                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                      <div>
+                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">Multiple Households</span>
+                          <span class="text-[11px] text-gray-500 leading-tight block">Perfect for pet sitting or split custody.</span>
+                      </div>
+                  </li>
+                  <li class="flex items-start">
+                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                      <div>
+                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">PDF Log Exports</span>
+                          <span class="text-[11px] text-gray-500 leading-tight block">Unlimited history and reports for your vet.</span>
+                      </div>
+                  </li>
+              </ul>
               
               <div class="space-y-3">
                   {#if $currentOfferings.length > 0}

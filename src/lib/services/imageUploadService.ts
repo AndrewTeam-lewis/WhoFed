@@ -49,13 +49,17 @@ export async function uploadPetAvatar(
  * @param filePath - The storage path of the file to delete
  */
 export async function deletePetAvatar(filePath: string): Promise<void> {
-  const { error } = await supabase.storage
+  console.log('[deletePetAvatar] Attempting to delete:', filePath);
+  const { error, data } = await supabase.storage
     .from('pet-avatars')
     .remove([filePath]);
 
   if (error) {
-    console.error('Failed to delete pet avatar:', error);
+    console.error('[deletePetAvatar] Failed to delete pet avatar:', error);
+    console.error('[deletePetAvatar] Error details:', JSON.stringify(error));
     // Don't throw - deletion failure is non-critical
+  } else {
+    console.log('[deletePetAvatar] Successfully deleted:', data);
   }
 }
 

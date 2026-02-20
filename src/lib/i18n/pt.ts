@@ -365,5 +365,18 @@ export default {
         error_display_name_required: 'Nome de exibição é obrigatório',
         error_all_fields_required: 'Por favor, preencha todos os campos obrigatórios',
         error_accept_terms: 'Por favor, aceite os Termos de Serviço e a Política de Privacidade para continuar.'
+    },
+    history: {
+        page_title: 'Histórico de Atividade',
+        fed: 'alimentou',
+        un_fed: 'removeu comida de',
+        gave: 'deu remédio para',
+        medication: 'medicação',
+        un_gave: 'removeu remédio de',
+        cleaned_up: 'cuidou de',
+        someone: 'Alguém',
+        unlock_title: 'Desbloquear Histórico Completo',
+        unlock_desc: 'Assine o Premium para ver histórico ilimitado de alimentação e medicamentos. Ótimo para visitas ao veterinário!',
+        upgrade_now: 'Assinar Agora'
     }
 };
