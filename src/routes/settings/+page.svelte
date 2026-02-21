@@ -498,6 +498,7 @@
 
   let showPremiumModal = false;
   let showDeleteAccountModal = false;
+  let showGoodbyeModal = false;
 
   function openInviteModal(hhId: string) {
       // Monetization Gate: re-check at click time since store may have loaded after initial render
@@ -1678,10 +1679,12 @@
                       on:click={async () => {
                           try {
                               showDeleteAccountModal = false;
-                              const { error } = await supabase.from('profiles').delete().eq('id', $currentUser.id);
+                              // Call the database function to delete the auth user
+                              // This will cascade to delete the profile and all related data
+                              const { error } = await supabase.rpc('delete_user');
                               if (error) throw error;
                               await supabase.auth.signOut();
-                              window.location.href = '/auth/login';
+                              showGoodbyeModal = true;
                           } catch(err: any) {
                               alert('Error deleting account: ' + err.message);
                               showDeleteAccountModal = false;
@@ -1698,6 +1701,31 @@
                   </button>
               </div>
           </div>
+      </div>
+  </div>
+  {/if}
+
+  <!-- GOODBYE MODAL -->
+  {#if showGoodbyeModal}
+  <div class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"></div>
+      
+      <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in text-center p-8">
+          <div class="w-20 h-20 bg-brand-sage/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span class="text-4xl pr-1">🐾</span>
+          </div>
+          
+          <h3 class="text-2xl font-black text-gray-900 mb-3">{$t.settings.delete_account_success_title}</h3>
+          <p class="text-gray-500 mb-8 text-sm leading-relaxed">
+              {$t.settings.delete_account_success_desc}
+          </p>
+          
+          <button 
+              class="w-full py-4 bg-brand-sage text-white font-bold rounded-xl shadow-lg hover:bg-brand-sage/90 transition-all"
+              on:click={() => window.location.href = '/auth/login'}
+          >
+              {$t.settings.back_to_login}
+          </button>
       </div>
   </div>
   {/if}

@@ -1,5 +1,7 @@
 package com.whofed.me;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.graphics.Color;
@@ -91,6 +93,54 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
+        // Handle deep link if app was launched from a link
+        handleDeepLink(getIntent());
+
         Log.d(TAG, "=== onCreate END ===");
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        Log.d(TAG, "=== onNewIntent called ===");
+        setIntent(intent);
+        handleDeepLink(intent);
+    }
+
+    private void handleDeepLink(Intent intent) {
+        Uri data = intent.getData();
+        if (data == null) {
+            Log.d(TAG, "[DeepLink] No URI data in intent");
+            return;
+        }
+
+        String scheme = data.getScheme();
+        String host = data.getHost();
+        Log.d(TAG, "[DeepLink] Received deep link - Scheme: " + scheme + ", Host: " + host);
+        Log.d(TAG, "[DeepLink] Full URI: " + data.toString());
+
+        // Handle whofed://join?k=...
+        if ("whofed".equals(scheme) && "join".equals(host)) {
+            String inviteKey = data.getQueryParameter("k");
+            if (inviteKey != null && !inviteKey.isEmpty()) {
+                Log.d(TAG, "[DeepLink] Processing join invite with key: " + inviteKey);
+
+                // Navigate to the join page in the webview
+                final String url = "/join/?k=" + inviteKey;
+
+                // Post to ensure bridge is ready
+                getBridge().getWebView().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.d(TAG, "[DeepLink] Navigating webview to: " + url);
+                        getBridge().getWebView().loadUrl("javascript:window.location.href = '" + url + "'");
+                    }
+                });
+            } else {
+                Log.w(TAG, "[DeepLink] Join link missing 'k' parameter");
+            }
+        } else {
+            Log.d(TAG, "[DeepLink] Unhandled deep link scheme/host: " + scheme + "://" + host);
+        }
     }
 }

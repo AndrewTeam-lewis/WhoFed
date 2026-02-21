@@ -25,6 +25,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.whofed.me" />
             </intent-filter>
+
+            <!-- Deep link intent filter for whofed:// scheme -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="whofed" />
+            </intent-filter>
         </activity>
 
         <provider

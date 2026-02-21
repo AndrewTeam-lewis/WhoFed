@@ -36,7 +36,41 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
         // Called when the app was launched with a url. Feel free to add additional processing here,
         // but if you want the App API to support tracking app url opens, make sure to keep this call
+
+        // Handle deep links for whofed:// scheme
+        if url.scheme == "whofed" {
+            print("[DeepLink] Received deep link: \(url.absoluteString)")
+            handleDeepLink(url)
+        }
+
         return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        // Handle whofed://join?k=...
+        if url.host == "join" {
+            if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               let queryItems = components.queryItems,
+               let inviteKey = queryItems.first(where: { $0.name == "k" })?.value {
+                print("[DeepLink] Processing join invite with key: \(inviteKey)")
+
+                // Navigate to join page in webview
+                DispatchQueue.main.async {
+                    if let bridge = (self.window?.rootViewController as? CAPBridgeViewController)?.bridge {
+                        let script = "window.location.href = '/join/?k=\(inviteKey)'"
+                        bridge.webView?.evaluateJavaScript(script) { result, error in
+                            if let error = error {
+                                print("[DeepLink] Error navigating: \(error)")
+                            } else {
+                                print("[DeepLink] Successfully navigated to join page")
+                            }
+                        }
+                    }
+                }
+            } else {
+                print("[DeepLink] Join link missing 'k' parameter")
+            }
+        }
     }
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {

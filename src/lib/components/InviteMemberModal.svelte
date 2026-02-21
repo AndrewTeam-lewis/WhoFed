@@ -4,6 +4,7 @@
     import { currentUser } from '$lib/stores/user';
     import QRCode from 'qrcode';
     import { t } from '$lib/services/i18n';
+    import { APP_URL } from '$lib/config';
 
     export let householdId: string;
     export let canInvite: boolean;
@@ -109,8 +110,7 @@
                 if (createError) throw createError;
             }
 
-            const baseUrl = window.location.origin;
-            inviteUrl = `${baseUrl}/join/?k=${inviteKey}`;
+            inviteUrl = `${APP_URL}/join/?k=${inviteKey}`;
             qrCodeDataUrl = await QRCode.toDataURL(inviteUrl, {
                 width: 256,
                 margin: 2,

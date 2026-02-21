@@ -4,6 +4,12 @@ const config: CapacitorConfig = {
   appId: 'com.whofed.me',
   appName: 'WhoFed',
   webDir: 'build',
+  // Deep linking configuration
+  server: {
+    url: undefined,
+    cleartext: true,
+    androidScheme: 'https'
+  },
   plugins: {
     StatusBar: {
       style: 'Light',
@@ -16,6 +22,10 @@ const config: CapacitorConfig = {
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
+    },
+    // Custom URL scheme for deep linking
+    AppUrlOpen: {
+      customScheme: 'whofed'
     }
   }
 };

@@ -15,6 +15,8 @@
 
   // State for unauthenticated users
   let isGuest = false;
+  let showAppDownload = false;
+  let attemptedDeepLink = false;
 
   onMount(async () => {
     // householdId check moved to loadHouseholdInfo to support key-based join
@@ -23,9 +25,9 @@
     // 1. Check Auth
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-        // Show Landing Page instead of auto-redirect
+        // Guest user - try to open app first
         isGuest = true;
-        loading = false;
+        attemptDeepLink();
         return;
     }
     currentUser = session.user;
@@ -33,6 +35,30 @@
     // 2. Load Household Info (Only if authenticated)
     await loadHouseholdInfo();
   });
+
+  function attemptDeepLink() {
+    const key = $page.url.searchParams.get('k');
+    if (!key) {
+      // No key, just show the guest page
+      loading = false;
+      return;
+    }
+
+    console.log('[Join] Attempting to open app with deep link...');
+    attemptedDeepLink = true;
+
+    // Try to open the mobile app
+    const deepLinkUrl = `whofed://join?k=${key}`;
+    window.location.href = deepLinkUrl;
+
+    // Wait 2.5 seconds to see if user left the page (app opened)
+    setTimeout(() => {
+      // If we're still here, the app didn't open
+      console.log('[Join] App did not open, showing download page');
+      showAppDownload = true;
+      loading = false;
+    }, 2500);
+  }
 
   async function loadHouseholdInfo() {
       let step = 'init';
@@ -146,43 +172,73 @@
                 <p class="text-gray-500 mb-6">{error}</p>
                 <button on:click={() => goto('/')} class="text-brand-sage font-bold hover:underline">Go Home</button>
             </div>
-        {:else if isGuest}
-            <!-- Guest Landing Page -->
-             <div class="py-6">
+        {:else if isGuest && showAppDownload}
+            <!-- App Download Page (shown when deep link fails) -->
+            <div class="py-6">
                 <div class="w-20 h-20 bg-brand-sage/10 text-brand-sage rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
                 </div>
 
-                <h1 class="text-2xl font-bold text-gray-900 mb-2">You've been invited!</h1>
-                <p class="text-gray-500 mb-8">
-                    Someone invited you to help care for their pets on <span class="font-bold text-brand-sage">WhoFed</span>.
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">Download WhoFed</h1>
+                <p class="text-gray-500 mb-2">
+                    You've been invited to help care for pets on <span class="font-bold text-brand-sage">WhoFed</span>.
+                </p>
+                <p class="text-sm text-gray-400 mb-8">
+                    Download the mobile app to get push notifications and the full experience.
                 </p>
 
-                <div class="space-y-3">
-                    <button 
-                        on:click={() => navigateToAuth('register')}
-                        class="w-full py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg hover:bg-brand-sage/90 transition-all"
+                <div class="space-y-3 mb-6">
+                    <a
+                        href="https://apps.apple.com/app/whofed"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="w-full py-4 px-6 bg-black text-white font-bold rounded-2xl shadow-lg hover:bg-gray-900 transition-all flex items-center justify-center gap-3"
                     >
-                        Create Account
-                    </button>
-                    
-                    <button 
-                        on:click={() => navigateToAuth('login')}
-                        class="w-full py-4 bg-white border-2 border-brand-sage/20 text-brand-sage font-bold rounded-2xl hover:bg-brand-sage/5 transition-all"
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                        </svg>
+                        <span>Download on App Store</span>
+                    </a>
+
+                    <a
+                        href="https://play.google.com/store/apps/details?id=com.whofed.me"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="w-full py-4 px-6 bg-[#01875f] text-white font-bold rounded-2xl shadow-lg hover:bg-[#017a56] transition-all flex items-center justify-center gap-3"
                     >
-                        Log In
-                    </button>
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+                        </svg>
+                        <span>Get it on Google Play</span>
+                    </a>
                 </div>
-                
-                <div class="mt-8 pt-6 border-t border-gray-100">
-                    <p class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-4">Coming Soon</p>
-                    <div class="flex justify-center space-x-4 opacity-50">
-                        <div class="h-10 w-32 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-400 font-bold">App Store</div>
-                        <div class="h-10 w-32 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-400 font-bold">Google Play</div>
+
+                <div class="pt-6 border-t border-gray-100">
+                    <p class="text-xs text-gray-500 mb-3 text-center">Or continue on web</p>
+                    <div class="space-y-2">
+                        <button
+                            on:click={() => navigateToAuth('register')}
+                            class="w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all text-sm"
+                        >
+                            Create Web Account
+                        </button>
+
+                        <button
+                            on:click={() => navigateToAuth('login')}
+                            class="w-full py-3 text-gray-500 font-semibold hover:text-gray-700 transition-all text-sm"
+                        >
+                            Log In on Web
+                        </button>
                     </div>
                 </div>
+            </div>
+        {:else if isGuest}
+            <!-- Loading state while attempting deep link -->
+            <div class="py-12 flex flex-col items-center">
+                <div class="animate-spin h-10 w-10 border-4 border-brand-sage rounded-full border-t-transparent mb-4"></div>
+                <p class="text-gray-500 font-bold">Opening app...</p>
             </div>
         {:else}
             <!-- Authenticated Join UI -->
