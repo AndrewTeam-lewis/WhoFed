@@ -944,7 +944,7 @@
                                      <input 
                                         type="text" 
                                         bind:value={schedule.label}
-                                        class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1"
+                                        class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1 overflow-hidden text-ellipsis whitespace-nowrap"
                                         placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder : $t.pet_settings.med_name_placeholder}
                                     />
                                     <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">

@@ -208,7 +208,7 @@ export default {
         choose_icon: 'Choose Icon',
         care_schedules: 'Care Schedules',
         food_name_placeholder: 'Food Name',
-        care_name_placeholder: 'Care type (required)',
+        care_name_placeholder: 'Care Task',
         med_name_placeholder: 'Medication Name',
         select_days: 'Select Days',
         day_of_month: 'Day of Month',

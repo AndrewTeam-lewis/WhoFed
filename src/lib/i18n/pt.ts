@@ -208,7 +208,7 @@ export default {
         choose_icon: 'Escolher Ícone',
         care_schedules: 'Agendamentos de Cuidado',
         food_name_placeholder: 'Nome da Comida',
-        care_name_placeholder: 'Tipo de cuidado (obrigatório)',
+        care_name_placeholder: 'Tarefa de Cuidado',
         med_name_placeholder: 'Nome do Remédio',
         select_days: 'Selecionar Dias',
         day_of_month: 'Dia do Mês',
