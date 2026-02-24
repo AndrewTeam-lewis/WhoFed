@@ -1,16 +1,14 @@
 -- Fix RLS: Allow invited users to see household details (name, etc.)
+-- Uses is_household_member() helper to avoid infinite recursion
 DROP POLICY IF EXISTS "Users can view households they belong to" ON households;
+DROP POLICY IF EXISTS "Users can view households" ON households;
 
 CREATE POLICY "Users can view households they belong to or are invited to"
 ON households FOR SELECT
 USING (
-  auth.uid() = owner_id 
-  OR 
-  EXISTS (
-    SELECT 1 FROM household_members
-    WHERE household_id = households.id
-    AND user_id = auth.uid()
-  )
+  auth.uid() = owner_id
+  OR
+  is_household_member(id)  -- Non-recursive helper function
   OR
   EXISTS (
     SELECT 1 FROM household_invitations

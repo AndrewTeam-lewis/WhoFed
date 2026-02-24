@@ -1,5 +1,5 @@
 -- Household invitations table for username-based invite flow
-CREATE TABLE household_invitations (
+CREATE TABLE IF NOT EXISTS household_invitations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     household_id uuid NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     invited_user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,

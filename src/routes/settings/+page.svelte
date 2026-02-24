@@ -1882,8 +1882,8 @@
                                   {#each reminderSchedules.filter(r => r.household_name === hhName) as sched (sched.id)}
                                       <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
                                           <div class="flex items-center space-x-3">
-                                              <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm">
-                                                  {sched.pet?.icon || '🐾'}
+                                              <div class="w-10 h-10 bg-white rounded-xl overflow-hidden shadow-sm">
+                                                  <PetIcon icon={sched.pet?.icon || '🐾'} size="md" />
                                               </div>
                                               <div>
                                                   <div class="font-bold text-gray-900 text-sm">{sched.display_label}</div>

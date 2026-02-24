@@ -96,8 +96,35 @@
       }
   }
 
-  function formatTimeAgo(isoString: string) {
+  function formatTimestamp(isoString: string) {
     return $formatDateTime(isoString);
+  }
+
+  function getActivityIcon(actionType: string): string {
+    switch(actionType) {
+      case 'feeding': return '🍽️';
+      case 'medication': return '💊';
+      case 'care': return '❤️';
+      default: return '•';
+    }
+  }
+
+  function getActivityLabel(log: ActivityLog): string {
+    const scheduleLabel = log.schedules?.label;
+    const dailyLabel = log.daily_tasks?.label;
+    const label = scheduleLabel || dailyLabel;
+
+    if (label) {
+      return label;
+    }
+
+    // Fallback to action type
+    switch(log.action_type) {
+      case 'feeding': return $t.history.feeding || 'Feeding';
+      case 'medication': return $t.history.medication || 'Medication';
+      case 'care': return $t.history.care || 'Care';
+      default: return log.action_type;
+    }
   }
 </script>
 
@@ -122,49 +149,42 @@
              </div>
         {:else}
              <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <ul class="divide-y divide-gray-100">
+                {#if logs.length === 0}
+                    <div class="p-8 text-center">
+                        <div class="text-4xl mb-3">📋</div>
+                        <p class="text-gray-500 font-medium">{$t.history.no_activity || 'No activity yet'}</p>
+                        <p class="text-xs text-gray-400 mt-1">{$t.history.no_activity_desc || 'Activity will appear here when you log tasks'}</p>
+                    </div>
+                {:else}
+                    <ul class="divide-y divide-gray-100">
                     {#each logs as log}
-                        {@const label = (log.schedules?.label ?? log.daily_tasks?.label ?? '').toLowerCase()}
-                        <li class="p-3 flex justify-between items-center hover:bg-gray-50 transition-colors animate-fade-in">
-                             <div class="flex items-center gap-3 min-w-0">
-                                <!-- Minimal Indicator -->
-                                <div class="flex-shrink-0 w-2 h-2 rounded-full bg-gray-800"></div>
-
-                                <div class="text-sm truncate text-gray-800">
-                                    <span>{log.profiles?.first_name || $t.history.someone}</span>
-                                    
-
-                                    {#if log.action_type === 'feeding'}
-                                        {$t.history.fed} <span class="text-gray-900">{petName}</span>
-                                        {#if label && label !== 'feeding' && label !== 'food'}
-                                            <span class="text-gray-900 capitalize"> {label}</span>
-                                        {/if}
-                                    {:else if log.action_type === 'unfed'}
-                                        <span class="text-red-500">{$t.history.un_fed}</span> <span class="text-gray-900">{petName}</span>
-                                    {:else if log.action_type === 'medication'}
-                                        {$t.history.gave} <span class="text-gray-900">{petName}</span>
-                                        {#if label && label !== 'medication' && label !== 'meds'}
-                                            <span class="text-gray-900 capitalize"> {label}</span>
-                                        {:else}
-                                             {$t.history.medication}
-                                        {/if}
-                                    {:else if log.action_type === 'unmedicated'}
-                                        <span class="text-red-500">{$t.history.un_gave}</span> <span class="text-gray-900">{petName}</span> {$t.history.medication}
-                                    {:else if log.action_type === 'care'}
-                                        {$t.history.cleaned_up} <span class="text-gray-900">{petName}</span>
-                                    {:else}
-                                        <span>{log.action_type}</span>
-                                    {/if}
+                        <li class="p-4 hover:bg-gray-50 transition-colors animate-fade-in">
+                             <div class="flex items-start gap-3">
+                                <!-- Activity Icon -->
+                                <div class="flex-shrink-0 text-xl mt-0.5">
+                                    {getActivityIcon(log.action_type)}
                                 </div>
-                             </div>
-                             
-                             <div class="text-xs font-medium text-gray-400 whitespace-nowrap ml-4 flex-shrink-0">
-                                 {formatTimeAgo(log.performed_at)}
+
+                                <!-- Activity Info -->
+                                <div class="flex-1 min-w-0">
+                                    <!-- Activity Label (Bold, prominent) -->
+                                    <div class="font-bold text-gray-900 text-sm mb-0.5">
+                                        {getActivityLabel(log)}
+                                    </div>
+
+                                    <!-- Person • Timestamp (Smaller, gray) -->
+                                    <div class="text-xs text-gray-500 flex items-center gap-1.5">
+                                        <span>{log.profiles?.first_name || $t.history.someone}</span>
+                                        <span class="text-gray-300">•</span>
+                                        <span>{formatTimestamp(log.performed_at)}</span>
+                                    </div>
+                                </div>
                              </div>
                         </li>
                     {/each}
                 </ul>
-                
+                {/if}
+
                 {#if isLocked}
                     <!-- Premium Lock Upsell -->
                     <div class="relative">

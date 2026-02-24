@@ -930,8 +930,8 @@
                             <div class="flex items-center space-x-4 flex-1">
                                  <div class="w-12 h-12 rounded-2xl flex items-center justify-center {schedule.type === 'feeding' ? 'bg-orange-50 text-orange-500' : schedule.type === 'care' ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-500'}">
                                      {#if schedule.type === 'feeding'}
-                                        <!-- Bowl Icon -->
-                                        <span class="text-2xl">🥣</span>
+                                        <!-- Plate Icon -->
+                                        <span class="text-2xl">🍽️</span>
                                      {:else if schedule.type === 'care'}
                                         <!-- Care Task Icon -->
                                         <span class="text-2xl">❤️</span>

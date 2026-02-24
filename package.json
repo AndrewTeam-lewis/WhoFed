@@ -10,7 +10,16 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"android": "npm run build && npx cap sync android && npx cap run android"
+		"android": "npm run build && npx cap sync android && npx cap run android",
+		"build:dev": "NODE_ENV=development vite build --mode development",
+		"build:qa": "NODE_ENV=qa vite build --mode qa",
+		"build:prod": "NODE_ENV=production vite build --mode production",
+		"sync:dev": "NODE_ENV=development npx cap sync",
+		"sync:qa": "NODE_ENV=qa npx cap sync",
+		"sync:prod": "NODE_ENV=production npx cap sync",
+		"android:dev": "npm run build:dev && npm run sync:dev && npx cap run android",
+		"android:qa": "npm run build:qa && npm run sync:qa && npx cap run android",
+		"android:prod": "npm run build:prod && npm run sync:prod"
 	},
 	"devDependencies": {
 		"@capacitor/assets": "^3.0.5",

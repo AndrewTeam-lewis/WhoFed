@@ -13,7 +13,74 @@ serve(async (req) => {
     }
 
     try {
-        const { user_id, title, body, url, schedule_id } = await req.json();
+        const { user_id, title, body, url, schedule_id, language, pet_name, task_type, label, task_time_str, is_one_time } = await req.json();
+
+        // Localization Dictionary
+        const i18n = {
+            en: {
+                title_feeding: 'Feeding Time! 🐾',
+                title_one_time: 'One-Time Reminder 🐾',
+                title_default: 'WhoFed Reminder 🐾',
+                time_to: 'Time to',
+                feed: 'feed',
+                give_meds: 'give medication to',
+                change_litter: 'change litter for',
+                do_task: 'do task for',
+                its: "It's"
+            },
+            pt: {
+                title_feeding: 'Hora de Comer! 🐾',
+                title_one_time: 'Lembrete Único 🐾',
+                title_default: 'Lembrete WhoFed 🐾',
+                time_to: 'Hora de',
+                feed: 'alimentar',
+                give_meds: 'dar remédio para',
+                change_litter: 'limpar a caixa de',
+                do_task: 'tarefa para',
+                its: "São"
+            }
+        };
+
+        function formatTimeStr(timeStr: string, lang: string): string {
+            if (!timeStr) return '';
+            if (lang === 'pt') return timeStr; // 24-hour
+
+            // Convert to 12-hour AM/PM for English
+            const [h, m] = timeStr.split(':');
+            let hour = parseInt(h, 10);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12;
+            if (hour === 0) hour = 12;
+            return `${hour}:${m} ${ampm}`;
+        }
+
+        let finalTitle = title;
+        let finalBody = body;
+
+        // If it's a raw Postgres Cron payload, construct the localized message
+        if (!finalTitle && pet_name) {
+            const lang = (language === 'pt') ? 'pt' : 'en';
+            const dict = i18n[lang];
+            const timeFormatted = task_time_str ? formatTimeStr(task_time_str, lang) : '';
+
+            finalTitle = is_one_time ? dict.title_one_time : (task_type === 'feeding' ? dict.title_feeding : dict.title_default);
+
+            let action = '';
+            if (label) {
+                if (lang === 'pt') action = `dar ${label} para ${pet_name}`;
+                else action = `give ${label} to ${pet_name}`;
+            } else if (task_type === 'medication') {
+                action = `${dict.give_meds} ${pet_name}`;
+            } else if (task_type === 'litter' || task_type === 'care') {
+                action = `${dict.change_litter} ${pet_name}`;
+            } else if (task_type === 'feeding') {
+                action = `${dict.feed} ${pet_name}`;
+            } else {
+                action = `${dict.do_task} ${pet_name}`;
+            }
+
+            finalBody = timeFormatted ? `${dict.its} ${timeFormatted}. ${dict.time_to} ${action}` : `${dict.time_to} ${action}`;
+        }
 
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',

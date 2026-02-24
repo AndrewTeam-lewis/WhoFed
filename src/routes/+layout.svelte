@@ -14,6 +14,7 @@
   import { t } from '$lib/services/i18n';
   import Walkthrough from '$lib/components/Walkthrough.svelte';
   import HouseholdSetupModal from '$lib/components/HouseholdSetupModal.svelte';
+  import EnvironmentBadge from '$lib/components/EnvironmentBadge.svelte';
   import '../app.css';
 
   let showHouseholdSetup = false;
@@ -286,9 +287,10 @@
         <slot />
     </main>
   {/if}
-  
+
+  <EnvironmentBadge />
   <Walkthrough />
-  
+
   {#if showHouseholdSetup}
     <HouseholdSetupModal userId={setupUserId} on:created={handleHouseholdCreated} />
   {/if}

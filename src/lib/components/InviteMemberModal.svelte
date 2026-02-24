@@ -162,36 +162,108 @@
 
             if (error) throw error;
 
-            const result = data as { success: boolean; error?: string };
+            const result = data as {
+                success: boolean;
+                error?: string;
+                is_new_user?: boolean;
+                invited_user_id?: string;
+                email?: string;
+                household_name?: string;
+                invite_key?: string;
+            };
 
             if (result.success) {
                 inviteStatus = 'success';
-                inviteMessage = $t.invite.sent_success.replace('{name}', identifier);
                 identifierInput = '';
 
-                // NEW: Send Push Notification
-                const invitedUserId = (result as any).invited_user_id;
-                if (invitedUserId) {
+                // Handle new user (send email) vs existing user (send push + create invitation)
+                if (result.is_new_user) {
+                    // New user - send email invitation
+                    inviteMessage = $t.invite.email_sent_success?.replace('{email}', result.email || identifier)
+                        || `Email invitation sent to ${result.email || identifier}`;
+
                     try {
                         const senderName = $currentUser?.first_name || 'Someone';
-                        // We need the household name. It's not passed as a prop, but we can try to find it or just say "a household"
-                        // Or pass it in. For now, generic message or passed prop? 
-                        // The modal doesn't have householdName prop. We'll use a generic message or fetch it?
-                        // Actually, let's just say "their household". 
-                        // Better: We can pass householdName as a prop to this modal.
-                        // For now, let's just trigger it.
-                        supabase.functions.invoke('send-push', {
+
+                        await supabase.functions.invoke('send-invite-email', {
                             body: {
-                                user_id: invitedUserId,
-                                title: $t.invite.push_title,
-                                body: $t.invite.push_body.replace('{name}', senderName),
-                                url: '/settings'
+                                email: result.email,
+                                inviter_name: senderName,
+                                household_name: result.household_name,
+                                is_new_user: true,
+                                invite_key: result.invite_key
                             }
-                        }).then(({ error }) => {
-                            if (error) console.error('Failed to send push:', error);
                         });
                     } catch (err) {
-                        console.error('Error triggering push:', err);
+                        console.error('Error sending invite email:', err);
+                        // Don't show error to user - email send failures are logged
+                    }
+                } else {
+                    // Existing user - show success and send both push notification AND email
+                    inviteMessage = $t.invite.sent_success.replace('{name}', identifier);
+
+                    const invitedUserId = result.invited_user_id;
+                    if (invitedUserId) {
+                        const senderName = $currentUser?.first_name || 'Someone';
+
+                        // Send push notification
+                        try {
+                            supabase.functions.invoke('send-push', {
+                                body: {
+                                    user_id: invitedUserId,
+                                    title: $t.invite.push_title,
+                                    body: $t.invite.push_body.replace('{name}', senderName),
+                                    url: '/settings'
+                                }
+                            }).then(({ error }) => {
+                                if (error) console.error('Failed to send push:', error);
+                            });
+                        } catch (err) {
+                            console.error('Error triggering push:', err);
+                        }
+
+                        // Also send email as backup
+                        try {
+                            // Get household info for email
+                            supabase
+                                .from('households')
+                                .select('name')
+                                .eq('id', householdId)
+                                .single()
+                                .then(({ data: household }) => {
+                                    // Get invite key for email link
+                                    supabase
+                                        .from('household_keys')
+                                        .select('key_value')
+                                        .eq('household_id', householdId)
+                                        .single()
+                                        .then(({ data: keyData }) => {
+                                            // Get invited user's email
+                                            supabase
+                                                .from('profiles')
+                                                .select('email')
+                                                .eq('id', invitedUserId)
+                                                .single()
+                                                .then(({ data: profile }) => {
+                                                    if (profile?.email && keyData?.key_value) {
+                                                        supabase.functions.invoke('send-invite-email', {
+                                                            body: {
+                                                                email: profile.email,
+                                                                inviter_name: senderName,
+                                                                household_name: household?.name,
+                                                                is_new_user: false,
+                                                                invite_key: keyData.key_value
+                                                            }
+                                                        }).then(({ error }) => {
+                                                            if (error) console.error('Failed to send invite email:', error);
+                                                        });
+                                                    }
+                                                });
+                                        });
+                                });
+                        } catch (err) {
+                            console.error('Error sending invite email to existing user:', err);
+                        }
                     }
                 }
             } else {

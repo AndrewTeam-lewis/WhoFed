@@ -23,7 +23,8 @@ CREATE INDEX IF NOT EXISTS idx_household_members_is_active ON household_members(
 
 -- 6. MEDIUM: Reminder settings default behavior
 -- Used in: Cron job LEFT JOIN for user notification preferences
-CREATE INDEX IF NOT EXISTS idx_reminder_settings_is_enabled ON reminder_settings(is_enabled);
+-- NOTE: Commented out due to schema mismatch in dev/qa
+-- CREATE INDEX IF NOT EXISTS idx_reminder_settings_is_enabled ON reminder_settings(is_enabled);
 
 -- 7. LOW: Premium user queries (future feature gating)
 CREATE INDEX IF NOT EXISTS idx_profiles_tier ON profiles(tier);
@@ -37,7 +38,8 @@ CREATE INDEX IF NOT EXISTS idx_daily_tasks_schedule_id_status_due_at ON daily_ta
 
 -- 10. CRITICAL: Cron job LEFT JOIN optimization on reminder_settings
 -- Composite for: LEFT JOIN reminder_settings rs ON rs.schedule_id = s.id AND rs.user_id = hm.user_id
-CREATE INDEX IF NOT EXISTS idx_reminder_settings_schedule_id_user_id ON reminder_settings(schedule_id, user_id, is_enabled);
+-- NOTE: Commented out due to schema mismatch in dev/qa
+-- CREATE INDEX IF NOT EXISTS idx_reminder_settings_schedule_id_user_id ON reminder_settings(schedule_id, user_id, is_enabled);
 
 -- 11. HIGH: Dashboard medication filter (dashboard displays past medications separately)
 -- Composite for: .eq('household_id', id).eq('task_type', 'medication').neq('status', 'completed')
@@ -56,7 +58,7 @@ COMMENT ON INDEX idx_schedules_is_enabled IS 'Critical: Cron job scans all sched
 COMMENT ON INDEX idx_household_invitations_invited_by IS 'High: Settings page "sent invitations" query joins on this FK';
 COMMENT ON INDEX idx_daily_tasks_status_due_at IS 'High: Dashboard queries filter by both status and due_at range';
 COMMENT ON INDEX idx_daily_tasks_schedule_id_status_due_at IS 'Critical: Cron one-time task notifications - filters by schedule_id IS NULL + status + due_at range';
-COMMENT ON INDEX idx_reminder_settings_schedule_id_user_id IS 'Critical: Cron job LEFT JOIN optimization on reminder_settings';
+-- COMMENT ON INDEX idx_reminder_settings_schedule_id_user_id IS 'Critical: Cron job LEFT JOIN optimization on reminder_settings';
 COMMENT ON INDEX idx_daily_tasks_household_id_task_type IS 'High: Dashboard past medications query filters by household + task_type';
 COMMENT ON INDEX idx_activity_log_task_id IS 'Medium: Activity log cleanup when tasks are deleted';
 COMMENT ON INDEX idx_profiles_push_subscription_notnull IS 'Medium: Cron job filters to users with push enabled';

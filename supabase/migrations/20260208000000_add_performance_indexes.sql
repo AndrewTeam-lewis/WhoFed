@@ -158,8 +158,9 @@ ON household_invitations(household_id, status);
 
 -- MEDIUM: Bulk notification queries (find all users for a schedule)
 -- Used in scheduled notification jobs
-CREATE INDEX IF NOT EXISTS idx_reminder_settings_schedule_id
-ON reminder_settings(schedule_id);
+-- NOTE: Commented out - reminder_settings doesn't have schedule_id column
+-- CREATE INDEX IF NOT EXISTS idx_reminder_settings_schedule_id
+-- ON reminder_settings(schedule_id);
 
 
 -- ============================================================================

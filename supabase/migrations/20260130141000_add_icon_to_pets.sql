@@ -1,5 +1,5 @@
--- Add icon column to pets table
-ALTER TABLE pets ADD COLUMN icon text DEFAULT '🐾';
+-- Add icon column to pets table (if not exists)
+ALTER TABLE pets ADD COLUMN IF NOT EXISTS icon text DEFAULT '🐾';
 
 -- Optional: Backfill existing rows based on species (best effort)
 UPDATE pets SET icon = '🐶' WHERE species = 'dog';
