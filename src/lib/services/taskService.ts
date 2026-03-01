@@ -86,20 +86,21 @@ export const cleanupOldTasks = async (householdId: string) => {
             return;
         }
 
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        // Get start of today in UTC (not local time)
+        const currentDate = new Date();
+        const startOfDayUTC = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate(), 0, 0, 0, 0));
 
         // Delete tasks that are:
         // 1. In this household
         // 2. Pending (not completed)
-        // 3. Due before today
-        // 4. NOT type 'medication'
+        // 3. Due before today (in UTC)
+        // 4. NOT type 'medication' (medications persist until completed)
         const { error, count } = await supabase
             .from('daily_tasks')
             .delete({ count: 'exact' })
             .eq('household_id', householdId)
             .eq('status', 'pending')
-            .lt('due_at', startOfDay.toISOString())
+            .lt('due_at', startOfDayUTC.toISOString())
             .neq('task_type', 'medication');
 
         if (error) {
@@ -107,7 +108,7 @@ export const cleanupOldTasks = async (householdId: string) => {
         } else {
             console.log(`Cleaned up ${count || 0} stale non-medication tasks.`);
             // Mark cleanup as done for this household
-            lastCleanup[householdId] = now;
+            lastCleanup[householdId] = Date.now();
         }
     } catch (e) {
         console.error("cleanupOldTasks failed:", e);

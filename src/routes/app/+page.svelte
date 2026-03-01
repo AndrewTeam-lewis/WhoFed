@@ -29,7 +29,7 @@
 
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
-  import { ensureDailyTasks, cleanupOldTasks } from '$lib/services/taskService';
+  import { cleanupOldTasks } from '$lib/services/taskService';
   import { currentUser, userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
 
@@ -249,9 +249,9 @@
     try {
       const householdId = $activeHousehold.id;
 
-      // Cleanup old tasks and ensure tasks exist for today (Non-blocking)
+      // Cleanup old tasks (Non-blocking)
+      // Note: ensureDailyTasks is called in +layout.svelte when households load
       cleanupOldTasks(householdId);  // Runs once per day per household
-      const ensurePromise = ensureDailyTasks(householdId);
 
       // Calculate day range
       const startOfDay = new Date();
@@ -285,25 +285,8 @@
             .lt('due_at', startOfDay.toISOString())
       ]);
 
-      // Post-load check: Did we generate new tasks?
-      ensurePromise.then(async (didGenerate) => {
-          if (didGenerate) {
-              // Quietly refresh today's tasks
-              const { data: newTasks } = await supabase
-                  .from('daily_tasks')
-                  .select('*, schedules(schedule_mode)')
-                  .eq('household_id', householdId)
-                  .gte('due_at', startOfDay.toISOString())
-                  .lte('due_at', endOfDay.toISOString());
-              
-              if (newTasks) {
-                  // Merge or replace logic would be ideal, but for now just replacing today's tasks portion
-                  // We need to re-merge with pastMeds to keep the view consistent
-                   const pastMeds = pastMedsRes.data || [];
-                   dailyTasks = [...pastMeds, ...newTasks].sort((a,b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
-              }
-          }
-      });
+      // Note: Task generation now happens in +layout.svelte
+      // Tasks are already ensured before this page loads
 
       // Handle Pets
       pets = petRes.data || [];
