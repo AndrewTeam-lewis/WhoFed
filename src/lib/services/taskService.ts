@@ -70,9 +70,22 @@ export const ensureDailyTasks = async (householdId: string): Promise<boolean> =>
     }
 };
 
+// Track last cleanup time per household (in-memory)
+const lastCleanup: Record<string, number> = {};
+
 // Helper to cleanup stale non-medication tasks (Feedings, Cleaning, etc.)
 export const cleanupOldTasks = async (householdId: string) => {
     try {
+        // Only run cleanup once per day per household
+        const now = Date.now();
+        const lastRun = lastCleanup[householdId] || 0;
+        const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+        if (now - lastRun < oneDay) {
+            console.log(`Cleanup already ran today for household ${householdId}`);
+            return;
+        }
+
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
 
@@ -81,9 +94,9 @@ export const cleanupOldTasks = async (householdId: string) => {
         // 2. Pending (not completed)
         // 3. Due before today
         // 4. NOT type 'medication'
-        const { error } = await supabase
+        const { error, count } = await supabase
             .from('daily_tasks')
-            .delete()
+            .delete({ count: 'exact' })
             .eq('household_id', householdId)
             .eq('status', 'pending')
             .lt('due_at', startOfDay.toISOString())
@@ -92,7 +105,9 @@ export const cleanupOldTasks = async (householdId: string) => {
         if (error) {
             console.error("Error cleaning up old tasks:", error);
         } else {
-            console.log("Cleaned up stale non-medication tasks.");
+            console.log(`Cleaned up ${count || 0} stale non-medication tasks.`);
+            // Mark cleanup as done for this household
+            lastCleanup[householdId] = now;
         }
     } catch (e) {
         console.error("cleanupOldTasks failed:", e);

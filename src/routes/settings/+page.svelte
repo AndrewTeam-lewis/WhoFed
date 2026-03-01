@@ -1244,6 +1244,20 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
+
+                <!-- Test Notification Button -->
+                <button
+                    class="w-full flex items-center justify-between text-left group mt-3 pt-3 border-t border-gray-100"
+                    on:click={() => notificationService.sendTestNotification()}
+                >
+                     <div class="flex flex-col">
+                         <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">Test Notification</span>
+                         <span class="text-[10px] text-gray-400">Send a test push notification now</span>
+                     </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 group-hover:text-brand-sage transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
            </div>
            {/if}
 

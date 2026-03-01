@@ -121,11 +121,17 @@ export const notificationService = {
         const user = get(currentUser);
         if (!user) throw new Error("Must be logged in");
 
-        const res = await fetch(`https://ryrwlkbzyldzbscvcqjh.supabase.co/functions/v1/send-push`, {
+        // Use environment-specific Edge Function URL and anon key
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ryrwlkbzyldzbscvcqjh.supabase.co';
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/send-push`;
+
+        const res = await fetch(edgeFunctionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Assuming RLS/Auth is handled via header in future, but for now passing user_id body as per function
+                'apikey': anonKey,
+                'Authorization': `Bearer ${anonKey}`
             },
             body: JSON.stringify({
                 user_id: user.id,

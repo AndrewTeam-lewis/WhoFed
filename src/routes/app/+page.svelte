@@ -29,7 +29,7 @@
 
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
-  import { ensureDailyTasks } from '$lib/services/taskService';
+  import { ensureDailyTasks, cleanupOldTasks } from '$lib/services/taskService';
   import { currentUser, userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
 
@@ -248,8 +248,9 @@
     
     try {
       const householdId = $activeHousehold.id;
-      
-      // Ensure tasks exist for today (Non-blocking)
+
+      // Cleanup old tasks and ensure tasks exist for today (Non-blocking)
+      cleanupOldTasks(householdId);  // Runs once per day per household
       const ensurePromise = ensureDailyTasks(householdId);
 
       // Calculate day range
