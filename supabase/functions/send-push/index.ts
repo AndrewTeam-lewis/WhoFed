@@ -79,7 +79,8 @@ serve(async (req) => {
                 action = `${dict.do_task} ${pet_name}`;
             }
 
-            finalBody = timeFormatted ? `${dict.its} ${timeFormatted}. ${dict.time_to} ${action}` : `${dict.time_to} ${action}`;
+            // Don't include time in message to avoid timezone confusion (notification fires at correct time anyway)
+            finalBody = `${dict.time_to} ${action}`;
         }
 
         const supabase = createClient(
