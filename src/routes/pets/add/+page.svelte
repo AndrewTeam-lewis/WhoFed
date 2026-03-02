@@ -31,10 +31,12 @@
       times: { value: string, label: string }[];
   };
 
+  let labelErrors: Record<string, boolean> = {}; // Track label validation errors
+
   let schedules: ScheduleItem[] = [
-      { 
-          id: '1', type: 'feeding', label: '', isEnabled: false, frequency: 'daily', 
-          selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: [{ value: '08:00' }, { value: '18:00' }] 
+      {
+          id: '1', type: 'feeding', label: '', isEnabled: false, frequency: 'daily',
+          selectedDays: [], selectedDayOfMonth: 1, customDates: [], times: [{ value: '08:00' }, { value: '18:00' }]
       },
       { 
           id: '2', type: 'medication', label: '', isEnabled: false, frequency: 'daily', 
@@ -268,12 +270,13 @@
           
 
           // 2. Validate Schedules
+          labelErrors = {}; // Clear previous errors
           for (const s of schedules) {
               if (s.isEnabled) {
                   // Care tasks MUST have a name
                   if (s.type === 'care' && !s.label.trim()) {
                       loading = false;
-                      alert('Please name your care task (e.g., Walk, Litter, Groom)');
+                      labelErrors[s.id] = true;
                       return;
                   }
                   if (s.frequency === 'weekly' && s.selectedDays.length === 0) {
@@ -651,17 +654,21 @@
                                  {/if}
                              </div>
                              <div class="flex-1 relative group">
-                                 <input 
-                                    type="text" 
+                                 <input
+                                    type="text"
                                     bind:value={schedule.label}
-                                    class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-brand-sage focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1 overflow-hidden text-ellipsis whitespace-nowrap"
-                                    placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder : $t.pet_settings.med_name_placeholder}
+                                    on:input={() => { if (labelErrors[schedule.id]) labelErrors[schedule.id] = false; }}
+                                    class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 {labelErrors[schedule.id] ? 'border-red-500' : 'border-transparent hover:border-gray-200 focus:border-brand-sage'} focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1 overflow-hidden text-ellipsis whitespace-nowrap"
+                                    placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder + ' *' : $t.pet_settings.med_name_placeholder}
                                 />
-                                <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
-                                </div>
+                                 {#if labelErrors[schedule.id]}
+                                     <p class="text-red-500 text-xs mt-1">Care tasks need a custom name (e.g., "Brush teeth", "Trim nails")</p>
+                                 {/if}
+                                 <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                     </svg>
+                                 </div>
                              </div>
                         </div>
 

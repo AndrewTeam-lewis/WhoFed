@@ -127,7 +127,7 @@ serve(async (req) => {
         // Native (FCM) is stored as { type: 'android', token: '...' }
         if (sub.type === 'android' && sub.token) {
             console.log(`Sending Native FCM to user ${user_id}`);
-            await sendFCM(sub.token, title, body, url);
+            await sendFCM(sub.token, finalTitle, finalBody, url);
         } else if (sub.endpoint) {
             // Web Push DISABLED due to deployment issues
             console.log(`Web Push skipped for user ${user_id} (Library disabled)`);
