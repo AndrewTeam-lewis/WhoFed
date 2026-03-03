@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev              # Start dev server
 npm run build            # Production build (static SPA via adapter-static)
 npm run preview          # Preview production build
-npm run check            # TypeScript type checking with svelte-check
+npm run check            # TypeScript type checking with svelte-check     #
 npm run check:watch      # Type checking in watch mode
 ```
 
