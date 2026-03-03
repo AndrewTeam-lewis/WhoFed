@@ -55,7 +55,7 @@
   }
 </script>
 
-<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 pt-16">
   <div class="w-full max-w-md bg-white rounded-[32px] shadow-xl p-8 animate-fade-in">
     <div class="text-center mb-8">
       <div class="w-24 h-24 mx-auto mb-4">

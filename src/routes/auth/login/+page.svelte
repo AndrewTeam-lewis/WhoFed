@@ -57,7 +57,7 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-sage"></div>
     </div>
 {:else}
-<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 pt-16">
   <div class="w-full max-w-md bg-white rounded-[32px] shadow-xl p-8 animate-fade-in">
     <div class="text-center mb-8">
       <div class="w-24 h-24 mx-auto mb-4">
@@ -96,13 +96,19 @@
         />
       </div>
 
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         disabled={loading}
         class="w-full py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg shadow-brand-sage/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? $t.auth.logging_in : $t.auth.log_in_link}
       </button>
+
+      <div class="text-center mt-3">
+        <a href="/auth/forgot-password" class="text-sm text-gray-500 hover:text-brand-sage transition-colors">
+          Forgot password?
+        </a>
+      </div>
     </form>
 
     <div class="mt-8 mb-6">
