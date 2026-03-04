@@ -8,13 +8,23 @@
 
   onMount(async () => {
     try {
+      // Check if this is a password recovery callback
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const type = hashParams.get('type');
+
+      if (type === 'recovery') {
+        // Password reset flow - redirect to reset password page
+        goto('/auth/reset-password');
+        return;
+      }
+
       // Get current session after OAuth redirect
       const session = await authService.getSession();
-      
+
       if (session?.user) {
         // Check if profile exists
         const profile = await authService.getProfile(session.user.id);
-        
+
         if (profile) {
           // Profile exists, go to profile page
           goto('/app');

@@ -124,40 +124,40 @@
     <div class="space-y-4">
       <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.support.free_vs_premium_title}</h2>
       
-      <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
-         <table class="w-full text-left text-sm text-gray-600">
+      <section class="bg-white rounded-2xl overflow-x-auto shadow-sm">
+         <table class="w-full text-left text-sm text-gray-600 min-w-full">
            <thead class="bg-gray-50 text-gray-900 border-b border-gray-100">
              <tr>
-               <th class="py-3 px-4 font-bold">{$t.support.table_feature}</th>
-               <th class="py-3 px-4 font-bold">{$t.support.table_free}</th>
-               <th class="py-3 px-4 font-bold text-brand-sage">{$t.support.table_premium}</th>
+               <th class="py-3 px-3 font-bold whitespace-nowrap">{$t.support.table_feature}</th>
+               <th class="py-3 px-3 font-bold text-center whitespace-nowrap">{$t.support.table_free}</th>
+               <th class="py-3 px-3 font-bold text-center text-brand-sage whitespace-nowrap">{$t.support.table_premium}</th>
              </tr>
            </thead>
            <tbody class="divide-y divide-gray-100">
              <tr>
-               <td class="py-3 px-4 font-medium text-gray-900">{$t.support.table_pets}</td>
-               <td class="py-3 px-4">2</td>
-               <td class="py-3 px-4 font-bold text-brand-sage">{$t.support.table_unlimited}</td>
+               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_pets}</td>
+               <td class="py-3 px-3 text-center">2</td>
+               <td class="py-3 px-3 font-bold text-brand-sage text-center">{$t.support.table_unlimited}</td>
              </tr>
              <tr>
-               <td class="py-3 px-4 font-medium text-gray-900">{$t.support.table_households}</td>
-               <td class="py-3 px-4">1</td>
-               <td class="py-3 px-4 font-bold text-brand-sage">{$t.support.table_unlimited}</td>
+               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_households}</td>
+               <td class="py-3 px-3 text-center">1</td>
+               <td class="py-3 px-3 font-bold text-brand-sage text-center">{$t.support.table_unlimited}</td>
              </tr>
              <tr>
-               <td class="py-3 px-4 font-medium text-gray-900">{$t.support.households_title} ({$t.settings.members})</td>
-               <td class="py-3 px-4">{$t.support.table_unlimited}</td>
-               <td class="py-3 px-4 font-bold text-brand-sage">{$t.support.table_unlimited}</td>
+               <td class="py-3 px-3 font-medium text-gray-900 break-words">{$t.support.households_title} ({$t.settings.members})</td>
+               <td class="py-3 px-3 text-center whitespace-nowrap">{$t.support.table_unlimited}</td>
+               <td class="py-3 px-3 font-bold text-brand-sage text-center whitespace-nowrap">{$t.support.table_unlimited}</td>
              </tr>
              <tr>
-               <td class="py-3 px-4 font-medium text-gray-900">{$t.support.table_avatars}</td>
-               <td class="py-3 px-4 text-xs">{$t.support.table_avatars_free}</td>
-               <td class="py-3 px-4 text-xs font-bold text-brand-sage">{$t.support.table_avatars_premium}</td>
+               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_avatars}</td>
+               <td class="py-3 px-3 text-xs break-words">{$t.support.table_avatars_free}</td>
+               <td class="py-3 px-3 text-xs font-bold text-brand-sage break-words">{$t.support.table_avatars_premium}</td>
              </tr>
              <tr>
-               <td class="py-3 px-4 font-medium text-gray-900">{$t.support.table_history}</td>
-               <td class="py-3 px-4 text-xs">{$t.support.table_history_free}</td>
-               <td class="py-3 px-4 text-xs font-bold text-brand-sage">{$t.support.table_history_premium}</td>
+               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_history}</td>
+               <td class="py-3 px-3 text-xs break-words">{$t.support.table_history_free}</td>
+               <td class="py-3 px-3 text-xs font-bold text-brand-sage break-words">{$t.support.table_history_premium}</td>
              </tr>
            </tbody>
          </table>
