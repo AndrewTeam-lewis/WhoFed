@@ -127,7 +127,7 @@
                <div>
                    <h3 class="font-bold text-gray-900 mb-1">How Shared Homes Work</h3>
                    <p class="text-sm text-gray-500 mb-4">
-                       As an <strong>Owner</strong>, you can invite new members and add pets. As a <strong>Member</strong>, you have full access to view pets, edit their daily schedules, and check off meals/meds. If you check off a meal, it syncs to everyone else's phone instantly!
+                       As an <strong>Owner</strong>, you have full control: add/remove pets, invite/remove members, and manage permissions. As a <strong>Member</strong>, you can view all pets and log tasks. Owners can customize your permissions to allow editing schedules. All updates sync instantly across everyone's devices!
                    </p>
                    <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>Got it</button>
                </div>

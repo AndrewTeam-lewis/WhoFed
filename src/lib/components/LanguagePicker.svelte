@@ -31,7 +31,7 @@
 
 <svelte:window on:click={handleClickOutside} />
 
-<div class="language-picker-container fixed top-4 right-4 md:top-6 md:right-6 z-50">
+<div class="language-picker-container fixed top-16 right-4 md:top-20 md:right-6 z-50">
   <button
     on:click|stopPropagation={toggleDropdown}
     class="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:shadow-md transition-all border border-gray-200 hover:border-brand-sage/30"

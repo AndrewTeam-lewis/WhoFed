@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { authService } from '$lib/services/auth';
   import type { Profile } from '$lib/db';
   import { t } from '$lib/services/i18n';
@@ -13,17 +14,24 @@
   let error = '';
   let loading = false;
   let userId = '';
+  let redirectTo = '/'; // Default redirect
 
 
   onMount(async () => {
     const session = await authService.getSession();
-    
+
     if (!session?.user) {
       goto('/auth/login');
       return;
     }
 
     userId = session.user.id;
+
+    // Check for redirect URL (e.g., from invite flow)
+    const redirectParam = $page.url.searchParams.get('redirectTo');
+    if (redirectParam) {
+      redirectTo = decodeURIComponent(redirectParam);
+    }
 
     const metadata = session.user.user_metadata;
     if (metadata) {
@@ -49,7 +57,8 @@
         first_name: formData.firstName
       });
 
-      goto('/');
+      // Redirect to the intended destination (e.g., /join/?k=<key> for invites)
+      goto(redirectTo);
     } catch (e: any) {
       error = e.message || $t.auth.error_profile_create_failed;
     } finally {

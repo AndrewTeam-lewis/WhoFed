@@ -1359,6 +1359,12 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
               </a>
+              <a href="/support" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-t border-gray-100">
+                  <span class="text-sm font-medium text-gray-900">{$t.settings.support}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+              </a>
               <div class="flex items-center justify-between p-4 bg-gray-50/50">
                   <span class="text-sm font-medium text-gray-900">{$t.settings.version}</span>
                   <span class="text-sm text-gray-500">{APP_VERSION}</span>

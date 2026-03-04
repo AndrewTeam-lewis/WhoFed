@@ -1,0 +1,49 @@
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+  <!-- Header -->
+  <div style="background: linear-gradient(135deg, #3ecf8e 0%, #2fb87a 100%); padding: 32px 24px; text-align: center;">
+    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">🐾 WhoFed 🐾</h1>
+    <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 13px;">Pet Care Coordination</p>
+  </div>
+
+  <!-- Content -->
+  <div style="padding: 40px 32px;">
+    <h2 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Confirm Your Signup</h2>
+
+    <p style="margin: 0 0 24px 0; color: #4a5568; font-size: 15px; line-height: 1.5;">
+      Welcome to WhoFed! Click the button below to confirm your email address and activate your account:
+    </p>
+
+    <!-- Button -->
+    <div style="margin: 32px 0; text-align: center;">
+      <a href="{{ .ConfirmationURL }}"
+         style="display: inline-block; background-color: #3ecf8e; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+        Confirm Your Email
+      </a>
+    </div>
+
+    <p style="margin: 24px 0; padding: 16px; background-color: #f7fafc; border-left: 3px solid #3ecf8e; color: #4a5568; font-size: 13px; line-height: 1.5;">
+      <strong>Button not working?</strong><br>
+      Copy and paste this link into your browser:<br>
+      <span style="color: #3ecf8e; word-break: break-all;">{{ .ConfirmationURL }}</span>
+    </p>
+
+    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 32px 0;">
+
+    <p style="margin: 0 0 16px 0; color: #718096; font-size: 14px; line-height: 1.5;">
+      If you didn't create a WhoFed account, you can safely ignore this email.
+    </p>
+
+    <p style="margin: 0; color: #718096; font-size: 14px; line-height: 1.5;">
+      <strong>Security notice:</strong> This link expires in 24 hours.
+    </p>
+  </div>
+
+  <!-- Footer -->
+  <div style="background-color: #f7fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
+    <p style="margin: 0; color: #a0aec0; font-size: 12px;">
+      © 2025 WhoFed. All rights reserved.
+    </p>
+  </div>
+
+</div>

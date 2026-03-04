@@ -27,6 +27,37 @@
   let showCreateHouseholdModal = false;
   let newHouseholdName = '';
 
+  // Notification Prompt State
+  import { onMount } from 'svelte';
+  import { Capacitor } from '@capacitor/core';
+  import { notificationService } from '$lib/services/notifications';
+  import NotificationPrompt from '$lib/components/NotificationPrompt.svelte';
+
+  let showNotificationPrompt = false;
+
+  onMount(async () => {
+    // Only show on native platforms (Android/iOS)
+    if (!Capacitor.isNativePlatform()) return;
+
+    // Check if we've already shown the prompt
+    const hasSeenPrompt = localStorage.getItem('notificationPromptShown');
+    if (hasSeenPrompt) return;
+
+    // Check if notifications are already enabled
+    const isEnabled = await notificationService.checkSubscriptionState();
+    if (isEnabled) return;
+
+    // Show the prompt after a short delay
+    setTimeout(() => {
+      showNotificationPrompt = true;
+    }, 1500);
+  });
+
+  function handleCloseNotificationPrompt() {
+    showNotificationPrompt = false;
+    localStorage.setItem('notificationPromptShown', 'true');
+  }
+
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
   import { cleanupOldTasks } from '$lib/services/taskService';
@@ -1115,6 +1146,11 @@
             </div>
         </div>
     </div>
+    {/if}
+
+    <!-- NOTIFICATION PERMISSION PROMPT -->
+    {#if showNotificationPrompt}
+        <NotificationPrompt on:close={handleCloseNotificationPrompt} />
     {/if}
 {/if}
 
