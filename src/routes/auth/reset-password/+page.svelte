@@ -4,18 +4,34 @@
   import { supabase } from '$lib/supabase';
   import { t } from '$lib/services/i18n';
   import LanguagePicker from '$lib/components/LanguagePicker.svelte';
+  import { Capacitor } from '@capacitor/core';
 
   let password = '';
   let confirmPassword = '';
   let loading = false;
   let error = '';
+  let showMobilePrompt = false;
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       goto('/auth/login');
+      return;
+    }
+
+    // Check if on mobile browser (not native app)
+    if (!Capacitor.isNativePlatform()) {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        showMobilePrompt = true;
+      }
     }
   });
+
+  function openInApp() {
+    const appUrl = `whofed://${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.href = appUrl;
+  }
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -58,6 +74,29 @@
     
     <h1 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">{$t.auth.reset_password_title}</h1>
     <p class="text-sm text-gray-500 text-center mb-6 md:mb-8">{$t.auth.reset_password_subtitle}</p>
+
+    {#if showMobilePrompt}
+      <div class="bg-brand-sage/10 border-2 border-brand-sage rounded-xl p-4 mb-6">
+        <div class="flex items-start space-x-3">
+          <div class="flex-shrink-0">
+            <svg class="w-6 h-6 text-brand-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-bold text-brand-sage text-sm mb-1">Reset Password in App</h3>
+            <p class="text-xs text-gray-700 mb-3">For the best experience, open this page in the WhoFed app.</p>
+            <button
+              on:click={openInApp}
+              type="button"
+              class="w-full bg-brand-sage text-white font-bold py-2.5 px-4 rounded-lg text-sm hover:bg-brand-sage/90 transition-colors"
+            >
+              Open in WhoFed App
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     {#if error}
       <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
