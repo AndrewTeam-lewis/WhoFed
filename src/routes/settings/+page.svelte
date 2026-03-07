@@ -1570,102 +1570,11 @@
 
   <!-- PREMIUM UPSELL MODAL -->
   {#if showPremiumModal}
-  <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <!-- Backdrop -->
-      <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showPremiumModal = false} aria-label="Close"></button>
-      
-      <!-- Modal -->
-      <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
-          <!-- Header Image/Pattern -->
-          <div class="h-32 bg-brand-sage flex items-center justify-center relative overflow-hidden">
-              <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
-              <!-- Diamond Icon -->
-              <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-lg relative z-10">
-                  💎
-              </div>
-          </div>
-          
-          <div class="p-6 text-center">
-              <h3 class="text-2xl font-bold text-gray-900 mb-2">Upgrade to Premium</h3>
-              <p class="text-gray-500 mb-6 leading-relaxed text-sm">
-                  Get the ultimate WhoFed experience and support the app!
-              </p>
-              
-              <ul class="text-left space-y-4 mb-8">
-                  <li class="flex items-start">
-                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
-                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
-                      </div>
-                      <div>
-                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">Unlimited Pets</span>
-                          <span class="text-[11px] text-gray-500 leading-tight block">Track care for every furry friend freely.</span>
-                      </div>
-                  </li>
-                  <li class="flex items-start">
-                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
-                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
-                      </div>
-                      <div>
-                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">Custom Pet Photos</span>
-                          <span class="text-[11px] text-gray-500 leading-tight block">Upload real adorable photos for pet icons.</span>
-                      </div>
-                  </li>
-                  <li class="flex items-start">
-                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
-                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
-                      </div>
-                      <div>
-                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">Multiple Households</span>
-                          <span class="text-[11px] text-gray-500 leading-tight block">Perfect for pet sitting or split custody.</span>
-                      </div>
-                  </li>
-                  <li class="flex items-start">
-                      <div class="mt-0.5 bg-brand-sage/10 p-1 rounded text-brand-sage mr-3 flex-shrink-0">
-                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
-                      </div>
-                      <div>
-                          <span class="font-bold text-gray-900 text-sm block leading-tight mb-0.5">PDF Log Exports</span>
-                          <span class="text-[11px] text-gray-500 leading-tight block">Unlimited history and reports for your vet.</span>
-                      </div>
-                  </li>
-              </ul>
-              
-              <div class="space-y-3">
-                  {#if $currentOfferings.length > 0}
-                      {#each $currentOfferings as pkg}
-                        <button 
-                            class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95 mb-2"
-                            on:click={async () => {
-                                const success = await purchasesService.purchase(pkg);
-                                if (success) {
-                                    showPremiumModal = false;
-                                    alert("Welcome to Premium! 💎");
-                                }
-                            }}
-                        >
-                            Upgrade for {pkg.product.priceString} / {pkg.packageType === 'ANNUAL' ? 'year' : 'month'}
-                        </button>
-                      {/each}
-                  {:else}
-                       <button 
-                          class="w-full py-4 bg-gray-200 text-gray-400 font-bold rounded-2xl cursor-not-allowed"
-                          disabled
-                      >
-                          { $currentOfferings.length === 0 ? 'Loading Prices...' : 'No products found' }
-                      </button>
-                      <!-- Fallback/Debug -->
-                      <button on:click={() => purchasesService.loadOfferings()} class="text-xs text-blue-500 mt-2 underline">Retry Loading</button>
-                  {/if}
-                  <button 
-                      class="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600"
-                      on:click={() => showPremiumModal = false}
-                  >
-                      Maybe Later
-                  </button>
-              </div>
-          </div>
-      </div>
-  </div>
+    <PremiumFeatureModal
+        featureName="WhoFed Premium"
+        featureDescription="Unlock unlimited pets, multiple households, custom photos, and PDF exports!"
+        on:close={() => showPremiumModal = false}
+    />
   {/if}
 
   <!-- DELETE ACCOUNT MODAL -->
