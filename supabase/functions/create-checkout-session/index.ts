@@ -30,9 +30,16 @@ serve(async (req) => {
             throw new Error('No authorization header');
         }
 
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        // Use environment variables that Supabase automatically provides
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://ryrwlkbzyldzbscvcqjh.supabase.co';
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+        if (!supabaseServiceKey) {
+            throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured');
+        }
+
+        // Create client with service role key to verify JWT and query database
+        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
             global: {
                 headers: { Authorization: authHeader },
             },
@@ -40,7 +47,8 @@ serve(async (req) => {
 
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) {
-            throw new Error('Not authenticated');
+            console.error('Auth error:', userError);
+            throw new Error('Not authenticated: ' + (userError?.message || 'Unknown error'));
         }
 
         // Get user's email from profile
