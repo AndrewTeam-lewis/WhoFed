@@ -13,8 +13,17 @@ export const STRIPE_PRICES = {
 export const stripeService = {
     async createCheckoutSession(priceId: string) {
         try {
+            // Get the current session to ensure we have a valid auth token
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                throw new Error('Not authenticated. Please log in.');
+            }
+
             // Call Edge Function to create Stripe checkout session
             const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`
+                },
                 body: {
                     priceId,
                     mode: 'subscription'
