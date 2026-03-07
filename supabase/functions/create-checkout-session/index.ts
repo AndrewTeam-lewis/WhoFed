@@ -8,33 +8,48 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+    console.log('=== CREATE CHECKOUT SESSION REQUEST ===');
+    console.log('Method:', req.method);
+    console.log('Headers:', Object.fromEntries(req.headers.entries()));
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
     try {
-        // Get Stripe secret key from environment
+        console.log('Step 1: Checking Stripe key...');
         const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
         if (!stripeKey) {
             throw new Error('STRIPE_SECRET_KEY not configured');
         }
+        console.log('Step 1: Stripe key found ✓');
 
         const stripe = new Stripe(stripeKey, {
             apiVersion: '2023-10-16',
             httpClient: Stripe.createFetchHttpClient(),
         });
 
-        // Create Supabase client from request (handles auth automatically)
+        console.log('Step 2: Checking auth header...');
+        const authHeader = req.headers.get('Authorization');
+        console.log('Auth header present:', !!authHeader);
+        console.log('Auth header value:', authHeader?.substring(0, 20) + '...');
+
+        if (!authHeader) {
+            throw new Error('No authorization header');
+        }
+
+        console.log('Step 3: Setting up Supabase client...');
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://ryrwlkbzyldzbscvcqjh.supabase.co';
         const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+        console.log('Supabase URL:', supabaseUrl);
+        console.log('Supabase anon key present:', !!supabaseAnonKey);
 
         if (!supabaseAnonKey) {
             throw new Error('SUPABASE_ANON_KEY not configured');
         }
 
-        // Create client from request headers (automatically extracts and validates JWT)
-        const authHeader = req.headers.get('Authorization')!;
         const token = authHeader.replace('Bearer ', '');
+        console.log('JWT token extracted, length:', token.length);
 
         const supabase = createClient(supabaseUrl, supabaseAnonKey, {
             global: {
@@ -43,32 +58,54 @@ serve(async (req) => {
                 }
             }
         });
+        console.log('Step 3: Supabase client created ✓');
 
-        // Get authenticated user
+        console.log('Step 4: Validating user JWT...');
         const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+        console.log('User validation result:', {
+            hasUser: !!user,
+            hasError: !!userError,
+            userId: user?.id,
+            errorMessage: userError?.message,
+            errorDetails: userError
+        });
 
         if (userError || !user) {
             console.error('Auth error:', userError);
             throw new Error('Not authenticated: ' + (userError?.message || 'Invalid token'));
         }
+        console.log('Step 4: User validated ✓ User ID:', user.id);
 
-        // Get user's email from profile
-        const { data: profile } = await supabase
+        console.log('Step 5: Fetching user profile...');
+        const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('email, first_name')
             .eq('id', user.id)
             .single();
 
-        // Parse request body
-        const { priceId, mode = 'subscription' } = await req.json();
+        console.log('Profile result:', {
+            hasProfile: !!profile,
+            email: profile?.email,
+            hasError: !!profileError,
+            errorMessage: profileError?.message
+        });
+
+        console.log('Step 6: Parsing request body...');
+        const body = await req.json();
+        console.log('Request body:', body);
+
+        const { priceId, mode = 'subscription' } = body;
 
         if (!priceId) {
             throw new Error('priceId is required');
         }
+        console.log('Step 6: Price ID:', priceId, 'Mode:', mode);
 
         const appUrl = Deno.env.get('APP_URL') || 'https://whofed.me';
+        console.log('App URL:', appUrl);
 
-        // Create Stripe checkout session
+        console.log('Step 7: Creating Stripe checkout session...');
         const session = await stripe.checkout.sessions.create({
             customer_email: profile?.email || user.email,
             client_reference_id: user.id, // Store user ID for webhook
@@ -93,16 +130,30 @@ serve(async (req) => {
             allow_promotion_codes: true, // Allow discount codes
         });
 
-        return new Response(JSON.stringify({
+        console.log('Step 7: Stripe session created ✓');
+        console.log('Session ID:', session.id);
+        console.log('Checkout URL:', session.url);
+
+        const response = {
             sessionId: session.id,
             url: session.url
-        }), {
+        };
+        console.log('Step 8: Returning success response');
+        console.log('=== REQUEST COMPLETED SUCCESSFULLY ===');
+
+        return new Response(JSON.stringify(response), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         });
 
     } catch (error: any) {
-        console.error('Checkout session error:', error);
+        console.error('=== ERROR OCCURRED ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Full error:', error);
+        console.error('=== END ERROR ===');
+
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
