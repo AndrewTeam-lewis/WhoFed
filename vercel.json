@@ -1,16 +1,9 @@
 {
     "outputDirectory": "build",
-    "routes": [
+    "rewrites": [
         {
-            "src": "/.well-known/assetlinks.json",
-            "dest": "/.well-known/assetlinks.json",
-            "headers": {
-                "Content-Type": "application/json"
-            }
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/"
+            "source": "/(.*)",
+            "destination": "/"
         }
     ]
 }
