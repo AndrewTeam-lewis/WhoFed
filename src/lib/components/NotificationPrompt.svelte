@@ -34,10 +34,7 @@
   <!-- Modal -->
   <div class="bg-white rounded-[32px] w-full max-w-sm relative z-10 animate-scale-in p-8">
     <div class="text-center mb-6">
-      <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-        <img src="/whofed_logo_email_small.png" alt="WhoFed" class="w-16 h-16 object-contain" />
-      </div>
-      <h3 class="text-xl font-bold text-gray-900 mb-2">Never Miss a Feeding! 🐾</h3>
+      <h3 class="text-xl font-bold text-gray-900 mb-2">Never Miss a Feeding!</h3>
       <p class="text-sm text-gray-500">Get notified when it's time to feed, give meds, or care for your pets.</p>
     </div>
 

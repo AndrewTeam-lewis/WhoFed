@@ -131,10 +131,10 @@
       }
     });
 
-    // Listen for deep links (OAuth redirects)
+    // Listen for deep links (OAuth redirects and general navigation)
     const appUrlListener = await App.addListener('appUrlOpen', async (event) => {
         console.log('[DEBUG DEEP LINK] App opened with URL:', event.url);
-        
+
         // Check if it's our auth callback scheme
         if (event.url.includes('google-auth')) {
             // Extract hash
@@ -142,7 +142,7 @@
             if (hashIndex !== -1) {
                 const hash = event.url.substring(hashIndex + 1);
                 const params = new URLSearchParams(hash);
-                
+
                 const access_token = params.get('access_token');
                 const refresh_token = params.get('refresh_token');
 
@@ -161,6 +161,28 @@
                         goto('/app');
                     }
                 }
+            }
+        } else {
+            // Handle general deep links (whofed:// or https://whofed.me)
+            try {
+                let path = '';
+
+                // Parse URL to extract path
+                if (event.url.startsWith('whofed://')) {
+                    // Custom scheme: whofed://auth/reset-password
+                    path = event.url.replace('whofed://', '/');
+                } else if (event.url.startsWith('https://whofed.me')) {
+                    // App Links: https://whofed.me/auth/reset-password
+                    const url = new URL(event.url);
+                    path = url.pathname + url.search + url.hash;
+                }
+
+                if (path) {
+                    console.log('[DEBUG DEEP LINK] Navigating to path:', path);
+                    await goto(path);
+                }
+            } catch (error) {
+                console.error('[DEBUG DEEP LINK] Error parsing deep link:', error);
             }
         }
     });

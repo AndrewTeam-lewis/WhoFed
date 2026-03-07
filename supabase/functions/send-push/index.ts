@@ -18,9 +18,9 @@ serve(async (req) => {
         // Localization Dictionary
         const i18n = {
             en: {
-                title_feeding: 'Feeding Time! 🐾',
-                title_one_time: 'One-Time Reminder 🐾',
-                title_default: 'WhoFed Reminder 🐾',
+                title_feeding: 'Feeding Time!',
+                title_one_time: 'One-Time Reminder',
+                title_default: 'WhoFed Reminder',
                 time_to: 'Time to',
                 feed: 'feed',
                 give_meds: 'give medication to',
@@ -29,9 +29,9 @@ serve(async (req) => {
                 its: "It's"
             },
             pt: {
-                title_feeding: 'Hora de Comer! 🐾',
-                title_one_time: 'Lembrete Único 🐾',
-                title_default: 'Lembrete WhoFed 🐾',
+                title_feeding: 'Hora de Comer!',
+                title_one_time: 'Lembrete Único',
+                title_default: 'Lembrete WhoFed',
                 time_to: 'Hora de',
                 feed: 'alimentar',
                 give_meds: 'dar remédio para',

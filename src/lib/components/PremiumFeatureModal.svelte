@@ -68,7 +68,6 @@
         <div class="bg-gradient-to-br from-brand-sage to-brand-sage/80 p-8 text-center text-white relative overflow-hidden">
             <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
             <div class="relative z-10">
-                <div class="text-4xl mb-2">💎</div>
                 <h3 class="text-2xl font-bold mb-1">Premium Feature</h3>
                 <p class="text-white/80 text-sm font-medium uppercase tracking-wider">{featureName}</p>
             </div>

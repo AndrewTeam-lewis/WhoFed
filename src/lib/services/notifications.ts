@@ -136,7 +136,7 @@ export const notificationService = {
             body: JSON.stringify({
                 user_id: user.id,
                 title: 'Test Notification',
-                body: 'If you see this, Web Push is working! 🐾',
+                body: 'If you see this, Web Push is working!',
                 url: '/settings'
             })
         });
