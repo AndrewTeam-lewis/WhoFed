@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.whofed.me",
+    "sha256_cert_fingerprints": [
+      "F4:CA:60:31:B5:97:D2:19:9D:78:15:F4:24:75:77:2E:51:E0:66:E1:96:C5:43:A4:FC:C6:89:6F:89:DB:05:21"
+    ]
+  }
+}]
