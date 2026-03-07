@@ -24,32 +24,43 @@ serve(async (req) => {
             httpClient: Stripe.createFetchHttpClient(),
         });
 
-        // Get authenticated user
+        // Get authenticated user from JWT token
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
             throw new Error('No authorization header');
         }
 
-        // Use environment variables that Supabase automatically provides
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://ryrwlkbzyldzbscvcqjh.supabase.co';
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
+        if (!supabaseAnonKey) {
+            throw new Error('SUPABASE_ANON_KEY not configured');
+        }
+
+        // Create client with anon key and user's JWT token for auth
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+            global: {
+                headers: { Authorization: authHeader },
+            },
+            auth: {
+                persistSession: false,
+            }
+        });
+
+        // Verify the JWT and get user
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        if (userError || !user) {
+            console.error('Auth error:', userError);
+            throw new Error('Not authenticated: ' + (userError?.message || 'Invalid token'));
+        }
+
+        // Now create a service role client for database queries
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
         if (!supabaseServiceKey) {
             throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured');
         }
 
-        // Create client with service role key to verify JWT and query database
-        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-            global: {
-                headers: { Authorization: authHeader },
-            },
-        });
-
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-            console.error('Auth error:', userError);
-            throw new Error('Not authenticated: ' + (userError?.message || 'Unknown error'));
-        }
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Get user's email from profile
         const { data: profile } = await supabase
