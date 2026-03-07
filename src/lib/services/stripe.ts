@@ -35,29 +35,41 @@ export const stripeService = {
                 authHeaderPresent: !!session.access_token
             });
 
-            // Call Edge Function to create Stripe checkout session
-            // Get the anon key from the Supabase client
+            // Call Edge Function directly with fetch for full control
+            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
             const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const functionUrl = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
 
-            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+            console.log('[Stripe Service] Calling function directly:', {
+                url: functionUrl,
+                hasAuthToken: !!session.access_token,
+                hasAnonKey: !!SUPABASE_ANON_KEY
+            });
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    apikey: SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'apikey': SUPABASE_ANON_KEY,
                 },
-                body: {
+                body: JSON.stringify({
                     priceId,
                     mode: 'subscription'
-                }
+                })
             });
 
-            console.log('[Stripe Service] Edge Function response:', {
-                hasData: !!data,
-                hasError: !!error,
-                data,
-                error
-            });
+            console.log('[Stripe Service] Response status:', response.status);
+            console.log('[Stripe Service] Response ok:', response.ok);
 
-            if (error) throw error;
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Stripe Service] Error response:', errorText);
+                throw new Error(`Edge Function error: ${response.status} ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('[Stripe Service] Success response:', data);
 
             if (!data.url) {
                 throw new Error('No checkout URL returned');
