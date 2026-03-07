@@ -3,6 +3,7 @@
   import { t } from '$lib/services/i18n';
   import LanguagePicker from '$lib/components/LanguagePicker.svelte';
   import { Capacitor } from '@capacitor/core';
+  import { goto } from '$app/navigation';
 
   let email = '';
   let loading = false;
@@ -18,19 +19,21 @@
     try {
       // Always use HTTPS URL - Android App Links will intercept if in native app
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://whofed.com/auth/reset-password'
+        redirectTo: 'https://whofed.me/auth/reset-password'
       });
 
       if (resetError) throw resetError;
 
-      // Sign out the current user so they must log in with new password
+      // Sign out ALL sessions and clear storage
       await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
 
       success = true;
 
       // Navigate to login after 2 seconds
-      setTimeout(() => {
-        window.location.href = '/auth/login';
+      setTimeout(async () => {
+        await goto('/auth/login', { replaceState: true });
       }, 2000);
     } catch (e: any) {
       error = e.message || 'Failed to send reset email';
