@@ -123,44 +123,82 @@
     <!-- Free vs Premium section -->
     <div class="space-y-4">
       <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.support.free_vs_premium_title}</h2>
-      
-      <section class="bg-white rounded-2xl overflow-x-auto shadow-sm">
-         <table class="w-full text-left text-sm text-gray-600 min-w-full">
-           <thead class="bg-gray-50 text-gray-900 border-b border-gray-100">
-             <tr>
-               <th class="py-3 px-3 font-bold whitespace-nowrap">{$t.support.table_feature}</th>
-               <th class="py-3 px-3 font-bold text-center whitespace-nowrap">{$t.support.table_free}</th>
-               <th class="py-3 px-3 font-bold text-center text-brand-sage whitespace-nowrap">{$t.support.table_premium}</th>
-             </tr>
-           </thead>
-           <tbody class="divide-y divide-gray-100">
-             <tr>
-               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_pets}</td>
-               <td class="py-3 px-3 text-center">2</td>
-               <td class="py-3 px-3 font-bold text-brand-sage text-center">{$t.support.table_unlimited}</td>
-             </tr>
-             <tr>
-               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_households}</td>
-               <td class="py-3 px-3 text-center">1</td>
-               <td class="py-3 px-3 font-bold text-brand-sage text-center">{$t.support.table_unlimited}</td>
-             </tr>
-             <tr>
-               <td class="py-3 px-3 font-medium text-gray-900 break-words">{$t.support.households_title} ({$t.settings.members})</td>
-               <td class="py-3 px-3 text-center whitespace-nowrap">{$t.support.table_unlimited}</td>
-               <td class="py-3 px-3 font-bold text-brand-sage text-center whitespace-nowrap">{$t.support.table_unlimited}</td>
-             </tr>
-             <tr>
-               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_avatars}</td>
-               <td class="py-3 px-3 text-xs break-words">{$t.support.table_avatars_free}</td>
-               <td class="py-3 px-3 text-xs font-bold text-brand-sage break-words">{$t.support.table_avatars_premium}</td>
-             </tr>
-             <tr>
-               <td class="py-3 px-3 font-medium text-gray-900">{$t.support.table_history}</td>
-               <td class="py-3 px-3 text-xs break-words">{$t.support.table_history_free}</td>
-               <td class="py-3 px-3 text-xs font-bold text-brand-sage break-words">{$t.support.table_history_premium}</td>
-             </tr>
-           </tbody>
-         </table>
+
+      <section class="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
+        <!-- Pets per Household -->
+        <div class="p-4">
+          <h3 class="font-bold text-gray-900 mb-3">{$t.support.table_pets}</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">{$t.support.table_free}</div>
+              <div class="text-lg font-bold text-gray-900">2</div>
+            </div>
+            <div class="bg-brand-sage/10 rounded-lg p-3 text-center">
+              <div class="text-xs text-brand-sage/70 mb-1">{$t.support.table_premium}</div>
+              <div class="text-lg font-bold text-brand-sage">{$t.support.table_unlimited}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Owned Households -->
+        <div class="p-4">
+          <h3 class="font-bold text-gray-900 mb-3">{$t.support.table_households}</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">{$t.support.table_free}</div>
+              <div class="text-lg font-bold text-gray-900">1</div>
+            </div>
+            <div class="bg-brand-sage/10 rounded-lg p-3 text-center">
+              <div class="text-xs text-brand-sage/70 mb-1">{$t.support.table_premium}</div>
+              <div class="text-lg font-bold text-brand-sage">{$t.support.table_unlimited}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Households Members -->
+        <div class="p-4">
+          <h3 class="font-bold text-gray-900 mb-3">{$t.support.households_title} ({$t.settings.members})</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">{$t.support.table_free}</div>
+              <div class="text-sm font-bold text-gray-900">{$t.support.table_unlimited}</div>
+            </div>
+            <div class="bg-brand-sage/10 rounded-lg p-3 text-center">
+              <div class="text-xs text-brand-sage/70 mb-1">{$t.support.table_premium}</div>
+              <div class="text-sm font-bold text-brand-sage">{$t.support.table_unlimited}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pet Avatars -->
+        <div class="p-4">
+          <h3 class="font-bold text-gray-900 mb-3">{$t.support.table_avatars}</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">{$t.support.table_free}</div>
+              <div class="text-xs font-semibold text-gray-900">{$t.support.table_avatars_free}</div>
+            </div>
+            <div class="bg-brand-sage/10 rounded-lg p-3 text-center">
+              <div class="text-xs text-brand-sage/70 mb-1">{$t.support.table_premium}</div>
+              <div class="text-xs font-semibold text-brand-sage">{$t.support.table_avatars_premium}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity History -->
+        <div class="p-4">
+          <h3 class="font-bold text-gray-900 mb-3">{$t.support.table_history}</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">{$t.support.table_free}</div>
+              <div class="text-xs font-semibold text-gray-900">{$t.support.table_history_free}</div>
+            </div>
+            <div class="bg-brand-sage/10 rounded-lg p-3 text-center">
+              <div class="text-xs text-brand-sage/70 mb-1">{$t.support.table_premium}</div>
+              <div class="text-xs font-semibold text-brand-sage">{$t.support.table_history_premium}</div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
 

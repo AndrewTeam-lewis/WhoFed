@@ -271,7 +271,7 @@ export default {
         add_care: '+ Cuidado',
         remove_profile: 'Remover Perfil do Pet',
         save_changes: 'Salvar Alterações',
-        add_to_today: 'Adicionar par Hoje',
+        add_to_today: 'Tarefa Única',
         edit_pet: 'Editar Pet',
         history: 'Histórico',
         remove_pet: 'Remover Pet',

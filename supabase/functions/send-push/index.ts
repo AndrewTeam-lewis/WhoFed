@@ -24,7 +24,7 @@ serve(async (req) => {
                 time_to: 'Time to',
                 feed: 'feed',
                 give_meds: 'give medication to',
-                change_litter: 'change litter for',
+                do_care: 'care for',
                 do_task: 'do task for',
                 its: "It's"
             },
@@ -35,7 +35,7 @@ serve(async (req) => {
                 time_to: 'Hora de',
                 feed: 'alimentar',
                 give_meds: 'dar remédio para',
-                change_litter: 'limpar a caixa de',
+                do_care: 'cuidar de',
                 do_task: 'tarefa para',
                 its: "São"
             }
@@ -67,12 +67,13 @@ serve(async (req) => {
 
             let action = '';
             if (label) {
-                if (lang === 'pt') action = `dar ${label} para ${pet_name}`;
-                else action = `give ${label} to ${pet_name}`;
+                const lowercaseLabel = label.toLowerCase();
+                if (lang === 'pt') action = `dar ${lowercaseLabel} para ${pet_name}`;
+                else action = `give ${lowercaseLabel} to ${pet_name}`;
             } else if (task_type === 'medication') {
                 action = `${dict.give_meds} ${pet_name}`;
-            } else if (task_type === 'litter' || task_type === 'care') {
-                action = `${dict.change_litter} ${pet_name}`;
+            } else if (task_type === 'care') {
+                action = `${dict.do_care} ${pet_name}`;
             } else if (task_type === 'feeding') {
                 action = `${dict.feed} ${pet_name}`;
             } else {
@@ -244,6 +245,12 @@ async function sendFCM(token: string, title: string, body: string, url: string) 
             },
             data: {
                 url: url || '/'
+            },
+            android: {
+                notification: {
+                    icon: 'ic_notification',
+                    color: '#10B981'
+                }
             }
         }
     };

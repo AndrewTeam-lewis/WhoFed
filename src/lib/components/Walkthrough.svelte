@@ -15,7 +15,7 @@
     {
       emoji: '👋',
       title: 'Welcome to WhoFed!',
-      description: 'The single source of truth for your pet\'s care. Track meals, medication, and litter box duties all in one place.'
+      description: 'The single source of truth for your pet\'s care. Track meals, medication, and care tasks all in one place.'
     },
     {
       emoji: '👨‍👩‍👧‍👦',
