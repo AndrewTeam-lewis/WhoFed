@@ -15,6 +15,7 @@
   import Walkthrough from '$lib/components/Walkthrough.svelte';
   import HouseholdSetupModal from '$lib/components/HouseholdSetupModal.svelte';
   import EnvironmentBadge from '$lib/components/EnvironmentBadge.svelte';
+  import AppBanner from '$lib/components/AppBanner.svelte';
   import '../app.css';
 
   let showHouseholdSetup = false;
@@ -288,6 +289,7 @@
     </main>
   {/if}
 
+  <AppBanner />
   <EnvironmentBadge />
   <Walkthrough />
 
