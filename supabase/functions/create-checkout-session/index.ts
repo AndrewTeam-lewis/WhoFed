@@ -24,12 +24,7 @@ serve(async (req) => {
             httpClient: Stripe.createFetchHttpClient(),
         });
 
-        // Get authenticated user from JWT token
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-            throw new Error('No authorization header');
-        }
-
+        // Create Supabase client from request (handles auth automatically)
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://ryrwlkbzyldzbscvcqjh.supabase.co';
         const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
@@ -37,30 +32,25 @@ serve(async (req) => {
             throw new Error('SUPABASE_ANON_KEY not configured');
         }
 
-        // Create client with anon key and user's JWT token for auth
-        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        // Create client from request headers (automatically extracts and validates JWT)
+        const authHeader = req.headers.get('Authorization')!;
+        const token = authHeader.replace('Bearer ', '');
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
             global: {
-                headers: { Authorization: authHeader },
-            },
-            auth: {
-                persistSession: false,
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             }
         });
 
-        // Verify the JWT and get user
-        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        // Get authenticated user
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
         if (userError || !user) {
             console.error('Auth error:', userError);
             throw new Error('Not authenticated: ' + (userError?.message || 'Invalid token'));
         }
-
-        // Now create a service role client for database queries
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        if (!supabaseServiceKey) {
-            throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured');
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Get user's email from profile
         const { data: profile } = await supabase
