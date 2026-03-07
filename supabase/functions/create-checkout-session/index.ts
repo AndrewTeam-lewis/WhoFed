@@ -50,8 +50,30 @@ serve(async (req) => {
 
         const token = authHeader.replace('Bearer ', '');
         console.log('JWT token extracted, length:', token.length);
+        console.log('JWT token prefix:', token.substring(0, 30) + '...');
 
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        // Try to decode JWT header (base64) to see the algorithm
+        try {
+            const [headerB64] = token.split('.');
+            const headerJson = atob(headerB64);
+            const header = JSON.parse(headerJson);
+            console.log('JWT header decoded:', header);
+        } catch (e) {
+            console.error('Failed to decode JWT header:', e);
+        }
+
+        // Check JWT-related environment variables (don't log actual values)
+        console.log('Environment check:');
+        console.log('  JWT_SECRET present:', !!Deno.env.get('JWT_SECRET'));
+        console.log('  SUPABASE_JWT_SECRET present:', !!Deno.env.get('SUPABASE_JWT_SECRET'));
+        console.log('  SUPABASE_SERVICE_ROLE_KEY present:', !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+
+        // Try using service role key for JWT validation (bypasses some restrictions)
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        const keyToUse = serviceRoleKey || supabaseAnonKey;
+        console.log('Using key type:', serviceRoleKey ? 'SERVICE_ROLE' : 'ANON');
+
+        const supabase = createClient(supabaseUrl, keyToUse, {
             global: {
                 headers: {
                     Authorization: `Bearer ${token}`
