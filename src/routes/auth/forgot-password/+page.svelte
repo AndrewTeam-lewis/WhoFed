@@ -16,13 +16,9 @@
     success = false;
 
     try {
-      // Use deep link for mobile app, web URL for browser
-      const redirectTo = Capacitor.isNativePlatform()
-        ? 'whofed://auth/reset-password'
-        : `${window.location.origin}/auth/reset-password`;
-
+      // Always use HTTPS URL - Android App Links will intercept if in native app
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo
+        redirectTo: 'https://whofed.com/auth/reset-password'
       });
 
       if (resetError) throw resetError;
@@ -31,6 +27,11 @@
       await supabase.auth.signOut();
 
       success = true;
+
+      // Navigate to login after 2 seconds
+      setTimeout(() => {
+        window.location.href = '/auth/login';
+      }, 2000);
     } catch (e: any) {
       error = e.message || 'Failed to send reset email';
     } finally {

@@ -33,6 +33,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="whofed" />
             </intent-filter>
+
+            <!-- App Links for HTTPS URLs (works from emails) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="whofed.com" android:pathPrefix="/auth" />
+            </intent-filter>
         </activity>
 
         <provider
