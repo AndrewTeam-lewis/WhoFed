@@ -36,8 +36,10 @@ export const stripeService = {
             });
 
             // Call Edge Function to create Stripe checkout session
-            // Note: Supabase automatically includes the Authorization header from the current session
             const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                },
                 body: {
                     priceId,
                     mode: 'subscription'
