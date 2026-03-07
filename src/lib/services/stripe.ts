@@ -13,11 +13,27 @@ export const STRIPE_PRICES = {
 export const stripeService = {
     async createCheckoutSession(priceId: string) {
         try {
-            // Get the current session to ensure we have a valid auth token
+            console.log('[Stripe Service] Getting session...');
             const { data: { session } } = await supabase.auth.getSession();
+
+            console.log('[Stripe Service] Session details:', {
+                hasSession: !!session,
+                hasAccessToken: !!session?.access_token,
+                tokenLength: session?.access_token?.length,
+                tokenPreview: session?.access_token?.substring(0, 20) + '...',
+                expiresAt: session?.expires_at,
+                user: session?.user?.id
+            });
+
             if (!session) {
                 throw new Error('Not authenticated. Please log in.');
             }
+
+            console.log('[Stripe Service] Invoking Edge Function with:', {
+                priceId,
+                mode: 'subscription',
+                authHeaderPresent: !!session.access_token
+            });
 
             // Call Edge Function to create Stripe checkout session
             const { data, error } = await supabase.functions.invoke('create-checkout-session', {
@@ -28,6 +44,13 @@ export const stripeService = {
                     priceId,
                     mode: 'subscription'
                 }
+            });
+
+            console.log('[Stripe Service] Edge Function response:', {
+                hasData: !!data,
+                hasError: !!error,
+                data,
+                error
             });
 
             if (error) throw error;
