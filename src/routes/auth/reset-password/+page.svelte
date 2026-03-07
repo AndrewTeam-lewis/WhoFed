@@ -74,7 +74,7 @@
           type="password"
           placeholder="{$t.auth.reset_password_new_placeholder}"
           required
-          class="w-full h-12 px-4 border border-slate-200 rounded-lg text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+          class="w-full h-12 px-4 border border-slate-200 rounded-lg text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent transition-all"
         />
       </div>
 
@@ -86,14 +86,14 @@
           type="password"
           placeholder="{$t.auth.reset_password_confirm_placeholder}"
           required
-          class="w-full h-12 px-4 border border-slate-200 rounded-lg text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+          class="w-full h-12 px-4 border border-slate-200 rounded-lg text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent transition-all"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        class="w-full h-12 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-6"
+        class="w-full h-12 bg-brand-sage text-white font-semibold rounded-lg hover:bg-brand-sage/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-6"
       >
         {#if loading}
           <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -108,7 +108,7 @@
     </form>
 
     <p class="mt-6 text-center text-sm text-gray-500">
-      <a href="/auth/login" class="text-emerald-500 hover:text-emerald-600 font-medium transition-colors">{$t.auth.reset_password_back_to_login}</a>
+      <a href="/auth/login" class="text-brand-sage hover:text-brand-sage/90 font-medium transition-colors">{$t.auth.reset_password_back_to_login}</a>
     </p>
   </div>
 </div>

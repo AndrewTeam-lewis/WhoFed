@@ -33,7 +33,7 @@
   <title>Welcome to Premium! - WhoFed</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-brand-sage to-emerald-700 flex items-center justify-center p-6">
+<div class="min-h-screen bg-gradient-to-br from-brand-sage to-brand-sage/90 flex items-center justify-center p-6">
   <div class="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl text-center animate-scale-in">
     <!-- Success Icon -->
     <div class="w-20 h-20 bg-brand-sage/10 rounded-full flex items-center justify-center mx-auto mb-6">

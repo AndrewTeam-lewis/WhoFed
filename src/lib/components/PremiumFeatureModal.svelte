@@ -65,7 +65,7 @@
     
     <!-- Modal -->
     <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
-        <div class="bg-gradient-to-br from-brand-sage to-emerald-600 p-8 text-center text-white relative overflow-hidden">
+        <div class="bg-gradient-to-br from-brand-sage to-brand-sage/80 p-8 text-center text-white relative overflow-hidden">
             <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
             <div class="relative z-10">
                 <div class="text-4xl mb-2">💎</div>
@@ -85,7 +85,7 @@
             <div class="flex gap-2 mb-6">
                 <button
                     type="button"
-                    class="flex-1 py-3 px-4 rounded-xl font-semibold transition-all {selectedInterval === 'monthly' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}"
+                    class="flex-1 py-3 px-4 rounded-xl font-semibold transition-all {selectedInterval === 'monthly' ? 'bg-brand-sage text-white' : 'bg-gray-100 text-gray-600'}"
                     on:click={() => selectedInterval = 'monthly'}
                     disabled={loading}
                 >
@@ -93,7 +93,7 @@
                 </button>
                 <button
                     type="button"
-                    class="flex-1 py-3 px-4 rounded-xl font-semibold transition-all {selectedInterval === 'annual' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}"
+                    class="flex-1 py-3 px-4 rounded-xl font-semibold transition-all {selectedInterval === 'annual' ? 'bg-brand-sage text-white' : 'bg-gray-100 text-gray-600'}"
                     on:click={() => selectedInterval = 'annual'}
                     disabled={loading}
                 >
@@ -105,7 +105,7 @@
             </div>
 
             <button
-                class="w-full py-4 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full py-4 bg-brand-sage text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 on:click={handleUpgrade}
                 disabled={loading}
             >

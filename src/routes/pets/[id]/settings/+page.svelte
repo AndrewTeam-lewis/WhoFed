@@ -13,6 +13,7 @@
   import PhotoCropModal from '$lib/components/PhotoCropModal.svelte';
   import { uploadPetAvatar, uploadPetPhotos, deletePetAvatar, fetchOriginalPhoto } from '$lib/services/imageUploadService';
   import { userIsPremium } from '$lib/stores/user';
+  import PremiumFeatureModal from '$lib/components/PremiumFeatureModal.svelte';
 
   let loading = true;
   let saving = false;
@@ -880,45 +881,11 @@
 
             <!-- Premium Feature Modal -->
             {#if showPremiumModal}
-                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showPremiumModal = false}></button>
-
-                    <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
-                        <div class="h-32 bg-brand-sage flex items-center justify-center relative overflow-hidden">
-                            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
-                            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-lg relative z-10">
-                                💎
-                            </div>
-                        </div>
-
-                        <div class="p-8 text-center">
-                            <h3 class="text-2xl font-bold text-gray-900 mb-2">Premium Feature</h3>
-                            <p class="text-gray-500 mb-6 leading-relaxed">
-                                Custom pet photos are available for Premium users.
-                                <br>
-                                <span class="font-bold text-gray-800">Upgrade to unlock this and more.</span>
-                            </p>
-
-                            <div class="space-y-3">
-                                <button
-                                    class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95"
-                                    on:click={() => {
-                                        alert('Payment Flow would start here!');
-                                        showPremiumModal = false;
-                                    }}
-                                >
-                                    Check Pricing
-                                </button>
-                                <button
-                                    class="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600"
-                                    on:click={() => showPremiumModal = false}
-                                >
-                                    Maybe Later
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <PremiumFeatureModal
+                    featureName="Custom Pet Photos"
+                    featureDescription="Custom pet photos are available for Premium users. Unlock unlimited pets, multiple households, custom photos, and PDF exports!"
+                    on:close={() => showPremiumModal = false}
+                />
             {/if}
 
             <h3 class="text-lg font-bold text-typography-primary mb-4 mt-8">{$t.pet_settings.care_schedules}</h3>

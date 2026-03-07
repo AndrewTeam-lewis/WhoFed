@@ -9,6 +9,7 @@
   import PhotoSourceModal from '$lib/components/PhotoSourceModal.svelte';
   import PhotoCropModal from '$lib/components/PhotoCropModal.svelte';
   import { uploadPetAvatar, uploadPetPhotos } from '$lib/services/imageUploadService';
+  import PremiumFeatureModal from '$lib/components/PremiumFeatureModal.svelte';
 
 
 
@@ -856,47 +857,9 @@
 
     <!-- PREMIUM UPSELL MODAL -->
     {#if showPremiumModal}
-    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <button type="button" class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" on:click={() => showPremiumModal = false}></button>
-        
-        <!-- Modal -->
-        <div class="bg-white rounded-[32px] overflow-hidden w-full max-w-sm shadow-2xl relative z-10 animate-scale-in">
-            <!-- Header Image/Pattern -->
-            <div class="h-32 bg-brand-sage flex items-center justify-center relative overflow-hidden">
-                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
-                <!-- Diamond Icon -->
-                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-lg relative z-10">
-                    💎
-                </div>
-            </div>
-            
-            <div class="p-8 text-center">
-                <h3 class="text-2xl font-bold text-gray-900 mb-2">{$t.modals.upgrade_title}</h3>
-                <p class="text-gray-500 mb-6 leading-relaxed">
-                    {$t.modals.upgrade_desc}
-                    <br>
-                    <span class="font-bold text-gray-800">{$t.modals.upgrade_feature}</span>
-                </p>
-                
-                <div class="space-y-3">
-                    <button 
-                        class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95"
-                        on:click={() => {
-                            alert('Payment Flow would start here!');
-                            showPremiumModal = false;
-                        }}
-                    >
-                        {$t.modals.check_pricing}
-                    </button>
-                    <button 
-                        class="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600"
-                        on:click={() => showPremiumModal = false}
-                    >
-                        {$t.modals.maybe_later}
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+        <PremiumFeatureModal
+            featureName="Unlimited Pets"
+            featureDescription="Unlock unlimited pets, multiple households, custom photos, and PDF exports!"
+            on:close={() => showPremiumModal = false}
+        />
     {/if}

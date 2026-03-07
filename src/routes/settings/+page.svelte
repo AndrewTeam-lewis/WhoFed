@@ -1245,19 +1245,6 @@
                     </svg>
                 </button>
 
-                <!-- Test Notification Button -->
-                <button
-                    class="w-full flex items-center justify-between text-left group mt-3 pt-3 border-t border-gray-100"
-                    on:click={() => notificationService.sendTestNotification()}
-                >
-                     <div class="flex flex-col">
-                         <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">Test Notification</span>
-                         <span class="text-[10px] text-gray-400">Send a test push notification now</span>
-                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 group-hover:text-brand-sage transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                </button>
            </div>
            {/if}
 
@@ -1291,56 +1278,38 @@
           <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.subscription}</div>
           
           {#if !$userIsPremium}
-          <button 
-              class="w-full bg-gradient-to-br from-brand-sage to-emerald-700 rounded-2xl p-5 text-left shadow-lg shadow-brand-sage/20 relative overflow-hidden transition-transform active:scale-[0.98]"
+          <button
+              class="w-full bg-gradient-to-br from-brand-sage to-brand-sage/90 rounded-2xl p-5 text-left shadow-lg shadow-brand-sage/20 relative overflow-hidden transition-transform active:scale-[0.98]"
               on:click={() => showPremiumModal = true}
           >
               <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
               
-              <div class="relative z-10 flex items-start justify-between">
+              <div class="relative z-10 flex items-center justify-between">
                   <div>
-                      <h3 class="text-lg font-black text-white mb-1 flex items-center">
-                          WhoFed Premium <span class="ml-2 text-xl">💎</span>
+                      <h3 class="text-lg font-black text-white mb-1">
+                          WhoFed Premium
                       </h3>
                       <p class="text-white/80 text-xs font-medium max-w-[200px]">Unlock unlimited pets, multiple households, and PDF exports!</p>
                   </div>
-                  <div class="flex flex-col items-end space-y-2">
-                      <div class="bg-white/20 backdrop-blur-md rounded-full px-3 py-1">
-                          <span class="text-white text-[10px] font-bold tracking-wider uppercase">Upgrade</span>
-                      </div>
-                       <div
-                          role="button"
-                          tabindex="0"
-                          class="text-[10px] text-white/50 hover:text-white transition-colors underline cursor-pointer"
-                          on:click|stopPropagation={async () => {
-                              try {
-                                  const { error: updateError } = await supabase.from('profiles').update({ tier: 'premium' }).eq('id', $currentUser.id).select();
-                                  if (updateError) { alert('Failed: ' + updateError.message); } else { window.location.reload(); }
-                              } catch (e: any) { alert('Error: ' + e.message); }
-                          }}
-                          on:keydown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  e.currentTarget.click();
-                              }
-                          }}
-                       >
-                          [Dev: Toggle]
-                       </div>
+                  <div class="bg-white/20 backdrop-blur-md rounded-full px-3 py-1">
+                      <span class="text-white text-[10px] font-bold tracking-wider uppercase">Upgrade</span>
                   </div>
               </div>
           </button>
           {:else}
-          <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
-             <div class="p-4 flex items-center justify-between">
-                 <div>
-                     <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-sage/10 text-brand-sage">
-                        {$t.settings.premium_user}
-                     </span>
-                 </div>
-                 <button class="text-xs text-blue-500 hover:underline" on:click={async () => { try { const { error } = await supabase.from('profiles').update({ tier: 'free' }).eq('id', $currentUser.id); if (!error) window.location.reload(); } catch (e) {} }}>[Dev: Toggle]</button>
-             </div>
-          </section>
+          <div class="bg-gradient-to-br from-brand-sage/10 to-brand-sage/5 rounded-2xl p-5 border-2 border-brand-sage/20">
+              <div class="flex items-center justify-between">
+                  <div>
+                      <h3 class="text-lg font-black text-brand-sage mb-1">
+                          WhoFed Premium
+                      </h3>
+                      <p class="text-brand-sage/70 text-xs font-medium">You're all set! Enjoy unlimited features.</p>
+                  </div>
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-sage text-white">
+                      Active
+                  </span>
+              </div>
+          </div>
           {/if}
        </div>
              <!-- About -->
@@ -1416,7 +1385,55 @@
               </button>
           </section>
        </div>
- 
+
+       <!-- Admin Tools -->
+       <div class="space-y-2">
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Admin Tools</div>
+          <section class="bg-white rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+              <!-- Toggle Premium Status -->
+              <button
+                  class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                  on:click={async () => {
+                      try {
+                          const newTier = $userIsPremium ? 'free' : 'premium';
+                          const { error } = await supabase.from('profiles').update({ tier: newTier }).eq('id', $currentUser.id);
+                          if (!error) window.location.reload();
+                      } catch (e) {}
+                  }}
+              >
+                  <div class="flex items-center space-x-3 text-gray-700">
+                      <div class="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                      </div>
+                      <div class="flex flex-col">
+                          <span class="font-medium text-sm">Toggle Premium Status</span>
+                          <span class="text-[10px] text-gray-400">Currently: {$userIsPremium ? 'Premium' : 'Free'}</span>
+                      </div>
+                  </div>
+              </button>
+
+              <!-- Test Notification -->
+              <button
+                  class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                  on:click={() => notificationService.sendTestNotification()}
+              >
+                  <div class="flex items-center space-x-3 text-gray-700">
+                      <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                      </div>
+                      <div class="flex flex-col">
+                          <span class="font-medium text-sm">Test Notification</span>
+                          <span class="text-[10px] text-gray-400">Send a test push notification now</span>
+                      </div>
+                  </div>
+              </button>
+          </section>
+       </div>
+
    </main>
   
   <!-- Edit Pet Modal -->
