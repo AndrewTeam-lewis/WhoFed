@@ -51,7 +51,8 @@
             }
         } catch (error: any) {
             console.error('Upgrade error:', error);
-            alert(error.message || 'Failed to start checkout. Please try again.');
+            console.error('Error details:', JSON.stringify(error, null, 2));
+            alert(`Error: ${error.message || 'Failed to start checkout'}\n\nCheck console for details.`);
         } finally {
             loading = false;
         }
