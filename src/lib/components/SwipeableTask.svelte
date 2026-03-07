@@ -136,6 +136,10 @@
                     <div class="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg text-white whitespace-nowrap ml-2 {visuals.dueLabel === 'Due soon' ? 'animate-pulse' : ''}">
                         {visuals.dueLabel}
                     </div>
+                {:else if visuals.isOverdue}
+                    <div class="text-[10px] font-medium px-2 py-1 rounded-lg text-red-500/70 ml-2">
+                        {visuals.dueLabel}
+                    </div>
                 {:else}
                     <div class="text-[10px] font-medium px-2 py-1 rounded-lg text-brand-sage/80 ml-2">
                         {visuals.dueLabel}

@@ -2,6 +2,7 @@
   import { supabase } from '$lib/supabase';
   import { t } from '$lib/services/i18n';
   import LanguagePicker from '$lib/components/LanguagePicker.svelte';
+  import { Capacitor } from '@capacitor/core';
 
   let email = '';
   let loading = false;
@@ -15,11 +16,19 @@
     success = false;
 
     try {
+      // Use deep link for mobile app, web URL for browser
+      const redirectTo = Capacitor.isNativePlatform()
+        ? 'whofed://auth/reset-password'
+        : `${window.location.origin}/auth/reset-password`;
+
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo
       });
 
       if (resetError) throw resetError;
+
+      // Sign out the current user so they must log in with new password
+      await supabase.auth.signOut();
 
       success = true;
     } catch (e: any) {
