@@ -36,9 +36,13 @@ export const stripeService = {
             });
 
             // Call Edge Function to create Stripe checkout session
+            // Get the anon key from the Supabase client
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
             const { data, error } = await supabase.functions.invoke('create-checkout-session', {
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
+                    apikey: SUPABASE_ANON_KEY,
                 },
                 body: {
                     priceId,
