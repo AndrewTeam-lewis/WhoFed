@@ -30,19 +30,26 @@ serve(async (req) => {
         }
 
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-        // Verify user with service role (bypass RLS)
         const token = authHeader.replace('Bearer ', '');
-        const { data: { user }, error: userError } = await createClient(
-            supabaseUrl,
-            Deno.env.get('SUPABASE_ANON_KEY')!,
-            { global: { headers: { Authorization: authHeader } } }
-        ).auth.getUser(token);
+
+        // Use service role key for JWT validation (matches create-checkout-session)
+        const keyToUse = serviceRoleKey || supabaseAnonKey;
+        const supabase = createClient(supabaseUrl, keyToUse, {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        });
+
+        // Verify user
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
         if (userError || !user) {
-            throw new Error('Not authenticated');
+            throw new Error('Not authenticated: ' + (userError?.message || 'Invalid token'));
         }
 
         // Get user's Stripe customer ID
