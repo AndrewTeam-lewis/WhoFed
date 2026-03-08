@@ -119,7 +119,7 @@
             <!-- Members Role Tooltip -->
             {:else if $onboarding.activeTooltip === 'members-role'}
             <div class="flex items-start space-x-4">
-               <div class="bg-purple-50 text-purple-500 p-3 rounded-xl flex-shrink-0">
+               <div class="bg-brand-sage/10 text-brand-sage p-3 rounded-xl flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -127,7 +127,7 @@
                <div>
                    <h3 class="font-bold text-gray-900 mb-1">How Shared Homes Work</h3>
                    <p class="text-sm text-gray-500 mb-4">
-                       As an <strong>Owner</strong>, you have full control: add/remove pets, invite/remove members, and manage permissions. As a <strong>Member</strong>, you can view all pets and log tasks. Owners can customize your permissions to allow editing schedules. All updates sync instantly across everyone's devices!
+                       As an <strong>Owner</strong>, you have full control to add and remove pets, invite and remove members, and manage permissions. As a <strong>Member</strong>, you can view all pets and log tasks. Owners can customize your permissions to allow editing schedules. All updates sync instantly across everyone's devices!
                    </p>
                    <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>Got it</button>
                </div>

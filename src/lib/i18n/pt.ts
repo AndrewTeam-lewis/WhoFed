@@ -165,7 +165,7 @@ export default {
         contact_desc: 'Se precisar de mais assistência ou encontrar algum problema, entre em contato com nossa pequena equipe de suporte!',
         contact_button: 'Entrar em Contato',
         contact_note: 'Somos uma equipe pequena, por favor, aguarde uma resposta dentro de 24-48 horas.',
-        support_email: 'andrew@retomarlabs.com'
+        support_email: 'support@whofed.me'
     },
     notifications: {
         modal_title: 'Notificações',
