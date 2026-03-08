@@ -13,17 +13,14 @@
   let currentSlide = 0;
   const slides = [
     {
-      emoji: '👋',
       title: 'Welcome to WhoFed!',
       description: 'The single source of truth for your pet\'s care. Track meals, medication, and care tasks all in one place.'
     },
     {
-      emoji: '👨‍👩‍👧‍👦',
       title: 'No More Double-Feeding',
       description: 'When you check off a task on your Dashboard, everyone in your household sees it instantly.'
     },
     {
-      emoji: '🚀',
       title: 'Let\'s Get Started',
       description: 'Add your first pet and set up their schedule to begin tracking!'
     }
@@ -56,8 +53,8 @@
          in:scale={{ start: 0.95 }}
       >
           <!-- Slide Content -->
-          <div class="mb-4 text-7xl transition-all duration-300 transform scale-100">
-              {slides[currentSlide].emoji}
+          <div class="mb-6 transition-all duration-300 transform scale-100">
+              <img src="/whofed_logo_email_tiny.png" alt="WhoFed Logo" class="w-24 h-24 object-contain mx-auto" />
           </div>
           <h2 class="text-2xl font-black text-gray-900 mb-3 tracking-tight">
               {slides[currentSlide].title}

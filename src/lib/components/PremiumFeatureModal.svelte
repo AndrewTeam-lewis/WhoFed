@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
     import { createEventDispatcher } from 'svelte';
     import { Capacitor } from '@capacitor/core';
     import { stripeService, STRIPE_PRICES } from '$lib/services/stripe';
@@ -15,6 +16,31 @@
 
     let loading = false;
     let selectedInterval: 'monthly' | 'annual' = 'annual';
+    let prices: any = null;
+    let monthlyPrice = '';
+    let annualPrice = '';
+
+    onMount(async () => {
+        if (isWeb) {
+            // Fetch Stripe prices
+            prices = await stripeService.fetchPrices();
+            if (prices) {
+                const monthly = prices.find((p: any) => p.interval === 'month');
+                const annual = prices.find((p: any) => p.interval === 'year');
+
+                if (monthly) monthlyPrice = stripeService.formatPrice(monthly.amount, monthly.currency);
+                if (annual) annualPrice = stripeService.formatPrice(annual.amount, annual.currency);
+            }
+        } else {
+            // Use RevenueCat prices for mobile
+            const packages = $currentOfferings;
+            const monthly = packages.find(p => p.identifier.includes('monthly'));
+            const annual = packages.find(p => p.identifier.includes('annual'));
+
+            if (monthly) monthlyPrice = monthly.product.priceString;
+            if (annual) annualPrice = annual.product.priceString;
+        }
+    });
 
     async function handleUpgrade() {
         loading = true;
@@ -88,7 +114,12 @@
                     on:click={() => selectedInterval = 'monthly'}
                     disabled={loading}
                 >
-                    Monthly
+                    <div class="flex flex-col items-center">
+                        <span>Monthly</span>
+                        {#if monthlyPrice}
+                            <span class="text-xs opacity-70 mt-0.5">{monthlyPrice}/mo</span>
+                        {/if}
+                    </div>
                 </button>
                 <button
                     type="button"
@@ -98,10 +129,17 @@
                 >
                     <div class="flex flex-col items-center">
                         <span>Annual</span>
-                        <span class="text-xs opacity-70">Save 20%</span>
+                        {#if annualPrice}
+                            <span class="text-xs opacity-70 mt-0.5">{annualPrice}/yr</span>
+                        {:else}
+                            <span class="text-xs opacity-70">Save 20%</span>
+                        {/if}
                     </div>
                 </button>
             </div>
+
+            <!-- USD Note -->
+            <p class="text-xs text-gray-400 text-center mb-4">Prices in USD</p>
 
             <button
                 class="w-full py-4 bg-brand-sage text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"

@@ -134,6 +134,53 @@ export const stripeService = {
         }
     },
 
+    async fetchPrices() {
+        try {
+            const priceIds = [STRIPE_PRICES.monthly, STRIPE_PRICES.annual].filter(Boolean);
+
+            if (priceIds.length === 0) {
+                throw new Error('No price IDs configured');
+            }
+
+            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const functionUrl = `${SUPABASE_URL}/functions/v1/get-stripe-prices`;
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ priceIds })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch prices');
+            }
+
+            const data = await response.json();
+            return data.prices;
+
+        } catch (error: any) {
+            console.error('Fetch prices error:', error);
+            return null;
+        }
+    },
+
+    formatPrice(amount: number, currency: string): string {
+        // Amount is in cents, convert to dollars
+        const value = amount / 100;
+
+        // Format based on currency
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: currency.toUpperCase(),
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        }).format(value);
+    },
+
     // Check if Stripe is properly configured
     isConfigured(): boolean {
         return !!(STRIPE_PUBLISHABLE_KEY && STRIPE_PRICES.monthly);
