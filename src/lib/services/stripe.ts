@@ -86,12 +86,40 @@ export const stripeService = {
 
     async redirectToCustomerPortal() {
         try {
-            // Call Edge Function to create customer portal session
-            const { data, error } = await supabase.functions.invoke('create-portal-session', {
-                body: {}
+            console.log('[Stripe Service] Opening customer portal...');
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                throw new Error('Not authenticated. Please log in.');
+            }
+
+            // Call Edge Function directly with fetch for full control
+            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const functionUrl = `${SUPABASE_URL}/functions/v1/create-portal-session`;
+
+            console.log('[Stripe Service] Calling portal function:', functionUrl);
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({})
             });
 
-            if (error) throw error;
+            console.log('[Stripe Service] Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Stripe Service] Error response:', errorText);
+                throw new Error(`Edge Function error: ${response.status} ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('[Stripe Service] Portal URL received');
 
             if (!data.url) {
                 throw new Error('No portal URL returned');
