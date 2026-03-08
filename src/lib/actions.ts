@@ -1,10 +1,14 @@
 export function swipe(node: HTMLElement, { threshold = 100 } = {}) {
     let startX: number;
     let startY: number;
+    let pointerId: number | null = null;
+    let hasCaptured = false;
 
     function handlePointerDown(event: PointerEvent) {
         startX = event.clientX;
         startY = event.clientY;
+        pointerId = event.pointerId;
+        hasCaptured = false;
         // Reset lock state
         (node as any)._swipeAxis = null; // 'x' or 'y'
 
@@ -12,7 +16,7 @@ export function swipe(node: HTMLElement, { threshold = 100 } = {}) {
             detail: { x: startX, y: startY }
         }));
 
-        node.setPointerCapture(event.pointerId);
+        // Don't capture immediately - wait for movement
     }
 
     function handlePointerMove(event: PointerEvent) {
@@ -29,6 +33,11 @@ export function swipe(node: HTMLElement, { threshold = 100 } = {}) {
             if (absX > 5 || absY > 5) {
                 if (absX > absY) {
                     (node as any)._swipeAxis = 'x';
+                    // Only capture when we start swiping horizontally
+                    if (!hasCaptured && pointerId !== null) {
+                        node.setPointerCapture(pointerId);
+                        hasCaptured = true;
+                    }
                 } else {
                     (node as any)._swipeAxis = 'y';
                 }
@@ -61,7 +70,11 @@ export function swipe(node: HTMLElement, { threshold = 100 } = {}) {
         }
 
         (node as any)._swipeAxis = null;
-        node.releasePointerCapture(event.pointerId);
+        if (hasCaptured && pointerId !== null) {
+            node.releasePointerCapture(pointerId);
+            hasCaptured = false;
+        }
+        pointerId = null;
     }
 
     node.addEventListener('pointerdown', handlePointerDown);

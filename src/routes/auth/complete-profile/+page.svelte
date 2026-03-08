@@ -6,6 +6,7 @@
   import type { Profile } from '$lib/db';
   import { t } from '$lib/services/i18n';
   import LanguagePicker from '$lib/components/LanguagePicker.svelte';
+  import { onboarding } from '$lib/stores/onboarding';
 
   let formData = {
     firstName: ''
@@ -56,6 +57,14 @@
       await authService.createProfile(userId, {
         first_name: formData.firstName
       });
+
+      // For new users going to dashboard, trigger walkthrough on next page load
+      if (redirectTo === '/') {
+        // Clear the "seen" flag so checkWelcome() will trigger it
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('whofed_welcome_seen');
+        }
+      }
 
       // Redirect to the intended destination (e.g., /join/?k=<key> for invites)
       goto(redirectTo);

@@ -424,10 +424,8 @@
       // Handle Pets
       pets = petRes.data || [];
 
-      // Onboarding Trigger
-      if (pets.length === 0) {
-          onboarding.checkWelcome();
-      }
+      // Show welcome for new users (only if not seen before)
+      onboarding.checkWelcome();
 
       // Handle Tasks
       if (taskRes.error) throw taskRes.error;
@@ -1037,23 +1035,23 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
       </div>
     {:else if pets.length === 0}
-      <div class="text-center py-10 bg-white rounded-2xl p-6 shadow-sm">
+      <div class="text-center py-12 bg-white rounded-2xl p-8 shadow-sm">
         {#if $activeHousehold?.role === 'owner'}
-        <p class="text-gray-500 mb-4">{$t.dashboard.no_pets}</p>
+        <p class="text-gray-600 mb-6 text-base">{$t.dashboard.no_pets}</p>
         <button
            data-tour="add-pet-btn"
-           class="bg-brand-sage text-white px-6 py-2 rounded-full font-medium hover:bg-brand-sage/90 transition-colors inline-block"
+           class="bg-brand-sage text-white px-6 py-3 rounded-xl font-semibold hover:bg-brand-sage/90 transition-colors inline-block shadow-sm"
            on:click={() => goto('/pets/add')}
         >
           {$t.dashboard.add_first_pet}
         </button>
         {:else}
-        <p class="text-gray-500 mb-4">No pets have been added to this household yet. Ask the household owner to add pets.</p>
+        <p class="text-gray-600 mb-6 text-base">No pets have been added to this household yet. Ask the household owner to add pets.</p>
         {/if}
-        
-        <div class="mt-4">
-            <button 
-                class="text-sm text-gray-400 hover:text-brand-sage font-medium underline"
+
+        <div class="mt-6">
+            <button
+                class="text-sm text-gray-400 hover:text-brand-sage transition-colors underline"
                 on:click={() => onboarding.showWelcome()}
             >
                 {$t.dashboard.show_me_around}

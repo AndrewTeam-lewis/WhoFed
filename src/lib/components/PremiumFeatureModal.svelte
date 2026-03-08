@@ -16,22 +16,13 @@
 
     let loading = false;
     let selectedInterval: 'monthly' | 'annual' = 'annual';
-    let prices: any = null;
-    let monthlyPrice = '';
-    let annualPrice = '';
+
+    // Hardcoded prices for web (USD), dynamic for mobile
+    let monthlyPrice = isWeb ? '$1.99' : '';
+    let annualPrice = isWeb ? '$19.99' : '';
 
     onMount(async () => {
-        if (isWeb) {
-            // Fetch Stripe prices
-            prices = await stripeService.fetchPrices();
-            if (prices) {
-                const monthly = prices.find((p: any) => p.interval === 'month');
-                const annual = prices.find((p: any) => p.interval === 'year');
-
-                if (monthly) monthlyPrice = stripeService.formatPrice(monthly.amount, monthly.currency);
-                if (annual) annualPrice = stripeService.formatPrice(annual.amount, annual.currency);
-            }
-        } else {
+        if (!isWeb) {
             // Use RevenueCat prices for mobile
             const packages = $currentOfferings;
             const monthly = packages.find(p => p.identifier.includes('monthly'));
@@ -94,8 +85,7 @@
         <div class="bg-gradient-to-br from-brand-sage to-brand-sage/80 p-8 text-center text-white relative overflow-hidden">
             <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
             <div class="relative z-10">
-                <h3 class="text-2xl font-bold mb-1">Premium Feature</h3>
-                <p class="text-white/80 text-sm font-medium uppercase tracking-wider">{featureName}</p>
+                <h3 class="text-2xl font-bold">WhoFed Premium</h3>
             </div>
         </div>
         
@@ -116,9 +106,7 @@
                 >
                     <div class="flex flex-col items-center">
                         <span>Monthly</span>
-                        {#if monthlyPrice}
-                            <span class="text-xs opacity-70 mt-0.5">{monthlyPrice}/mo</span>
-                        {/if}
+                        <span class="text-xs opacity-70 mt-0.5">{monthlyPrice}/mo</span>
                     </div>
                 </button>
                 <button
@@ -129,11 +117,7 @@
                 >
                     <div class="flex flex-col items-center">
                         <span>Annual</span>
-                        {#if annualPrice}
-                            <span class="text-xs opacity-70 mt-0.5">{annualPrice}/yr</span>
-                        {:else}
-                            <span class="text-xs opacity-70">Save 20%</span>
-                        {/if}
+                        <span class="text-xs opacity-70 mt-0.5">{annualPrice}/yr</span>
                     </div>
                 </button>
             </div>
