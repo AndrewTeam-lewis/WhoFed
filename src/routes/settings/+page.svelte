@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { Capacitor } from '@capacitor/core';
   import { supabase } from '$lib/supabase';
   import type { Database } from '$lib/database.types';
   import { APP_VERSION } from '$lib/version';
@@ -21,7 +22,9 @@
   import ExportOptionsModal from '$lib/components/ExportOptionsModal.svelte';
   import { currentLanguage, setLanguage, t, type Language } from '$lib/services/i18n';
   import SelectionModal from '$lib/components/SelectionModal.svelte';
+  import { getAllTimezones } from '$lib/utils/timezones';
 
+  let timezones = getAllTimezones();
   let showExportOptionsModal = false;
   let allPets: any[] = [];
 
@@ -104,7 +107,7 @@
   let showDeleteHouseholdModal = false;
   let showCannotDeleteModal = false;
   let showEditHouseholdModal = false;
-  let editingHousehold: { id: string, name: string } | null = null;
+  let editingHousehold: { id: string, name: string, timezone: string } | null = null;
   let memberToRemove: { user_id: string, first_name: string } | null = null;
   let notificationsEnabled = false;
 
@@ -687,7 +690,7 @@
   }
 
   function openEditHouseholdModal(hh: any) {
-      editingHousehold = { id: hh.id, name: hh.name };
+      editingHousehold = { id: hh.id, name: hh.name, timezone: hh.timezone || 'America/New_York' };
       showEditHouseholdModal = true;
   }
 
@@ -697,18 +700,18 @@
       try {
           const { error } = await supabase
               .from('households')
-              .update({ name: editingHousehold.name.trim() })
+              .update({ name: editingHousehold.name.trim(), timezone: editingHousehold.timezone })
               .eq('id', editingHousehold.id);
 
           if (error) throw error;
 
           // Update local stores
           availableHouseholds.update(hhs => 
-              hhs.map(h => h.id === editingHousehold!.id ? { ...h, name: editingHousehold!.name } : h)
+              hhs.map(h => h.id === editingHousehold!.id ? { ...h, name: editingHousehold!.name, timezone: editingHousehold!.timezone } : h)
           );
 
           if ($activeHousehold?.id === editingHousehold.id) {
-              activeHousehold.update(h => h ? { ...h, name: editingHousehold!.name } : null);
+              activeHousehold.update(h => h ? { ...h, name: editingHousehold!.name, timezone: editingHousehold!.timezone } : null);
           }
 
           showEditHouseholdModal = false;
@@ -865,7 +868,7 @@
              <div class="p-4 flex items-center justify-between">
                  <div>
                      <div class="flex items-center space-x-2">
-                         <h3 class="font-bold text-gray-900 leading-tight">{$t.settings.manage_households_header}</h3>
+                         <h3 class="text-sm font-medium text-gray-900">{$t.settings.manage_households_header}</h3>
                          <button 
                              class="text-gray-400 hover:text-brand-sage transition-colors p-1"
                              on:click={() => onboarding.showTooltip('members-role')}
@@ -926,6 +929,14 @@
                                  <div class="text-xs {hh.role === 'owner' ? 'text-brand-sage font-bold' : 'text-gray-400 font-medium'}">
                                      {hh.role === 'owner' ? $t.settings.role_owner : $t.settings.member_owner.replace('{name}', hh.ownerName || 'Unknown')}
                                  </div>
+                                 {#if hh.timezone}
+                                     <div class="text-[10px] text-gray-400 font-medium mt-0.5 flex items-center">
+                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                         </svg>
+                                         {hh.timezone}
+                                     </div>
+                                 {/if}
                              </div>
                          </div>
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 transition-transform {expandedHouseholdId === hh.id ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1214,34 +1225,47 @@
                        </svg>
                    </div>
                    <div class="flex flex-col">
-                       <span class="font-bold text-sm text-gray-900">{$t.settings.push_notifications}</span>
-                       <span class="text-[10px] text-gray-400">{$t.settings.push_desc}</span>
+                       <span class="text-sm font-medium text-gray-900">{$t.settings.push_notifications}</span>
+                       <span class="text-xs text-gray-500">{$t.settings.push_desc}</span>
                    </div>
                </div>
                
-               <button 
+               <button
                   class="relative w-11 h-6 rounded-full transition-colors {notificationsEnabled ? 'bg-brand-sage' : 'bg-gray-200'}"
                   on:click={toggleNotifications}
                   aria-label="Toggle Push Notifications"
                >
-                   <span 
+                   <span
                        class="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm {notificationsEnabled ? 'translate-x-5' : 'translate-x-0'}"
                    ></span>
                </button>
            </div>
-           
+
+           {#if !Capacitor.isNativePlatform()}
+           <p class="text-xs text-gray-400 px-4 leading-relaxed mt-2">
+               Push notifications work best on the mobile app. Web notifications require browser permissions and may not work reliably.
+           </p>
+           {/if}
+
            {#if notificationsEnabled}
            <div class="px-4 pb-4 bg-white border-t border-gray-100 mt-2 pt-3">
-                <button 
+                <button
                     class="w-full flex items-center justify-between text-left group"
                     on:click={openManageReminders}
                 >
-                     <div class="flex flex-col">
-                         <span class="text-sm font-bold text-gray-700 group-hover:text-brand-sage transition-colors">{$t.settings.manage_alerts}</span>
-                         <span class="text-[10px] text-gray-400">{$t.settings.manage_alerts_desc}</span>
-                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300 group-hover:text-brand-sage transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium text-gray-900">{$t.settings.manage_alerts}</span>
+                            <span class="text-xs text-gray-500">{$t.settings.manage_alerts_desc}</span>
+                        </div>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                 </button>
 
@@ -1255,8 +1279,8 @@
                        {languages.find(l => l.id === $currentLanguage)?.icon || '🇺🇸'}
                    </div>
                    <div class="flex flex-col">
-                       <span class="font-bold text-sm text-gray-900">{$t.settings.language}</span>
-                       <span class="text-[10px] text-gray-400">{languages.find(l => l.id === $currentLanguage)?.name || 'English'}</span>
+                       <span class="text-sm font-medium text-gray-900">{$t.settings.language}</span>
+                       <span class="text-xs text-gray-500">{languages.find(l => l.id === $currentLanguage)?.name || 'English'}</span>
                    </div>
                </div>
 
@@ -1283,10 +1307,10 @@
               on:click={() => showPremiumModal = true}
           >
               <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-              
+
               <div class="relative z-10 flex items-center justify-between">
                   <div>
-                      <h3 class="text-lg font-black text-white mb-1">
+                      <h3 class="text-base font-bold text-white mb-1">
                           WhoFed Premium
                       </h3>
                       <p class="text-white/80 text-xs font-medium max-w-[200px]">Unlock unlimited pets, multiple households, and PDF exports!</p>
@@ -1300,7 +1324,7 @@
           <div class="bg-gradient-to-br from-brand-sage/10 to-brand-sage/5 rounded-2xl p-5 border-2 border-brand-sage/20">
               <div class="flex items-center justify-between">
                   <div>
-                      <h3 class="text-lg font-black text-brand-sage mb-1">
+                      <h3 class="text-base font-bold text-brand-sage mb-1">
                           WhoFed Premium
                       </h3>
                       <p class="text-brand-sage/70 text-xs font-medium">You're all set! Enjoy unlimited features.</p>
@@ -1351,7 +1375,7 @@
                           </svg>
                       </div>
                       <div class="flex flex-col">
-                          <span class="font-medium text-sm">{$t.settings.export_data}</span>
+                          <span class="text-sm font-medium text-gray-900">{$t.settings.export_data}</span>
                           {#if !$userIsPremium}
                               <span class="text-[10px] text-brand-sage font-bold uppercase tracking-wide">{$t.settings.premium_badge}</span>
                           {/if}
@@ -1366,7 +1390,7 @@
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                           </svg>
                       </div>
-                      <span class="font-medium text-sm">{$t.settings.log_out}</span>
+                      <span class="text-sm font-medium text-gray-900">{$t.settings.log_out}</span>
                   </div>
               </button>
 
@@ -1383,6 +1407,24 @@
                        <span class="font-medium text-sm">{$t.settings.delete_account}</span>
                   </div>
               </button>
+          </section>
+       </div>
+
+       <!-- Mobile -->
+       <div class="space-y-2">
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Mobile</div>
+          <section class="bg-white rounded-2xl overflow-hidden shadow-sm p-6">
+              <p class="text-xs text-gray-500 text-center mb-4">
+                  Download the mobile app for notifications and managing your pets on the go
+              </p>
+              <div class="flex justify-center items-center gap-3">
+                  <a href="https://play.google.com/store/apps/details?id=com.whofed.app" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity">
+                      <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" style="height: 60px;">
+                  </a>
+                  <a href="https://apps.apple.com/app/whofed/id123456789" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity">
+                      <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&amp;releaseDate=1234567890" alt="Download on the App Store" style="height: 40px;">
+                  </a>
+              </div>
           </section>
        </div>
 
@@ -1408,8 +1450,8 @@
                           </svg>
                       </div>
                       <div class="flex flex-col">
-                          <span class="font-medium text-sm">Toggle Premium Status</span>
-                          <span class="text-[10px] text-gray-400">Currently: {$userIsPremium ? 'Premium' : 'Free'}</span>
+                          <span class="text-sm font-medium text-gray-900">Toggle Premium Status</span>
+                          <span class="text-xs text-gray-500">Currently: {$userIsPremium ? 'Premium' : 'Free'}</span>
                       </div>
                   </div>
               </button>
@@ -1426,8 +1468,8 @@
                           </svg>
                       </div>
                       <div class="flex flex-col">
-                          <span class="font-medium text-sm">Test Notification</span>
-                          <span class="text-[10px] text-gray-400">Send a test push notification now</span>
+                          <span class="text-sm font-medium text-gray-900">Test Notification</span>
+                          <span class="text-xs text-gray-500">Send a test push notification now</span>
                       </div>
                   </div>
               </button>
@@ -1872,8 +1914,19 @@
               <input 
                   type="text" 
                   bind:value={editingHousehold.name}
-                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent"
+                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent mb-4"
               />
+              
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.settings.timezone || 'Household Timezone'}</label>
+              <select
+                  bind:value={editingHousehold.timezone}
+                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent appearance-none"
+                  style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 1rem top 50%; background-size: 0.65rem auto;"
+              >
+                  {#each timezones as tz}
+                      <option value={tz}>{tz}</option>
+                  {/each}
+              </select>
           </div>
           
           <div class="flex space-x-3">

@@ -152,6 +152,7 @@ CREATE INDEX IF NOT EXISTS idx_daily_tasks_status ON public.daily_tasks(status);
 CREATE INDEX IF NOT EXISTS idx_activity_log_pet_id ON public.activity_log(pet_id);
 CREATE INDEX IF NOT EXISTS idx_activity_log_performed_at ON public.activity_log(performed_at);
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username text UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_profiles_username ON public.profiles(username);
 CREATE INDEX IF NOT EXISTS idx_household_invitations_invited_user ON public.household_invitations(invited_user_id);
 CREATE INDEX IF NOT EXISTS idx_household_invitations_household ON public.household_invitations(household_id);

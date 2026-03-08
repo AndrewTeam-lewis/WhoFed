@@ -81,6 +81,7 @@ export default {
         delete_household: 'Excluir Casa',
         rename_household: 'Renomear Casa',
         household_name: 'Nome da Casa',
+        timezone: 'Fuso Horário da Casa',
         leave: 'Sair',
         remove: 'Remover',
         invitations: 'Convites',

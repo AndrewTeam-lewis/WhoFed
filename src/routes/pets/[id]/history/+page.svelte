@@ -6,6 +6,7 @@
   import { userIsPremium } from '$lib/stores/user';
   import { t, formatDateTime } from '$lib/services/i18n';
   import type { Database } from '$lib/database.types';
+  import PremiumFeatureModal from '$lib/components/PremiumFeatureModal.svelte';
 
   type ActivityLog = Database['public']['Tables']['activity_log']['Row'] & {
     profiles: { first_name: string | null } | null;
@@ -16,7 +17,8 @@
   let loading = true;
   let logs: ActivityLog[] = [];
   let petName = '...';
-  
+  let showPremiumModal = false;
+
   $: petId = $page.params.id;
 
   onMount(async () => {
@@ -199,9 +201,9 @@
                             </div>
                             <h3 class="font-bold text-gray-900 mb-1">{$t.history.unlock_title}</h3>
                             <p class="text-xs text-gray-500 mb-4 max-w-[200px]">{$t.history.unlock_desc}</p>
-                            <button 
+                            <button
                                 class="bg-brand-sage text-white text-sm font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-brand-sage/90 transition-all"
-                                on:click={() => alert('Premium Upgrade coming soon!')}
+                                on:click={() => showPremiumModal = true}
                             >
                                 {$t.history.upgrade_now}
                             </button>
@@ -212,3 +214,12 @@
         {/if}
     </main>
 </div>
+
+<!-- PREMIUM UPSELL MODAL -->
+{#if showPremiumModal}
+  <PremiumFeatureModal
+      featureName="WhoFed Premium"
+      featureDescription="Unlock unlimited pets, multiple households, custom photos, and PDF exports!"
+      on:close={() => showPremiumModal = false}
+  />
+{/if}

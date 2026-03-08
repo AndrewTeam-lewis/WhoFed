@@ -1,4 +1,5 @@
 import type { Database } from './database.types';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 type Schedule = Database['public']['Tables']['schedules']['Row'];
 type DailyTaskInsert = Database['public']['Tables']['daily_tasks']['Insert'];
@@ -6,14 +7,21 @@ type DailyTaskInsert = Database['public']['Tables']['daily_tasks']['Insert'];
 export function generateTasksForDate(
     schedules: Schedule[],
     date: Date,
-    householdId: string
+    householdId: string,
+    householdTimezone: string = 'America/New_York'
 ): DailyTaskInsert[] {
     const tasks: DailyTaskInsert[] = [];
 
-    // Normalize date to YYYY-MM-DD (Local Time)
-    const dateStr = date.toLocaleDateString('en-CA');
-    const dayOfWeek = date.getDay(); // 0 = Sun
-    const dayOfMonth = date.getDate(); // 1-31
+    // Evaluate "today" in the household's timezone
+    const zonedDate = toZonedTime(date, householdTimezone);
+
+    const year = zonedDate.getFullYear();
+    const month = String(zonedDate.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(zonedDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayNum}`;
+
+    const dayOfWeek = zonedDate.getDay(); // 0 = Sun
+    const dayOfMonth = zonedDate.getDate(); // 1-31
 
     schedules.forEach(schedule => {
         if (!schedule.is_enabled) return;
@@ -53,8 +61,13 @@ export function generateTasksForDate(
         // Create task objects for each time
         activeTimes.forEach(({ time }) => {
             const [h, m] = time.split(':');
-            const dueAt = new Date(date);
-            dueAt.setHours(parseInt(h), parseInt(m), 0, 0);
+
+            // Construct the local time in the target timezone
+            const targetZoned = new Date(zonedDate.getTime());
+            targetZoned.setHours(parseInt(h), parseInt(m), 0, 0);
+
+            // Convert to true UTC for the database
+            const dueAtUTC = fromZonedTime(targetZoned, householdTimezone);
 
             tasks.push({
                 pet_id: schedule.pet_id || '',
@@ -63,7 +76,7 @@ export function generateTasksForDate(
                 label: schedule.label || (schedule.task_type === 'feeding' ? 'Feeding' : schedule.task_type === 'care' ? 'Care' : 'Medication'),
                 task_type: schedule.task_type || 'care',
                 status: 'pending',
-                due_at: dueAt.toISOString(),
+                due_at: dueAtUTC.toISOString(),
                 created_at: new Date().toISOString()
             });
         });

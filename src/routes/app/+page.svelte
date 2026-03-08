@@ -27,6 +27,15 @@
   // Create Household State
   let showCreateHouseholdModal = false;
   let newHouseholdName = '';
+  let newHouseholdTimezone = '';
+
+  import { getUserTimezone, getAllTimezones } from '$lib/utils/timezones';
+  let timezones = getAllTimezones();
+
+  // Initialize timezone after mount or eagerly
+  if (typeof window !== 'undefined') {
+      newHouseholdTimezone = getUserTimezone();
+  }
 
   // Notification Prompt State
   import { onMount } from 'svelte';
@@ -37,26 +46,103 @@
   let showNotificationPrompt = false;
 
   onMount(async () => {
+    // Setup listeners for day rollover
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    setupMidnightTimer();
+
     // Only show on native platforms (Android/iOS)
-    if (!Capacitor.isNativePlatform()) return;
+    if (Capacitor.isNativePlatform()) {
+      // Native foreground listener
+      import('@capacitor/app').then(({ App: CapacitorApp }) => {
+         CapacitorApp.addListener('appStateChange', (state) => {
+            if (state.isActive) checkDayChange();
+         }).then(listener => appStateListener = listener);
+      });
 
-    // Check if we've already shown the prompt
-    const hasSeenPrompt = localStorage.getItem('notificationPromptShown');
-    if (hasSeenPrompt) return;
+      // Check if we've already shown the prompt
+      const hasSeenPrompt = localStorage.getItem('notificationPromptShown');
+      if (!hasSeenPrompt) {
+          // Check if notifications are already enabled
+          const isEnabled = await notificationService.checkSubscriptionState();
+          if (!isEnabled) {
+             // Show the prompt after a short delay
+             setTimeout(() => {
+               showNotificationPrompt = true;
+             }, 1500);
+          }
+      }
+    }
 
-    // Check if notifications are already enabled
-    const isEnabled = await notificationService.checkSubscriptionState();
-    if (isEnabled) return;
-
-    // Show the prompt after a short delay
-    setTimeout(() => {
-      showNotificationPrompt = true;
-    }, 1500);
+    return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        if (midnightTimeout) clearTimeout(midnightTimeout);
+        if (appStateListener) appStateListener.remove();
+    };
   });
 
   function handleCloseNotificationPrompt() {
     showNotificationPrompt = false;
     localStorage.setItem('notificationPromptShown', 'true');
+  }
+
+  import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
+  // Day Boundary Detection
+  function getHouseholdDateString() {
+      const tz = $activeHousehold?.timezone || 'America/New_York';
+      const zoned = toZonedTime(new Date(), tz);
+      return `${zoned.getFullYear()}-${zoned.getMonth() + 1}-${zoned.getDate()}`;
+  }
+
+  let currentLoadedDate = '';
+  let midnightTimeout: NodeJS.Timeout | null = null;
+  let appStateListener: any = null;
+
+  async function checkDayChange() {
+    if (!$activeHousehold) return;
+    const today = getHouseholdDateString();
+    
+    // Initialize if first run
+    if (!currentLoadedDate) {
+        currentLoadedDate = today;
+        return;
+    }
+
+    if (today !== currentLoadedDate) {
+      console.log('Day changed (TZ: ' + $activeHousehold.timezone + ')! Refreshing dashboard data...');
+      currentLoadedDate = today;
+      // Run both services explicitly since we crossed a day boundary
+      await cleanupOldTasks($activeHousehold.id);
+      const { ensureDailyTasks } = await import('$lib/services/taskService');
+      await ensureDailyTasks($activeHousehold.id);
+      await fetchDashboardData();
+      setupMidnightTimer(); // Re-arm the timer for tomorrow
+    }
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'visible') {
+      checkDayChange();
+    }
+  }
+
+  function setupMidnightTimer() {
+    if (midnightTimeout) clearTimeout(midnightTimeout);
+    if (!$activeHousehold) return;
+
+    const tz = $activeHousehold.timezone || 'America/New_York';
+    const now = new Date();
+    const zoned = toZonedTime(now, tz);
+    
+    const tomorrowZoned = new Date(zoned.getTime());
+    tomorrowZoned.setHours(24, 0, 0, 0); // Next midnight
+    
+    const tomorrowUTC = fromZonedTime(tomorrowZoned, tz);
+    const msUntilMidnight = tomorrowUTC.getTime() - now.getTime() + 1000; // Add 1s padding
+    
+    // Fallback bounds to avoid negative/zero times causing infinite loops
+    const safeDelay = Math.max(msUntilMidnight, 5000);
+    midnightTimeout = setTimeout(checkDayChange, safeDelay);
   }
 
   import { onboarding } from '$lib/stores/onboarding';
@@ -70,6 +156,9 @@
 
   $: if ($currentUser && $activeHousehold?.id && $activeHousehold.id !== lastFetchedForHouseholdId) {
       lastFetchedForHouseholdId = $activeHousehold.id;
+      currentLoadedDate = getHouseholdDateString(); // Initialize correct reference date
+      // Setup the proper timer when household loads
+      setupMidnightTimer(); 
       fetchDashboardData();
   }
   import { t, formatTime, formatDate, formatDateTime } from '$lib/services/i18n';
@@ -156,6 +245,7 @@
               .from('households')
               .insert({
                   name: newHouseholdName.trim(),
+                  timezone: newHouseholdTimezone,
                   owner_id: $currentUser!.id,
                   subscription_status: 'free'
               })
@@ -843,8 +933,19 @@
                   type="text" 
                   bind:value={newHouseholdName}
                   placeholder="e.g., Beach House, Mom's Place..."
-                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent"
+                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent mb-4"
               />
+              
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.settings.timezone || 'Household Timezone'}</label>
+              <select
+                  bind:value={newHouseholdTimezone}
+                  class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent appearance-none"
+                  style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 1rem top 50%; background-size: 0.65rem auto;"
+              >
+                  {#each timezones as tz}
+                      <option value={tz}>{tz}</option>
+                  {/each}
+              </select>
           </div>
           
           <div class="flex space-x-3">

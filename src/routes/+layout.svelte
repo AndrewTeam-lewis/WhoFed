@@ -15,7 +15,6 @@
   import Walkthrough from '$lib/components/Walkthrough.svelte';
   import HouseholdSetupModal from '$lib/components/HouseholdSetupModal.svelte';
   import EnvironmentBadge from '$lib/components/EnvironmentBadge.svelte';
-  import AppBanner from '$lib/components/AppBanner.svelte';
   import '../app.css';
 
   let showHouseholdSetup = false;
@@ -207,6 +206,7 @@
               households (
                   id,
                   name,
+                  timezone,
                   subscription_status,
                   owner_id,
                   profiles:owner_id (first_name)
@@ -248,6 +248,7 @@
                id: m.household_id,
                name: displayName,
                role: isOwner ? 'owner' : 'member',
+               timezone: hh?.timezone || 'America/New_York',
                subscription_status: hh?.subscription_status,
                ownerName: ownerName
            };
@@ -311,7 +312,6 @@
     </main>
   {/if}
 
-  <AppBanner />
   <EnvironmentBadge />
   <Walkthrough />
 

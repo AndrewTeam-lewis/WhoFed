@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       activity_log: {
@@ -31,7 +56,7 @@ export type Database = {
           pet_id?: string | null
           schedule_id?: string | null
           task_id?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           action_type?: string
@@ -40,7 +65,7 @@ export type Database = {
           pet_id?: string | null
           schedule_id?: string | null
           task_id?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -153,35 +178,49 @@ export type Database = {
       }
       household_invitations: {
         Row: {
-          id: string
-          household_id: string
-          invited_user_id: string
-          invited_by: string
-          status: string
           created_at: string
+          household_id: string
+          id: string
+          invited_by: string
+          invited_user_id: string
+          status: string
         }
         Insert: {
-          id?: string
-          household_id: string
-          invited_user_id: string
-          invited_by: string
-          status?: string
           created_at?: string
+          household_id: string
+          id?: string
+          invited_by: string
+          invited_user_id: string
+          status?: string
         }
         Update: {
-          id?: string
-          household_id?: string
-          invited_user_id?: string
-          invited_by?: string
-          status?: string
           created_at?: string
+          household_id?: string
+          id?: string
+          invited_by?: string
+          invited_user_id?: string
+          status?: string
         }
         Relationships: [
           {
             foreignKeyName: "household_invitations_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
+            referencedRelation: "debug_households_view"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "household_invitations_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -191,11 +230,43 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      household_keys: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          household_id: string
+          id: string
+          key_value: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          household_id: string
+          id?: string
+          key_value: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          household_id?: string
+          id?: string
+          key_value?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "household_invitations_invited_by_fkey"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
+            foreignKeyName: "household_keys_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "debug_households_view"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "household_keys_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "households"
             referencedColumns: ["id"]
           },
         ]
@@ -249,21 +320,24 @@ export type Database = {
       households: {
         Row: {
           id: string
-          owner_id: string
           name: string | null
+          owner_id: string
           subscription_status: string | null
+          timezone: string
         }
         Insert: {
           id?: string
-          owner_id: string
           name?: string | null
+          owner_id: string
           subscription_status?: string | null
+          timezone?: string
         }
         Update: {
           id?: string
-          owner_id?: string
           name?: string | null
+          owner_id?: string
           subscription_status?: string | null
+          timezone?: string
         }
         Relationships: [
           {
@@ -274,6 +348,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_templates: {
+        Row: {
+          body_template: string | null
+          created_at: string | null
+          id: string
+          key: string
+          language: string
+          title_template: string | null
+        }
+        Insert: {
+          body_template?: string | null
+          created_at?: string | null
+          id?: string
+          key: string
+          language: string
+          title_template?: string | null
+        }
+        Update: {
+          body_template?: string | null
+          created_at?: string | null
+          id?: string
+          key?: string
+          language?: string
+          title_template?: string | null
+        }
+        Relationships: []
       }
       pets: {
         Row: {
@@ -326,38 +427,64 @@ export type Database = {
           first_name: string | null
           id: string
           language: string | null
-          last_name: string | null
-          phone: string | null
           push_subscription: Json | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           tier: string
           updated_at: string
-          username: string | null
         }
         Insert: {
           email?: string | null
           first_name?: string | null
           id: string
           language?: string | null
-          last_name?: string | null
-          phone?: string | null
           push_subscription?: Json | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           tier?: string
           updated_at?: string
-          username?: string | null
         }
         Update: {
           email?: string | null
           first_name?: string | null
           id?: string
           language?: string | null
-          last_name?: string | null
-          phone?: string | null
           push_subscription?: Json | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           tier?: string
           updated_at?: string
-          username?: string | null
         }
         Relationships: []
+      }
+      reminder_settings: {
+        Row: {
+          created_at: string | null
+          is_enabled: boolean | null
+          schedule_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          is_enabled?: boolean | null
+          schedule_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          is_enabled?: boolean | null
+          schedule_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_settings_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schedules: {
         Row: {
@@ -467,9 +594,15 @@ export type Database = {
       }
     }
     Functions: {
-      accept_household_invite: {
-        Args: { p_invite_id: string }
-        Returns: Json
+      accept_household_invite: { Args: { p_invite_id: string }; Returns: Json }
+      delete_user: { Args: never; Returns: undefined }
+      get_household_from_key: {
+        Args: { lookup_key: string }
+        Returns: {
+          household_id: string
+          member_count: number
+          owner_name: string
+        }[]
       }
       get_household_join_info: {
         Args: { _household_id: string }
@@ -478,28 +611,22 @@ export type Database = {
           owner_name: string
         }[]
       }
-      get_household_from_key: {
-        Args: { lookup_key: string }
-        Returns: {
-          household_id: string
-          owner_name: string
-          member_count: number
-        }[]
-      }
       get_my_households: { Args: never; Returns: string[] }
       invite_user_by_identifier: {
-        Args: { p_identifier: string; p_household_id: string }
+        Args: { p_household_id: string; p_identifier: string }
         Returns: Json
       }
       invite_user_by_username: {
-        Args: { p_username: string; p_household_id: string }
+        Args: { p_household_id: string; p_username: string }
         Returns: Json
       }
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
-      join_household_by_key: {
-        Args: { p_household_id: string }
-        Returns: Json
+      is_household_member_or_invited: {
+        Args: { _household_id: string }
+        Returns: boolean
       }
+      join_household_by_key: { Args: { p_household_id: string }; Returns: Json }
+      match_schedules_and_notify: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
@@ -516,118 +643,121 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

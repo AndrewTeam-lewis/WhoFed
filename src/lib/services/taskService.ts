@@ -1,15 +1,33 @@
 import { supabase } from '$lib/supabase';
 import { generateTasksForDate } from '$lib/taskUtils';
+import { get } from 'svelte/store';
+import { availableHouseholds } from '$lib/stores/appState';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
+// Get household timezone from state cache quietly
+function getHouseholdTimezone(householdId: string): string {
+    const hh = get(availableHouseholds).find(h => h.id === householdId);
+    return hh?.timezone || 'America/New_York';
+}
 
 // Helper to ensure tasks exist for today
 export const ensureDailyTasks = async (householdId: string): Promise<boolean> => {
     try {
-        const date = new Date();
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
+        const tz = getHouseholdTimezone(householdId);
+        const date = new Date(); // local current instant
 
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
+        // Find what "today" means right now in that timezone
+        const zoned = toZonedTime(date, tz);
+
+        // Start of Day in TZ
+        const startZoned = new Date(zoned.getTime());
+        startZoned.setHours(0, 0, 0, 0);
+        const startOfDayUTC = fromZonedTime(startZoned, tz);
+
+        // End of Day in TZ
+        const endZoned = new Date(zoned.getTime());
+        endZoned.setHours(23, 59, 59, 999);
+        const endOfDayUTC = fromZonedTime(endZoned, tz);
 
         // Optimization: Run queries in parallel
         // 1. Get enabled schedules (joined with pets to filter by household)
@@ -25,8 +43,8 @@ export const ensureDailyTasks = async (householdId: string): Promise<boolean> =>
                 .from('daily_tasks')
                 .select('schedule_id, due_at')
                 .eq('household_id', householdId)
-                .gte('due_at', startOfDay.toISOString())
-                .lte('due_at', endOfDay.toISOString())
+                .gte('due_at', startOfDayUTC.toISOString())
+                .lte('due_at', endOfDayUTC.toISOString())
         ]);
 
         const activeSchedules = schedulesRes.data || [];
@@ -39,8 +57,7 @@ export const ensureDailyTasks = async (householdId: string): Promise<boolean> =>
         }));
 
         // 3. Generate candidate tasks
-        // Cast to any to avoid TS issues with the joined 'pets' property
-        const candidateTasks = generateTasksForDate(activeSchedules as any, date, householdId);
+        const candidateTasks = generateTasksForDate(activeSchedules as any, date, householdId, tz);
 
         // 4. Filter out ones that already exist
         const toInsert = candidateTasks.filter(t => {
@@ -86,14 +103,18 @@ export const cleanupOldTasks = async (householdId: string) => {
             return;
         }
 
-        // Get start of today in UTC (not local time)
-        const currentDate = new Date();
-        const startOfDayUTC = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate(), 0, 0, 0, 0));
+        // Get start of today in the household timezone
+        const tz = getHouseholdTimezone(householdId);
+        const nowZoned = toZonedTime(new Date(), tz);
+        const startZoned = new Date(nowZoned.getTime());
+        startZoned.setHours(0, 0, 0, 0);
+
+        const startOfDayUTC = fromZonedTime(startZoned, tz);
 
         // Delete tasks that are:
         // 1. In this household
         // 2. Pending (not completed)
-        // 3. Due before today (in UTC)
+        // 3. Due before today (in local timezone equivalent)
         // 4. NOT type 'medication' (medications persist until completed)
         const { error, count } = await supabase
             .from('daily_tasks')

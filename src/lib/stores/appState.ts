@@ -7,6 +7,7 @@ export interface HouseholdState {
     role: 'owner' | 'member';
     subscription_status?: string;
     ownerName?: string; // Owner's full name for display
+    timezone?: string; // Household timezone
 }
 
 // Stores

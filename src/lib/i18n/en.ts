@@ -81,6 +81,7 @@ export default {
         delete_household: 'Delete Household',
         rename_household: 'Rename Household',
         household_name: 'Household Name',
+        timezone: 'Household Timezone',
         leave: 'Leave',
         remove: 'Remove',
         invitations: 'Invitations',
