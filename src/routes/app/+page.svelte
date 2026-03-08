@@ -47,16 +47,15 @@
   let showNotificationPrompt = false;
 
   onMount(async () => {
-    // Setup listeners for day rollover
+    // Refresh when app comes to foreground
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    setupMidnightTimer();
 
     // Only show on native platforms (Android/iOS)
     if (Capacitor.isNativePlatform()) {
-      // Native foreground listener
+      // Native foreground listener - refresh when app becomes active
       import('@capacitor/app').then(({ App: CapacitorApp }) => {
          CapacitorApp.addListener('appStateChange', (state) => {
-            if (state.isActive) checkDayChange();
+            if (state.isActive) fetchDashboardData();
          }).then(listener => appStateListener = listener);
       });
 
@@ -76,7 +75,6 @@
 
     return () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
-        if (midnightTimeout) clearTimeout(midnightTimeout);
         if (appStateListener) appStateListener.remove();
     };
   });
@@ -88,67 +86,17 @@
 
   import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
-  // Day Boundary Detection
-  function getHouseholdDateString() {
-      const tz = $activeHousehold?.timezone || 'America/New_York';
-      const zoned = toZonedTime(new Date(), tz);
-      return `${zoned.getFullYear()}-${zoned.getMonth() + 1}-${zoned.getDate()}`;
-  }
-
-  let currentLoadedDate = '';
-  let midnightTimeout: NodeJS.Timeout | null = null;
   let appStateListener: any = null;
-
-  async function checkDayChange() {
-    if (!$activeHousehold) return;
-    const today = getHouseholdDateString();
-    
-    // Initialize if first run
-    if (!currentLoadedDate) {
-        currentLoadedDate = today;
-        return;
-    }
-
-    if (today !== currentLoadedDate) {
-      console.log('Day changed (TZ: ' + $activeHousehold.timezone + ')! Refreshing dashboard data...');
-      currentLoadedDate = today;
-      // Run both services explicitly since we crossed a day boundary
-      await cleanupOldTasks($activeHousehold.id);
-      const { ensureDailyTasks } = await import('$lib/services/taskService');
-      await ensureDailyTasks($activeHousehold.id);
-      await fetchDashboardData();
-      setupMidnightTimer(); // Re-arm the timer for tomorrow
-    }
-  }
 
   function handleVisibilityChange() {
     if (document.visibilityState === 'visible') {
-      checkDayChange();
+      // Refresh data when user returns to the app
+      fetchDashboardData();
     }
-  }
-
-  function setupMidnightTimer() {
-    if (midnightTimeout) clearTimeout(midnightTimeout);
-    if (!$activeHousehold) return;
-
-    const tz = $activeHousehold.timezone || 'America/New_York';
-    const now = new Date();
-    const zoned = toZonedTime(now, tz);
-    
-    const tomorrowZoned = new Date(zoned.getTime());
-    tomorrowZoned.setHours(24, 0, 0, 0); // Next midnight
-    
-    const tomorrowUTC = fromZonedTime(tomorrowZoned, tz);
-    const msUntilMidnight = tomorrowUTC.getTime() - now.getTime() + 1000; // Add 1s padding
-    
-    // Fallback bounds to avoid negative/zero times causing infinite loops
-    const safeDelay = Math.max(msUntilMidnight, 5000);
-    midnightTimeout = setTimeout(checkDayChange, safeDelay);
   }
 
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
-  import { cleanupOldTasks } from '$lib/services/taskService';
   import CustomTimezoneSelect from '$lib/components/CustomTimezoneSelect.svelte';
   import { currentUser, userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
@@ -158,9 +106,6 @@
 
   $: if ($currentUser && $activeHousehold?.id && $activeHousehold.id !== lastFetchedForHouseholdId) {
       lastFetchedForHouseholdId = $activeHousehold.id;
-      currentLoadedDate = getHouseholdDateString(); // Initialize correct reference date
-      // Setup the proper timer when household loads
-      setupMidnightTimer(); 
       fetchDashboardData();
   }
   import { t, formatTime, formatDate, formatDateTime } from '$lib/services/i18n';
@@ -307,13 +252,17 @@
 
       // Monthly: Show date (Feb 29). Daily: Show time (8:00 AM).
       // If Daily AND from a PAST day (not today): Show date above time
-      const today = new Date();
-      today.setHours(0,0,0,0);
+      // CRITICAL: Compare in household timezone, not client timezone
+      const tz = $activeHousehold?.timezone || 'America/New_York';
+      const nowZoned = toZonedTime(new Date(), tz);
+      const todayZoned = new Date(nowZoned.getTime());
+      todayZoned.setHours(0,0,0,0);
 
-      const dueDate = new Date(due);
-      dueDate.setHours(0,0,0,0);
+      const dueZoned = toZonedTime(due, tz);
+      const dueDateZoned = new Date(dueZoned.getTime());
+      dueDateZoned.setHours(0,0,0,0);
 
-      const isPastDate = dueDate < today; // Compare dates only - true only for previous days
+      const isPastDate = dueDateZoned < todayZoned; // Compare dates only - true only for previous days
       const showDateBadge = isPastDate && !isDone;
 
       const timeFormatted = isMonthly ? fmtDate(due) : fmtTime(due);
@@ -383,9 +332,8 @@
     try {
       const householdId = $activeHousehold.id;
 
-      // Cleanup old tasks (Non-blocking)
-      // Note: ensureDailyTasks is called in +layout.svelte when households load
-      cleanupOldTasks(householdId);  // Runs once per day per household
+      // Note: Server-side CRON handles task generation/cleanup every 5 minutes
+      // Client just fetches and displays current database state
 
       // Calculate day range
       const startOfDay = new Date();
