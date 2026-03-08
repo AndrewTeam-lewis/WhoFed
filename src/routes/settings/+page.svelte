@@ -18,6 +18,7 @@
   import NotificationsModal from '$lib/components/NotificationsModal.svelte';
   import { notificationService } from '$lib/services/notifications';
   import { purchasesService, currentOfferings } from '$lib/services/purchases';
+  import { stripeService } from '$lib/services/stripe';
   // Import the new modal
   import ExportOptionsModal from '$lib/components/ExportOptionsModal.svelte';
   import { currentLanguage, setLanguage, t, type Language } from '$lib/services/i18n';
@@ -61,7 +62,25 @@
 
       showExportOptionsModal = true;
   }
-  
+
+  async function manageSubscription() {
+    if (Capacitor.isNativePlatform()) {
+      // Mobile - direct to app store
+      if (Capacitor.getPlatform() === 'ios') {
+        window.open('https://apps.apple.com/account/subscriptions');
+      } else {
+        window.open('https://play.google.com/store/account/subscriptions');
+      }
+    } else {
+      // Web - open Stripe portal
+      try {
+        await stripeService.redirectToCustomerPortal();
+      } catch (e: any) {
+        alert('Error opening subscription management: ' + e.message);
+      }
+    }
+  }
+
   // Clean up old function if referenced in template, verify template updation next
 
 
@@ -1328,7 +1347,13 @@
                       <h3 class="text-base font-bold text-brand-sage mb-1">
                           WhoFed Premium
                       </h3>
-                      <p class="text-brand-sage/70 text-xs font-medium">You're all set! Enjoy unlimited features.</p>
+                      <p class="text-brand-sage/70 text-xs font-medium mb-2">You're all set! Enjoy unlimited features.</p>
+                      <button
+                          on:click={manageSubscription}
+                          class="text-xs font-medium text-brand-sage hover:text-brand-sage/70 transition-colors underline"
+                      >
+                          {Capacitor.isNativePlatform() ? 'Manage via App Store' : 'Manage subscription'}
+                      </button>
                   </div>
                   <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-sage text-white">
                       Active
@@ -1411,7 +1436,8 @@
           </section>
        </div>
 
-       <!-- Mobile -->
+       <!-- Mobile (only show on web) -->
+       {#if !Capacitor.isNativePlatform()}
        <div class="space-y-2">
           <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Mobile</div>
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm p-6">
@@ -1428,6 +1454,7 @@
               </div>
           </section>
        </div>
+       {/if}
 
        <!-- Admin Tools -->
        <div class="space-y-2">

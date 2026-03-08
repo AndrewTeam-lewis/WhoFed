@@ -307,10 +307,13 @@
 
       // Monthly: Show date (Feb 29). Daily: Show time (8:00 AM).
       // If Daily AND Overdue from previous day: Show Date + Time (Feb 16, 8:00 AM)
-      const startOfToday = new Date();
-      startOfToday.setHours(0,0,0,0);
-      
-      const isPastDate = due < startOfToday;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      const dueDate = new Date(due);
+      dueDate.setHours(0,0,0,0);
+
+      const isPastDate = dueDate < today; // Compare dates only, not times
 
       const timeFormatted = isMonthly 
           ? fmtDate(due)
