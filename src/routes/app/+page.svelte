@@ -306,21 +306,22 @@
       const minsDiff = Math.floor(dueDiff / (1000 * 60));
 
       // Monthly: Show date (Feb 29). Daily: Show time (8:00 AM).
-      // If Daily AND Overdue from previous day: Show Date + Time (Feb 16, 8:00 AM)
+      // If Daily AND from a PAST day (not today): Show date above time
       const today = new Date();
       today.setHours(0,0,0,0);
 
       const dueDate = new Date(due);
       dueDate.setHours(0,0,0,0);
 
-      const isPastDate = dueDate < today; // Compare dates only, not times
+      const isPastDate = dueDate < today; // Compare dates only - true only for previous days
+      const showDateBadge = isPastDate && !isDone;
 
-      const timeFormatted = isMonthly 
-          ? fmtDate(due)
-          : (isPastDate && !isDone)
-              ? fmtDateTime(due)
-              : fmtTime(due);
-      
+      const timeFormatted = isMonthly ? fmtDate(due) : fmtTime(due);
+      // Format full month name (e.g., "March 7")
+      const dateFormatted = showDateBadge
+          ? due.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+          : null;
+
       let dueLabel = 'Due';
       let isUrgent = false;
       let isOverdue = false;
@@ -372,7 +373,7 @@
            }
        }
 
-      return { isUrgent, isOverdue, timeFormatted, dueLabel };
+      return { isUrgent, isOverdue, timeFormatted, dateFormatted, dueLabel };
   }
 
   async function fetchDashboardData() {

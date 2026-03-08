@@ -115,7 +115,7 @@
                     </span>
                 {/if}
 
-                <div class="flex-1 min-w-0">
+                <div class="flex-1 min-w-0 flex flex-col justify-center">
                     <div class="flex items-center text-sm leading-tight truncate {isDone ? 'text-xs line-through decoration-gray-300' : ''}">
                        <span>{task.label}</span>
                        {#if isDone}
@@ -125,7 +125,12 @@
                        {/if}
                     </div>
                     {#if !isDone}
-                       <div class="text-[10px] tracking-wide opacity-80">{visuals.timeFormatted}</div>
+                       <div class="flex flex-col gap-0.5 mt-0.5">
+                           {#if visuals.dateFormatted}
+                               <div class="text-[10px] tracking-wide opacity-80">{visuals.dateFormatted}</div>
+                           {/if}
+                           <div class="text-[10px] tracking-wide opacity-80">{visuals.timeFormatted}</div>
+                       </div>
                     {/if}
                 </div>
             </div>

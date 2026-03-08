@@ -14,7 +14,7 @@
   const slides = [
     {
       title: 'Welcome to WhoFed!',
-      description: 'The single source of truth for your pet\'s care. Track meals, medication, and care tasks all in one place.'
+      description: 'A single location to manage your pet\'s care.'
     },
     {
       title: 'No More Double-Feeding',
@@ -56,10 +56,10 @@
           <div class="mb-6 transition-all duration-300 transform scale-100">
               <img src="/whofed_logo_email_tiny.png" alt="WhoFed Logo" class="w-24 h-24 object-contain mx-auto" />
           </div>
-          <h2 class="text-2xl font-black text-gray-900 mb-3 tracking-tight">
+          <h2 class="text-xl font-bold text-gray-900 mb-4 tracking-tight">
               {slides[currentSlide].title}
           </h2>
-          <p class="text-gray-500 mb-8 leading-relaxed h-20 flex items-center justify-center">
+          <p class="text-gray-600 mb-8 leading-relaxed min-h-[3rem]">
               {slides[currentSlide].description}
           </p>
           

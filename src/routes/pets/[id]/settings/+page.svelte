@@ -559,7 +559,7 @@
       // Validate care tasks have names
       labelErrors = {}; // Clear previous errors
       for (const s of schedules) {
-          if (s.isEnabled && s.type === 'care' && !s.label.trim()) {
+          if (s.isEnabled && !s.label.trim()) {
               labelErrors[s.uiId] = true;
               return;
           }
@@ -915,10 +915,10 @@
                                         bind:value={schedule.label}
                                         on:input={() => { if (labelErrors[schedule.uiId]) labelErrors[schedule.uiId] = false; }}
                                         class="font-extrabold text-typography-primary text-base bg-transparent border-b-2 {labelErrors[schedule.uiId] ? 'border-red-500' : 'border-transparent hover:border-gray-200 focus:border-brand-sage'} focus:ring-0 w-full placeholder-gray-400 transition-colors pb-1 overflow-hidden text-ellipsis whitespace-nowrap"
-                                        placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder + ' *' : $t.pet_settings.med_name_placeholder}
+                                        placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder + ' *' : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder + ' *' : $t.pet_settings.med_name_placeholder + ' *'}
                                     />
                                      {#if labelErrors[schedule.uiId]}
-                                         <p class="text-red-500 text-xs mt-1">{$t.pet_settings.care_task_name_required}</p>
+                                         <p class="text-red-500 text-xs mt-1">Please provide a name for this task</p>
                                      {/if}
                                      <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
