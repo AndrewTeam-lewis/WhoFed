@@ -12,6 +12,23 @@ serve(async (req) => {
     }
 
     try {
+        // Verify authentication
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            throw new Error('Missing authorization header');
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        });
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            throw new Error('Unauthorized');
+        }
+
         const { email, inviter_name, household_name, is_new_user, invite_key } = await req.json();
 
         if (!email || !inviter_name || !invite_key) {
