@@ -333,22 +333,42 @@
       const householdId = $activeHousehold.id;
 
       // Note: Server-side CRON handles task generation/cleanup every 5 minutes
-      // Client just fetches and displays all pending tasks (no date filtering needed)
+      // Client fetches: (1) All tasks for today, (2) Old pending medications
 
-      // Parallel Fetch: Pets & Tasks (Independent)
-      const [petRes, taskRes] = await Promise.all([
+      // Calculate today's date range in household timezone
+      const tz = $activeHousehold.timezone || 'America/New_York';
+      const nowZoned = toZonedTime(new Date(), tz);
+      const startOfDay = new Date(nowZoned.getTime());
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(nowZoned.getTime());
+      endOfDay.setHours(23, 59, 59, 999);
+      const startOfDayUTC = fromZonedTime(startOfDay, tz);
+      const endOfDayUTC = fromZonedTime(endOfDay, tz);
+
+      // Parallel Fetch: Pets & Today's Tasks & Old Medications
+      const [petRes, todayTasksRes, oldMedsRes] = await Promise.all([
           supabase
             .from('pets')
             .select('*')
             .eq('household_id', householdId)
             .order('name'),
 
+          // All tasks for today (pending + completed)
           supabase
             .from('daily_tasks')
             .select('*, schedules(schedule_mode)')
             .eq('household_id', householdId)
+            .gte('due_at', startOfDayUTC.toISOString())
+            .lte('due_at', endOfDayUTC.toISOString()),
+
+          // Old pending medications (from before today)
+          supabase
+            .from('daily_tasks')
+            .select('*, schedules(schedule_mode)')
+            .eq('household_id', householdId)
+            .eq('task_type', 'medication')
             .eq('status', 'pending')
-            .order('due_at')
+            .lt('due_at', startOfDayUTC.toISOString())
       ]);
 
       // Handle Pets
@@ -357,9 +377,11 @@
       // Show welcome for new users (only if not seen before)
       onboarding.checkWelcome();
 
-      // Handle Tasks
-      if (taskRes.error) throw taskRes.error;
-      dailyTasks = (taskRes.data || []) as any;
+      // Handle Tasks - combine today's tasks with old medications
+      if (todayTasksRes.error) throw todayTasksRes.error;
+      const todayTasks = (todayTasksRes.data || []) as any;
+      const oldMeds = (oldMedsRes.data || []) as any;
+      dailyTasks = [...oldMeds, ...todayTasks];
 
       // 4. Get recent activity in background (non-blocking so tasks show immediately)
       loading = false;
