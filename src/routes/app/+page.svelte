@@ -266,9 +266,9 @@
       const showDateBadge = isPastDate && !isDone;
 
       const timeFormatted = isMonthly ? fmtDate(due) : fmtTime(due);
-      // Format full month name (e.g., "March 7")
+      // Format full month name (e.g., "March 7") - use household timezone
       const dateFormatted = showDateBadge
-          ? due.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+          ? toZonedTime(due, tz).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
           : null;
 
       let dueLabel = 'Due';
@@ -328,47 +328,28 @@
   async function fetchDashboardData() {
     if (!$activeHousehold) return;
     loading = true;
-    
+
     try {
       const householdId = $activeHousehold.id;
 
       // Note: Server-side CRON handles task generation/cleanup every 5 minutes
-      // Client just fetches and displays current database state
-
-      // Calculate day range
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
+      // Client just fetches and displays all pending tasks (no date filtering needed)
 
       // Parallel Fetch: Pets & Tasks (Independent)
-      // This runs immediately, showing whatever is currently in DB (instant)
-      const [petRes, taskRes, pastMedsRes] = await Promise.all([
+      const [petRes, taskRes] = await Promise.all([
           supabase
             .from('pets')
             .select('*')
             .eq('household_id', householdId)
             .order('name'),
-            
-          supabase
-            .from('daily_tasks')
-            .select('*, schedules(schedule_mode)')
-            .eq('household_id', householdId)
-            .gte('due_at', startOfDay.toISOString())
-            .lte('due_at', endOfDay.toISOString()),
 
           supabase
             .from('daily_tasks')
             .select('*, schedules(schedule_mode)')
             .eq('household_id', householdId)
-            .eq('task_type', 'medication')
-            .neq('status', 'completed')
-            .lt('due_at', startOfDay.toISOString())
+            .eq('status', 'pending')
+            .order('due_at')
       ]);
-
-      // Note: Task generation now happens in +layout.svelte
-      // Tasks are already ensured before this page loads
 
       // Handle Pets
       pets = petRes.data || [];
@@ -378,11 +359,7 @@
 
       // Handle Tasks
       if (taskRes.error) throw taskRes.error;
-      const todaysTasks = (taskRes.data || []) as any;
-      const pastMeds = (pastMedsRes.data || []) as any;
-      
-      // Combine and Sort
-      dailyTasks = [...pastMeds, ...todaysTasks];
+      dailyTasks = (taskRes.data || []) as any;
 
       // 4. Get recent activity in background (non-blocking so tasks show immediately)
       loading = false;

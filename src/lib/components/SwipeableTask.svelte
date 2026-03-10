@@ -56,11 +56,13 @@
 
   $: buttonClass = `
         w-full relative overflow-hidden transition-all duration-300 transform font-bold text-left flex items-center justify-between rounded-2xl
-        ${isDone 
-            ? 'p-2 bg-transparent text-gray-300 border border-dashed border-gray-200' 
-            : (visuals.isUrgent && !isLocked)
-                ? 'p-3.5 bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage'
-                : 'p-3.5 bg-white text-gray-600 border border-gray-200 shadow-sm hover:border-gray-300'}
+        ${isDone
+            ? 'p-2 bg-transparent text-gray-300 border border-dashed border-gray-200'
+            : (visuals.dateFormatted && task.task_type === 'medication')
+                ? 'p-3.5 bg-red-500 text-white shadow-lg shadow-red-500/20 ring-1 ring-red-500'
+                : (visuals.isUrgent && !isLocked)
+                    ? 'p-3.5 bg-brand-sage text-white shadow-lg shadow-brand-sage/20 ring-1 ring-brand-sage'
+                    : 'p-3.5 bg-white text-gray-600 border border-gray-200 shadow-sm hover:border-gray-300'}
         ${isLocked ? 'cursor-not-allowed bg-gray-50 text-gray-400' : ''}
   `;
 </script>
