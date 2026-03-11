@@ -68,14 +68,15 @@ export const authService = {
         return data;
     },
 
-    // Create profile only (for users joining via invite)
+    // Update profile only (for users joining via invite)
+    // Note: Profile is auto-created by handle_new_user trigger, so we UPDATE instead of INSERT
     async createProfileOnly(userId: string, profileData: Omit<Profile, 'id'>) {
         const { data, error } = await supabase
             .from('profiles')
-            .insert({
-                id: userId,
+            .update({
                 first_name: profileData.first_name
             })
+            .eq('id', userId)
             .select()
             .single();
 
@@ -83,16 +84,17 @@ export const authService = {
         return data;
     },
 
-    // Create profile AND household (for normal onboarding flow)
+    // Update profile AND create household (for normal onboarding flow)
+    // Note: Profile is auto-created by handle_new_user trigger, so we UPDATE instead of INSERT
     async createProfile(userId: string, profileData: Omit<Profile, 'id'>) {
-        // 1. Create Profile
+        // 1. Update Profile
         const { data, error } = await supabase
             .from('profiles')
-            .insert({
-                id: userId,
+            .update({
                 first_name: profileData.first_name
             })
-            .select() // Add select to return the inserted row
+            .eq('id', userId)
+            .select()
             .single();
 
         if (error) throw error;

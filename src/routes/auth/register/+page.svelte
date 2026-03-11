@@ -64,16 +64,22 @@
       const isInviteFlow = redirectTo?.includes('/join');
 
       // Create profile immediately (skip complete-profile step)
-      if (isInviteFlow) {
-        // Invite flow: create profile only (no household)
-        await authService.createProfileOnly(userId, {
-          first_name: formData.firstName
-        });
-      } else {
-        // Normal flow: create profile + household
-        await authService.createProfile(userId, {
-          first_name: formData.firstName
-        });
+      try {
+        if (isInviteFlow) {
+          // Invite flow: create profile only (no household)
+          await authService.createProfileOnly(userId, {
+            first_name: formData.firstName
+          });
+        } else {
+          // Normal flow: create profile + household
+          await authService.createProfile(userId, {
+            first_name: formData.firstName
+          });
+        }
+      } catch (profileError: any) {
+        // Ignore if profile already exists or already has data
+        // This can happen if user re-registers with same email
+        console.log('Profile update skipped:', profileError.message);
       }
 
       // Redirect to final destination
