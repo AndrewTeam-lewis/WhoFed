@@ -2,45 +2,45 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const { email, inviter_name, household_name, is_new_user, invite_key } = await req.json();
+
+    if (!email || !inviter_name || !invite_key) {
+      throw new Error('Missing required parameters: email, inviter_name, invite_key');
     }
 
-    try {
-        const { email, inviter_name, household_name, is_new_user, invite_key } = await req.json();
+    const appUrl = 'https://whofed.me';
 
-        if (!email || !inviter_name || !invite_key) {
-            throw new Error('Missing required parameters: email, inviter_name, invite_key');
-        }
+    // Send ALL invites via Resend (better deliverability with custom domain)
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY not configured');
+    }
 
-        const appUrl = 'https://whofed.me';
+    // Build email content (works for both new and existing users)
+    const subject = `${inviter_name} invited you to ${household_name || 'their household'} on WhoFed`;
+    const webLink = `${appUrl}/join/?k=${invite_key}`;
 
-        // Send ALL invites via Resend (better deliverability with custom domain)
-        const resendApiKey = Deno.env.get('RESEND_API_KEY');
-        if (!resendApiKey) {
-            throw new Error('RESEND_API_KEY not configured');
-        }
+    const callToAction = is_new_user
+      ? 'Create Account & Join'
+      : 'Accept Invitation';
 
-        // Build email content (works for both new and existing users)
-        const subject = `${inviter_name} invited you to ${household_name || 'their household'} on WhoFed`;
-        const webLink = `${appUrl}/join/?k=${invite_key}`;
-
-        const callToAction = is_new_user
-            ? 'Create Account & Join'
-            : 'Accept Invitation';
-
-        // Use branded template
-        const htmlContent = `
+    // Use branded template
+    const htmlContent = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
 
   <!-- Header -->
   <div style="background: linear-gradient(135deg, #3ecf8e 0%, #2fb87a 100%); padding: 32px 24px; text-align: center;">
-    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">🐾 WhoFed 🐾</h1>
+    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">WhoFed</h1>
     <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 13px;">Pet Care Coordination</p>
   </div>
 
@@ -87,43 +87,43 @@ serve(async (req) => {
 </div>
         `;
 
-        const textContent = `${inviter_name} invited you to join ${household_name || 'their household'} on WhoFed.\n\nAccept the invitation: ${webLink}\n\nTip: Accept in the app to get push notifications!`;
+    const textContent = `${inviter_name} invited you to join ${household_name || 'their household'} on WhoFed.\n\nAccept the invitation: ${webLink}\n\nTip: Accept in the app to get push notifications!`;
 
-        // Send email via Resend
-        const resendResponse = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${resendApiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                from: 'WhoFed <noreply@whofed.me>',
-                to: [email],
-                subject: subject,
-                html: htmlContent,
-                text: textContent,
-            }),
-        });
+    // Send email via Resend
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'WhoFed <noreply@whofed.me>',
+        to: [email],
+        subject: subject,
+        html: htmlContent,
+        text: textContent,
+      }),
+    });
 
-        if (!resendResponse.ok) {
-            const errorText = await resendResponse.text();
-            console.error('Resend API Error:', resendResponse.status, errorText);
-            throw new Error(`Failed to send email: ${errorText}`);
-        }
-
-        const resendData = await resendResponse.json();
-        console.log('Email sent successfully:', resendData);
-
-        return new Response(JSON.stringify({ success: true, email_id: resendData.id }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-        });
-
-    } catch (error: any) {
-        console.error("Email send error:", error);
-        return new Response(JSON.stringify({ error: error.message }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-        });
+    if (!resendResponse.ok) {
+      const errorText = await resendResponse.text();
+      console.error('Resend API Error:', resendResponse.status, errorText);
+      throw new Error(`Failed to send email: ${errorText}`);
     }
+
+    const resendData = await resendResponse.json();
+    console.log('Email sent successfully:', resendData);
+
+    return new Response(JSON.stringify({ success: true, email_id: resendData.id }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+
+  } catch (error: any) {
+    console.error("Email send error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    });
+  }
 });

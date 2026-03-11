@@ -32,19 +32,33 @@
     }
 
     try {
-      await authService.register(formData);
+      const authData = await authService.register(formData);
+      const userId = authData.user?.id;
+      if (!userId) throw new Error('Registration failed - no user ID');
+
       success = 'Registration successful! Redirecting...';
 
-      // Check for redirect param - ALWAYS go through complete-profile first
+      // Check for redirect param to determine if this is invite flow
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirectTo');
+      const isInviteFlow = redirectTo?.includes('/join');
 
-      // Redirect to complete-profile with the final destination
-      const completeProfileUrl = redirectTo
-        ? `/auth/complete-profile?redirectTo=${redirectTo}`
-        : '/auth/complete-profile?redirectTo=/app';
+      // Create profile immediately (skip complete-profile step)
+      if (isInviteFlow) {
+        // Invite flow: create profile only (no household)
+        await authService.createProfileOnly(userId, {
+          first_name: formData.firstName
+        });
+      } else {
+        // Normal flow: create profile + household
+        await authService.createProfile(userId, {
+          first_name: formData.firstName
+        });
+      }
 
-      setTimeout(() => goto(completeProfileUrl), 1500);
+      // Redirect to final destination
+      const finalDestination = redirectTo ? decodeURIComponent(redirectTo) : '/app';
+      setTimeout(() => goto(finalDestination), 1500);
     } catch (e: any) {
       error = e.message || 'Registration failed';
     }
