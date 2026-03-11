@@ -89,10 +89,10 @@
         linkLoading = true;
         try {
             console.log('[INVITE DEBUG] Checking for existing household key for household:', householdId);
-            // Check if key exists
-            const { data: existingKey, error: queryError } = await supabase
+            // Check if key exists and is not expired
+            const { data: existingKey, error: queryError} = await supabase
                 .from('household_keys')
-                .select('key_value')
+                .select('key_value, expires_at')
                 .eq('household_id', householdId)
                 .maybeSingle();
 
@@ -102,24 +102,35 @@
             }
 
             let inviteKey = existingKey?.key_value;
-            console.log('[INVITE DEBUG] Existing key found:', inviteKey ? 'YES' : 'NO', inviteKey);
+            const expiresAt = existingKey?.expires_at;
+            const isExpired = expiresAt && new Date(expiresAt) <= new Date();
 
-            if (!inviteKey) {
-                // Create new key
+            console.log('[INVITE DEBUG] Existing key found:', inviteKey ? 'YES' : 'NO', inviteKey);
+            if (expiresAt) {
+                console.log('[INVITE DEBUG] Key expires at:', expiresAt, 'Expired:', isExpired);
+            }
+
+            if (!inviteKey || isExpired) {
+                if (isExpired) {
+                    console.log('[INVITE DEBUG] Key expired, creating new key');
+                }
+                // Create or update key
                 inviteKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
                 console.log('[INVITE DEBUG] Creating new key:', inviteKey);
+                const newExpiration = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
                 const { error: createError } = await supabase
                     .from('household_keys')
-                    .insert({
+                    .upsert({
                         household_id: householdId,
                         key_value: inviteKey,
-                        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+                        expires_at: newExpiration
                     });
                 if (createError) {
                     console.error('[INVITE DEBUG] Error creating household key:', createError);
                     throw createError;
                 }
-                console.log('[INVITE DEBUG] Key created successfully');
+                console.log('[INVITE DEBUG] Key created successfully, expires:', newExpiration);
             }
 
             inviteUrl = `${APP_URL}/join/?k=${inviteKey}`;
