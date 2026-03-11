@@ -88,18 +88,26 @@
     async function generateInviteLink() {
         linkLoading = true;
         try {
+            console.log('[INVITE DEBUG] Checking for existing household key for household:', householdId);
             // Check if key exists
-            const { data: existingKey } = await supabase
+            const { data: existingKey, error: queryError } = await supabase
                 .from('household_keys')
                 .select('key_value')
                 .eq('household_id', householdId)
                 .maybeSingle();
 
+            if (queryError) {
+                console.error('[INVITE DEBUG] Error querying household_keys:', queryError);
+                throw queryError;
+            }
+
             let inviteKey = existingKey?.key_value;
+            console.log('[INVITE DEBUG] Existing key found:', inviteKey ? 'YES' : 'NO', inviteKey);
 
             if (!inviteKey) {
                 // Create new key
                 inviteKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+                console.log('[INVITE DEBUG] Creating new key:', inviteKey);
                 const { error: createError } = await supabase
                     .from('household_keys')
                     .insert({
@@ -107,10 +115,15 @@
                         key_value: inviteKey,
                         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
                     });
-                if (createError) throw createError;
+                if (createError) {
+                    console.error('[INVITE DEBUG] Error creating household key:', createError);
+                    throw createError;
+                }
+                console.log('[INVITE DEBUG] Key created successfully');
             }
 
             inviteUrl = `${APP_URL}/join/?k=${inviteKey}`;
+            console.log('[INVITE DEBUG] Generated invite URL:', inviteUrl);
             qrCodeDataUrl = await QRCode.toDataURL(inviteUrl, {
                 width: 256,
                 margin: 2,
@@ -120,7 +133,7 @@
                 }
             });
         } catch (e) {
-            console.error('Error generating invite link:', e);
+            console.error('[INVITE DEBUG] FATAL ERROR generating invite link:', e);
         } finally {
             linkLoading = false;
         }
@@ -155,12 +168,18 @@
         inviteMessage = '';
 
         try {
+            console.log('[INVITE DEBUG] Calling invite_user_by_identifier RPC with:', { identifier, householdId });
             const { data, error } = await supabase.rpc('invite_user_by_identifier', {
                 p_identifier: identifier,
                 p_household_id: householdId
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('[INVITE DEBUG] RPC error:', error);
+                throw error;
+            }
+
+            console.log('[INVITE DEBUG] RPC returned:', data);
 
             const result = data as {
                 success: boolean;
@@ -182,27 +201,32 @@
                     inviteMessage = $t.invite.email_sent_success?.replace('{email}', result.email || identifier)
                         || `Email invitation sent to ${result.email || identifier}`;
 
+                    console.log('[INVITE DEBUG] New user invite - preparing email with key:', result.invite_key);
+
                     try {
                         const senderName = $currentUser?.first_name || 'Someone';
 
+                        const emailPayload = {
+                            email: result.email,
+                            inviter_name: senderName,
+                            household_name: result.household_name,
+                            is_new_user: true,
+                            invite_key: result.invite_key
+                        };
+                        console.log('[INVITE DEBUG] Sending email with payload:', emailPayload);
+
                         const { data, error } = await supabase.functions.invoke('send-invite-email', {
-                            body: {
-                                email: result.email,
-                                inviter_name: senderName,
-                                household_name: result.household_name,
-                                is_new_user: true,
-                                invite_key: result.invite_key
-                            }
+                            body: emailPayload
                         });
 
                         if (error) {
-                            console.error('Edge function error:', error);
+                            console.error('[INVITE DEBUG] Edge function error:', error);
                             alert(`Email send failed: ${error.message || JSON.stringify(error)}`);
                         } else {
-                            console.log('Email sent successfully:', data);
+                            console.log('[INVITE DEBUG] Email sent successfully:', data);
                         }
                     } catch (err) {
-                        console.error('Error sending invite email:', err);
+                        console.error('[INVITE DEBUG] Error sending invite email:', err);
                         alert(`Failed to send email: ${err}`);
                     }
                 } else {
