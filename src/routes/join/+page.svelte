@@ -29,23 +29,7 @@
     }
     currentUser = session.user;
 
-    // 2. Check if user has completed their profile
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('first_name')
-        .eq('id', currentUser.id)
-        .single();
-
-    // If profile exists but first_name is missing, redirect to complete profile
-    // IMPORTANT: Preserve the invite key in the redirect!
-    if (!profile || !profile.first_name) {
-        const key = $page.url.searchParams.get('k');
-        const returnUrl = key ? `/join/?k=${key}` : '/';
-        goto(`/auth/complete-profile?redirectTo=${encodeURIComponent(returnUrl)}`);
-        return;
-    }
-
-    // 3. Load Household Info (Only if authenticated and profile complete)
+    // 2. Load Household Info (authenticated user)
     await loadHouseholdInfo();
   });
 
