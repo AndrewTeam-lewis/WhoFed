@@ -125,6 +125,8 @@
                         household_id: householdId,
                         key_value: inviteKey,
                         expires_at: newExpiration
+                    }, {
+                        onConflict: 'household_id'
                     });
                 if (createError) {
                     console.error('[INVITE DEBUG] Error creating household key:', createError);
