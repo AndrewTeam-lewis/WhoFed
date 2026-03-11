@@ -36,7 +36,8 @@
 
     const metadata = session.user.user_metadata;
     if (metadata) {
-      formData.firstName = metadata.full_name?.split(' ')[0] || metadata.given_name || '';
+      // Check for first_name (from email/password registration) or given_name (from OAuth)
+      formData.firstName = metadata.first_name || metadata.full_name?.split(' ')[0] || metadata.given_name || '';
     }
   });
 

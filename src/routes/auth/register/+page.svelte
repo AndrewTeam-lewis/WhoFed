@@ -34,12 +34,17 @@
     try {
       await authService.register(formData);
       success = 'Registration successful! Redirecting...';
-      
-      // Check for redirect param
+
+      // Check for redirect param - ALWAYS go through complete-profile first
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirectTo');
-      
-      setTimeout(() => goto(redirectTo ? decodeURIComponent(redirectTo) : '/app'), 1500);
+
+      // Redirect to complete-profile with the final destination
+      const completeProfileUrl = redirectTo
+        ? `/auth/complete-profile?redirectTo=${redirectTo}`
+        : '/auth/complete-profile?redirectTo=/app';
+
+      setTimeout(() => goto(completeProfileUrl), 1500);
     } catch (e: any) {
       error = e.message || 'Registration failed';
     }

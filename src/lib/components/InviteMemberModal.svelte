@@ -185,7 +185,7 @@
                     try {
                         const senderName = $currentUser?.first_name || 'Someone';
 
-                        await supabase.functions.invoke('send-invite-email', {
+                        const { data, error } = await supabase.functions.invoke('send-invite-email', {
                             body: {
                                 email: result.email,
                                 inviter_name: senderName,
@@ -194,9 +194,16 @@
                                 invite_key: result.invite_key
                             }
                         });
+
+                        if (error) {
+                            console.error('Edge function error:', error);
+                            alert(`Email send failed: ${error.message || JSON.stringify(error)}`);
+                        } else {
+                            console.log('Email sent successfully:', data);
+                        }
                     } catch (err) {
                         console.error('Error sending invite email:', err);
-                        // Don't show error to user - email send failures are logged
+                        alert(`Failed to send email: ${err}`);
                     }
                 } else {
                     // Existing user - show success and send both push notification AND email
