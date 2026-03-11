@@ -68,7 +68,22 @@ export const authService = {
         return data;
     },
 
-    // Create profile for OAuth users (and auto-create household)
+    // Create profile only (for users joining via invite)
+    async createProfileOnly(userId: string, profileData: Omit<Profile, 'id'>) {
+        const { data, error } = await supabase
+            .from('profiles')
+            .insert({
+                id: userId,
+                first_name: profileData.first_name
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Create profile AND household (for normal onboarding flow)
     async createProfile(userId: string, profileData: Omit<Profile, 'id'>) {
         // 1. Create Profile
         const { data, error } = await supabase

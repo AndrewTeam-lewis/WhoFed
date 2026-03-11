@@ -283,6 +283,16 @@
         notificationsEnabled = enabled;
         localStorage.setItem('notificationsEnabled', String(enabled));
     });
+
+    // Check for URL hash to auto-expand invitations section
+    if (window.location.hash === '#invitations') {
+        expandedInvitations = true;
+        // Scroll to invitations section after a brief delay
+        setTimeout(() => {
+            const element = document.querySelector('[aria-label="Toggle invitations"]');
+            element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    }
   });
 
   // Load settings as soon as user and household are available

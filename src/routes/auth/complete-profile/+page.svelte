@@ -54,15 +54,26 @@
     loading = true;
 
     try {
-      await authService.createProfile(userId, {
-        first_name: formData.firstName
-      });
+      // Check if user is joining via invite (don't create household for them)
+      const isInviteFlow = redirectTo.includes('/join');
 
-      // For new users going to dashboard, trigger walkthrough on next page load
-      if (redirectTo === '/') {
-        // Clear the "seen" flag so checkWelcome() will trigger it
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('whofed_welcome_seen');
+      if (isInviteFlow) {
+        // Only create profile, user will join existing household
+        await authService.createProfileOnly(userId, {
+          first_name: formData.firstName
+        });
+      } else {
+        // Normal onboarding: create profile + household
+        await authService.createProfile(userId, {
+          first_name: formData.firstName
+        });
+
+        // For new users going to dashboard, trigger walkthrough on next page load
+        if (redirectTo === '/') {
+          // Clear the "seen" flag so checkWelcome() will trigger it
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('whofed_welcome_seen');
+          }
         }
       }
 

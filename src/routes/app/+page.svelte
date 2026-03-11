@@ -24,6 +24,10 @@
   let showPremiumModal = false;
   let showHouseholdMenu = false;
 
+  // Pending invites state
+  let pendingInvites: any[] = [];
+  let showInviteBanner = true;
+
   // Create Household State
   let showCreateHouseholdModal = false;
   let newHouseholdName = '';
@@ -345,8 +349,8 @@
       const startOfDayUTC = fromZonedTime(startOfDay, tz);
       const endOfDayUTC = fromZonedTime(endOfDay, tz);
 
-      // Parallel Fetch: Pets & Today's Tasks & Old Medications
-      const [petRes, todayTasksRes, oldMedsRes] = await Promise.all([
+      // Parallel Fetch: Pets & Today's Tasks & Old Medications & Pending Invites
+      const [petRes, todayTasksRes, oldMedsRes, invitesRes] = await Promise.all([
           supabase
             .from('pets')
             .select('*')
@@ -368,11 +372,22 @@
             .eq('household_id', householdId)
             .eq('task_type', 'medication')
             .eq('status', 'pending')
-            .lt('due_at', startOfDayUTC.toISOString())
+            .lt('due_at', startOfDayUTC.toISOString()),
+
+          // Pending household invitations for current user
+          supabase
+            .from('household_invitations')
+            .select('id, household_id, created_at, households(name), profiles!household_invitations_invited_by_fkey(first_name)')
+            .eq('invited_user_id', $currentUser!.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
       ]);
 
       // Handle Pets
       pets = petRes.data || [];
+
+      // Handle Pending Invites
+      pendingInvites = invitesRes.data || [];
 
       // Show welcome for new users (only if not seen before)
       onboarding.checkWelcome();
@@ -976,6 +991,33 @@
       </svg>
     </a>
   </header>
+
+  <!-- Pending Invites Banner -->
+  {#if pendingInvites.length > 0 && showInviteBanner}
+    <div class="mx-6 mt-4">
+      <button
+        on:click={() => goto('/settings#invitations')}
+        class="w-full bg-gradient-to-r from-brand-sage to-emerald-500 text-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all flex items-center justify-between group"
+      >
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div class="text-left">
+            <div class="font-bold text-sm">
+              {pendingInvites.length === 1 ? $t.settings.invites_new.replace('{n}', '1') : $t.settings.invites_new.replace('{n}', pendingInvites.length.toString())}
+            </div>
+            <div class="text-xs text-white/80">Tap to view and accept</div>
+          </div>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  {/if}
 
   <main class="p-6 space-y-6">
     {#if loading}

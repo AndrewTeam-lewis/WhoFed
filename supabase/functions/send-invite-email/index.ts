@@ -12,23 +12,6 @@ serve(async (req) => {
     }
 
     try {
-        // Verify authentication
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-            throw new Error('Missing authorization header');
-        }
-
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: authHeader } }
-        });
-
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            throw new Error('Unauthorized');
-        }
-
         const { email, inviter_name, household_name, is_new_user, invite_key } = await req.json();
 
         if (!email || !inviter_name || !invite_key) {
@@ -37,50 +20,21 @@ serve(async (req) => {
 
         const appUrl = 'https://whofed.me';
 
-        // For NEW users: Use Supabase's built-in invite (uses branded template from Dashboard)
-        if (is_new_user) {
-            const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-            const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-            const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-            const redirectUrl = `${appUrl}/join/?k=${invite_key}`;
-
-            const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-                redirectTo: redirectUrl,
-                data: {
-                    inviter_name,
-                    household_name,
-                    invite_key
-                }
-            });
-
-            if (error) {
-                console.error('Supabase invite error:', error);
-                throw new Error(`Failed to send invite: ${error.message}`);
-            }
-
-            console.log('Invite sent via Supabase to:', email);
-            return new Response(JSON.stringify({
-                success: true,
-                method: 'supabase_invite',
-                user_id: data.user.id
-            }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200,
-            });
-        }
-
-        // For EXISTING users: Send email via Resend as backup to push notification
+        // Send ALL invites via Resend (better deliverability with custom domain)
         const resendApiKey = Deno.env.get('RESEND_API_KEY');
         if (!resendApiKey) {
             throw new Error('RESEND_API_KEY not configured');
         }
 
-        // Build email content for EXISTING users (backup to push notification)
-        const subject = `${inviter_name} invited you to ${household_name || 'their household'}`;
+        // Build email content (works for both new and existing users)
+        const subject = `${inviter_name} invited you to ${household_name || 'their household'} on WhoFed`;
         const webLink = `${appUrl}/join/?k=${invite_key}`;
 
-        // Use branded template matching email_template_invite.html
+        const callToAction = is_new_user
+            ? 'Create Account & Join'
+            : 'Accept Invitation';
+
+        // Use branded template
         const htmlContent = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
 
@@ -95,14 +49,14 @@ serve(async (req) => {
     <h2 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">You've Been Invited!</h2>
 
     <p style="margin: 0 0 24px 0; color: #4a5568; font-size: 15px; line-height: 1.5;">
-      <strong>${inviter_name}</strong> invited you to join <strong>${household_name || 'their household'}</strong> on WhoFed. Accept your invitation to start coordinating pet care together!
+      <strong>${inviter_name}</strong> invited you to join <strong>${household_name || 'their household'}</strong> on WhoFed. ${is_new_user ? 'Create your account to get started!' : 'Accept your invitation to start coordinating pet care together!'}
     </p>
 
     <!-- Button -->
     <div style="margin: 32px 0; text-align: center;">
       <a href="${webLink}"
          style="display: inline-block; background-color: #3ecf8e; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
-        Accept Invitation
+        ${callToAction}
       </a>
     </div>
 
