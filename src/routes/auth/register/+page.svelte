@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { authService, type RegisterData } from '$lib/services/auth';
   import { goto } from '$app/navigation';
   import { t } from '$lib/services/i18n';
@@ -13,6 +14,25 @@
   let error = '';
   let success = '';
   let termsAccepted = false;
+
+  // Pre-fill email if provided in URL (from invite flow)
+  onMount(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectTo = urlParams.get('redirectTo');
+
+    if (redirectTo) {
+      // Extract email from the redirectTo URL if present
+      try {
+        const redirectUrl = new URL(redirectTo, window.location.origin);
+        const inviteEmail = redirectUrl.searchParams.get('email');
+        if (inviteEmail) {
+          formData.email = decodeURIComponent(inviteEmail);
+        }
+      } catch (e) {
+        // Invalid URL, ignore
+      }
+    }
+  });
 
 
   async function handleSubmit(e: Event) {

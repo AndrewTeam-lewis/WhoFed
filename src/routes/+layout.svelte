@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { App } from '@capacitor/app';
   import { StatusBar, Style } from '@capacitor/status-bar';
   import { Capacitor } from '@capacitor/core';
@@ -221,11 +222,22 @@
           return;
       }
 
-      // If no household, show setup modal
+      // If no household, show setup modal (but NOT on auth or join pages)
       if (!members || members.length === 0) {
-          console.log('[DEBUG loadHouseholds] No households found, showing setup modal');
-          setupUserId = userId;
-          showHouseholdSetup = true;
+          console.log('[DEBUG loadHouseholds] No households found');
+
+          // Don't show modal if user is on auth pages or join page (they're in an invite flow)
+          const currentPath = window.location.pathname;
+          const isAuthPage = currentPath.startsWith('/auth/');
+          const isJoinPage = currentPath.startsWith('/join');
+
+          if (!isAuthPage && !isJoinPage) {
+              console.log('[DEBUG loadHouseholds] Not on auth/join page, showing setup modal');
+              setupUserId = userId;
+              showHouseholdSetup = true;
+          } else {
+              console.log('[DEBUG loadHouseholds] On auth/join page, skipping setup modal');
+          }
           return;
       }
 

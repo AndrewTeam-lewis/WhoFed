@@ -28,7 +28,8 @@ serve(async (req) => {
 
     // Build email content (works for both new and existing users)
     const subject = `${inviter_name} invited you to ${household_name || 'their household'} on WhoFed`;
-    const webLink = `${appUrl}/join/?k=${invite_key}`;
+    // Include email in URL for new users so registration form can pre-fill it
+    const webLink = `${appUrl}/join/?k=${invite_key}&email=${encodeURIComponent(email)}`;
 
     const callToAction = is_new_user
       ? 'Create Account & Join'
