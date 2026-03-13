@@ -130,7 +130,8 @@
           const result = data as { success: boolean; already_member?: boolean; error?: string };
           if (!result.success) throw new Error(result.error || 'Failed to join household');
 
-          goto('/');
+          // Force full page reload to refresh household list
+          window.location.href = '/';
 
       } catch (err: any) {
           console.error('Error joining:', err);

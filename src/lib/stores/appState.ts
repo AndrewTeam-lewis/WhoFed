@@ -1,5 +1,6 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { supabase } from '$lib/supabase';
 
 export interface HouseholdState {
     id: string;
@@ -37,4 +38,49 @@ export function getStoredHouseholdId(): string | null {
         return localStorage.getItem(STORAGE_KEY);
     }
     return null;
+}
+
+// Validate that the current user is still a member of the household
+export async function validateHouseholdMembership(householdId: string, userId: string): Promise<boolean> {
+    try {
+        const { data, error } = await supabase
+            .from('household_members')
+            .select('user_id')
+            .eq('household_id', householdId)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (error) {
+            console.error('[Membership Validation] Error checking membership:', error);
+            return false;
+        }
+
+        const isMember = !!data;
+
+        if (!isMember) {
+            console.warn('[Membership Validation] User is no longer a member of household:', householdId);
+            // Remove from available households
+            const current = get(availableHouseholds);
+            const updated = current.filter(h => h.id !== householdId);
+            availableHouseholds.set(updated);
+
+            // If this was the active household, switch to another or clear
+            const active = get(activeHousehold);
+            if (active?.id === householdId) {
+                if (updated.length > 0) {
+                    switchHousehold(updated[0]);
+                } else {
+                    activeHousehold.set(null);
+                    if (browser) {
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                }
+            }
+        }
+
+        return isMember;
+    } catch (err) {
+        console.error('[Membership Validation] Unexpected error:', err);
+        return false;
+    }
 }

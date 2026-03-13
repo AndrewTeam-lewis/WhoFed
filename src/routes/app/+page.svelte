@@ -99,8 +99,51 @@
     }
   }
 
+  // Pull-to-refresh state
+  let pullStartY = 0;
+  let pullCurrentY = 0;
+  let isPulling = false;
+  let isRefreshing = false;
+  const pullThreshold = 80; // pixels to trigger refresh
+
+  function handleTouchStart(e: TouchEvent) {
+    if (window.scrollY === 0) {
+      pullStartY = e.touches[0].clientY;
+      isPulling = true;
+    }
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!isPulling || isRefreshing) return;
+
+    pullCurrentY = e.touches[0].clientY - pullStartY;
+
+    // Only allow pulling down
+    if (pullCurrentY < 0) {
+      pullCurrentY = 0;
+    }
+
+    // Prevent default scrolling when pulling
+    if (pullCurrentY > 0 && window.scrollY === 0) {
+      e.preventDefault();
+    }
+  }
+
+  async function handleTouchEnd() {
+    if (!isPulling || isRefreshing) return;
+
+    if (pullCurrentY > pullThreshold) {
+      isRefreshing = true;
+      await fetchDashboardData();
+      isRefreshing = false;
+    }
+
+    isPulling = false;
+    pullCurrentY = 0;
+  }
+
   import { onboarding } from '$lib/stores/onboarding';
-  import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
+  import { activeHousehold, availableHouseholds, switchHousehold, validateHouseholdMembership } from '$lib/stores/appState';
   import CustomTimezoneSelect from '$lib/components/CustomTimezoneSelect.svelte';
   import { currentUser, userIsPremium } from '$lib/stores/user';
   import PetIcon from '$lib/components/PetIcon.svelte';
@@ -330,11 +373,21 @@
   }
 
   async function fetchDashboardData() {
-    if (!$activeHousehold) return;
+    if (!$activeHousehold || !$currentUser) return;
     loading = true;
 
     try {
       const householdId = $activeHousehold.id;
+
+      // Validate membership before fetching data
+      const isMember = await validateHouseholdMembership(householdId, $currentUser.id);
+      if (!isMember) {
+        console.warn('[Dashboard] User is no longer a member, redirecting...');
+        loading = false;
+        // Validation function already updated the stores and switched households
+        // If no households left, user will see the household setup modal
+        return;
+      }
 
       // Note: Server-side CRON handles task generation/cleanup every 5 minutes
       // Client fetches: (1) All tasks for today, (2) Old pending medications
@@ -463,6 +516,17 @@
   }
 
   async function handleLogAction(task: DailyTask) {
+    if (!$currentUser || !$activeHousehold) return;
+
+    // Validate membership before allowing action
+    const isMember = await validateHouseholdMembership($activeHousehold.id, $currentUser.id);
+    if (!isMember) {
+      console.warn('[Task Action] User is no longer a member, blocking action');
+      // Validation function already updated stores and switched households
+      fetchDashboardData(); // Refresh to show correct household
+      return;
+    }
+
     try {
       const nowFn = new Date();
       const nowISO = nowFn.toISOString();
@@ -705,7 +769,36 @@
     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-sage"></div>
   </div>
 {:else}
-<div class="min-h-screen bg-gray-50 pb-20 relative">
+<div
+  class="min-h-screen bg-gray-50 pb-20 relative"
+  on:touchstart={handleTouchStart}
+  on:touchmove={handleTouchMove}
+  on:touchend={handleTouchEnd}
+>
+  <!-- Pull-to-refresh indicator -->
+  {#if isPulling || isRefreshing}
+    <div
+      class="fixed top-0 left-0 right-0 flex items-center justify-center z-40 transition-all duration-200"
+      style="height: {Math.min(pullCurrentY, pullThreshold)}px; opacity: {Math.min(pullCurrentY / pullThreshold, 1)}"
+    >
+      <div class="bg-white rounded-full p-2 shadow-lg">
+        {#if isRefreshing}
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-sage"></div>
+        {:else}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 text-brand-sage transition-transform"
+            style="transform: rotate({Math.min(pullCurrentY / pullThreshold * 180, 180)}deg)"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        {/if}
+      </div>
+    </div>
+  {/if}
   <!-- Delete Confirmation Modal (PET) -->
   {#if petToDelete}
       <div 
