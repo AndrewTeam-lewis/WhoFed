@@ -11,12 +11,20 @@
   let error = '';
   let loading = false;
   let checkingAuth = true;
+  let redirectToParam = '';
 
   onMount(async () => {
+    // Preserve redirectTo for the "Create Account" link
+    const redirectTo = $page.url.searchParams.get('redirectTo');
+    if (redirectTo) {
+      redirectToParam = `?redirectTo=${encodeURIComponent(redirectTo)}`;
+    }
+
     try {
         const session = await authService.getSession();
         if (session?.user) {
-            goto('/app');
+            // If already logged in, honor redirectTo instead of always going to /app
+            goto(redirectTo ? decodeURIComponent(redirectTo) : '/app');
         } else {
             checkingAuth = false;
         }
@@ -138,7 +146,7 @@
 
     <div class="text-center text-sm text-gray-500 mt-6 space-y-2">
       <p>
-        {$t.auth.dont_have_account} <a href="/auth/register" class="text-brand-sage font-bold hover:underline">{$t.auth.create_account_btn}</a>
+        {$t.auth.dont_have_account} <a href="/auth/register{redirectToParam}" class="text-brand-sage font-bold hover:underline">{$t.auth.create_account_btn}</a>
       </p>
       <div class="flex justify-center items-center space-x-3 text-xs text-gray-400">
         <a href="/legal/tos" class="hover:text-brand-sage transition-colors">{$t.settings?.terms_of_service || 'Terms of Service'}</a>

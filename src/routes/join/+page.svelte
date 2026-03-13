@@ -22,9 +22,9 @@
     // 1. Check Auth
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-        // Guest user - try to open app first
-        isGuest = true;
-        attemptDeepLink();
+        // Not logged in - redirect to register with this page as redirectTo
+        // This preserves the invite key and email in the redirect URL
+        navigateToAuth('register');
         return;
     }
     currentUser = session.user;

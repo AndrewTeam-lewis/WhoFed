@@ -14,11 +14,17 @@
   let error = '';
   let success = '';
   let termsAccepted = false;
+  let redirectToParam = '';
 
   // Pre-fill email if provided in URL (from invite flow)
   onMount(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const redirectTo = urlParams.get('redirectTo');
+
+    // Build query string to pass redirectTo to login link
+    if (redirectTo) {
+      redirectToParam = `?redirectTo=${encodeURIComponent(redirectTo)}`;
+    }
 
     if (redirectTo) {
       // Extract email from the redirectTo URL if present
@@ -209,7 +215,7 @@
   </div>
 
   <p class="text-center text-sm text-gray-500">
-    {$t.auth.already_have_account} <a href="/auth/login" class="text-brand-sage font-bold hover:underline">{$t.auth.log_in_link}</a>
+    {$t.auth.already_have_account} <a href="/auth/login{redirectToParam}" class="text-brand-sage font-bold hover:underline">{$t.auth.log_in_link}</a>
   </p>
   </div>
 </div>
