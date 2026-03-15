@@ -129,7 +129,19 @@ serve(async (req) => {
         // Native (FCM) is stored as { type: 'android', token: '...' }
         if (sub.type === 'android' && sub.token) {
             console.log(`Sending Native FCM to user ${user_id}`);
-            await sendFCM(sub.token, finalTitle, finalBody, url);
+            try {
+                await sendFCM(sub.token, finalTitle, finalBody, url);
+            } catch (fcmError: any) {
+                // If token is stale (UNREGISTERED), clear it from the database
+                if (fcmError.message?.includes('UNREGISTERED') || fcmError.message?.includes('NotRegistered')) {
+                    console.warn(`FCM token stale for user ${user_id}, clearing push_subscription`);
+                    await supabase
+                        .from('profiles')
+                        .update({ push_subscription: null })
+                        .eq('id', user_id);
+                }
+                throw fcmError;
+            }
         } else if (sub.endpoint) {
             // Web Push DISABLED due to deployment issues
             console.log(`Web Push skipped for user ${user_id} (Library disabled)`);

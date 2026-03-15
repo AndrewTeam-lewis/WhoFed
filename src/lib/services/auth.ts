@@ -13,6 +13,7 @@ export interface Profile {
     username: string | null;
     first_name: string | null;
     tier?: string; // 'free' | 'premium'
+    is_admin?: boolean;
 }
 
 export const authService = {

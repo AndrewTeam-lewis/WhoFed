@@ -36,7 +36,7 @@
 <ul>
     <li><strong>Access & Portability:</strong> You can request a copy of the data we have on you.</li>
     <li><strong>Correction:</strong> You can update your account details anytime inside the app.</li>
-    <li><strong>Deletion:</strong> You have the "Right to be Forgotten." You may delete your account at any time.</li>
+    <li><strong>Deletion:</strong> You have the "Right to be Forgotten." You may delete your account at any time within the app's Settings menu, or by requesting deletion through our web portal at <a href="https://whofed.me/delete-account" class="text-brand-sage hover:underline">whofed.me/delete-account</a>.</li>
     <li><strong>Opt-Out:</strong> You can opt-out of SMS notifications at any time through your device settings or by removing your phone number from your profile.</li>
 </ul>
 

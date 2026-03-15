@@ -17,3 +17,5 @@ export const userIsPremium = derived(
     [userTier, nativePremiumStatus],
     ([$tier, $native]) => $tier === 'premium' || $native
 );
+
+export const userIsAdmin = derived(currentProfile, ($profile) => $profile?.is_admin === true);

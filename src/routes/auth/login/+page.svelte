@@ -52,8 +52,12 @@
 
   async function handleGoogleSignIn() {
     try {
+      // Preserve redirectTo through OAuth flow (OAuth loses URL params)
+      const redirectTo = $page.url.searchParams.get('redirectTo');
+      if (redirectTo) {
+        localStorage.setItem('whofed_oauth_redirect', redirectTo);
+      }
       await authService.signInWithGoogle();
-      // OAuth will redirect, no need for manual navigation
     } catch (e: any) {
       error = e.message || 'Google sign-in failed';
     }

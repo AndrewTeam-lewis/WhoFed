@@ -36,7 +36,7 @@
 <ul>
     <li><strong>Acesso e Portabilidade:</strong> Você pode solicitar uma cópia dos dados que temos sobre você.</li>
     <li><strong>Correção:</strong> Você pode atualizar os detalhes da sua conta a qualquer momento dentro do aplicativo.</li>
-    <li><strong>Exclusão:</strong> Você tem o "Direito ao Esquecimento". Você pode excluir sua conta a qualquer momento.</li>
+    <li><strong>Exclusão:</strong> Você tem o "Direito ao Esquecimento". Você pode excluir sua conta a qualquer momento no menu Configurações do aplicativo, ou solicitando a exclusão através do nosso portal na web acessando <a href="https://whofed.me/delete-account" class="text-brand-sage hover:underline">whofed.me/delete-account</a>.</li>
     <li><strong>Revogação de Consentimento:</strong> Você pode cancelar as notificações de SMS a qualquer momento através das configurações do seu dispositivo ou removendo seu número de telefone do seu perfil.</li>
 </ul>
 

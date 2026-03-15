@@ -6,6 +6,7 @@
   import { StatusBar, Style } from '@capacitor/status-bar';
   import { Capacitor } from '@capacitor/core';
   import { authService } from '$lib/services/auth';
+  import { notificationService } from '$lib/services/notifications';
   import { currentUser, currentSession, currentProfile } from '$lib/stores/user';
   import { db } from '$lib/db';
   import { ensureDailyTasks, cleanupOldTasks } from '$lib/services/taskService';
@@ -92,6 +93,9 @@
         await loadHouseholds(session.user.id);
         console.timeEnd('[DEBUG] loadHouseholds TOTAL');
         console.log('[DEBUG] Step 7: Households loaded');
+
+        // Refresh FCM token on every launch (Firebase best practice)
+        notificationService.refreshTokenIfNeeded();
       }
     } else {
       console.log('[DEBUG] No session, trying cached profiles...');

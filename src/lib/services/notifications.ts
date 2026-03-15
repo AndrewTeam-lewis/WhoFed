@@ -104,6 +104,35 @@ export const notificationService = {
         }
     },
 
+    // Refresh FCM token on app launch (Firebase best practice)
+    // Re-registers with FCM to catch any rotated tokens and updates the database
+    async refreshTokenIfNeeded() {
+        if (!Capacitor.isNativePlatform()) return;
+
+        try {
+            const permStatus = await PushNotifications.checkPermissions();
+            if (permStatus.receive !== 'granted') return;
+
+            const user = get(currentUser);
+            if (!user) return;
+
+            console.log('[Push] Refreshing FCM token on launch...');
+            await PushNotifications.register();
+
+            // Listen for the fresh token
+            PushNotifications.addListener('registration', async (token) => {
+                console.log('[Push] FCM token refreshed:', token.value.substring(0, 20) + '...');
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({ push_subscription: { type: 'android', token: token.value } as any })
+                    .eq('id', user.id);
+                if (error) console.error('[Push] Error updating FCM token:', error);
+            });
+        } catch (e) {
+            console.error('[Push] Token refresh failed:', e);
+        }
+    },
+
     async checkSubscriptionState(): Promise<boolean> {
         if (Capacitor.isNativePlatform()) {
             const perm = await PushNotifications.checkPermissions();

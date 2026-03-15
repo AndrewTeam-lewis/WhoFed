@@ -426,6 +426,7 @@ export type Database = {
           email: string | null
           first_name: string | null
           id: string
+          is_admin: boolean
           language: string | null
           push_subscription: Json | null
           stripe_customer_id: string | null
@@ -437,6 +438,7 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id: string
+          is_admin?: boolean
           language?: string | null
           push_subscription?: Json | null
           stripe_customer_id?: string | null
@@ -448,6 +450,7 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
+          is_admin?: boolean
           language?: string | null
           push_subscription?: Json | null
           stripe_customer_id?: string | null

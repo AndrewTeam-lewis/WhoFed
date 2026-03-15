@@ -7,7 +7,7 @@
   import { APP_VERSION } from '$lib/version';
   import { onboarding } from '$lib/stores/onboarding';
   import { activeHousehold, availableHouseholds, switchHousehold } from '$lib/stores/appState';
-  import { currentUser, currentProfile, userIsPremium } from '$lib/stores/user';
+  import { currentUser, currentProfile, userIsPremium, userIsAdmin } from '$lib/stores/user';
   import CreateHouseholdModal from '$lib/components/CreateHouseholdModal.svelte';
   import InviteMemberModal from '$lib/components/InviteMemberModal.svelte';
   import PremiumFeatureModal from '$lib/components/PremiumFeatureModal.svelte';
@@ -981,17 +981,6 @@
                                  <!-- Members Header -->
                                  <div class="flex items-center justify-between mb-3 px-1">
                                      <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">{$t.settings.members_header}</div>
-                                     {#if hh.role === 'owner'}
-                                         <button 
-                                             class="text-xs font-bold text-brand-sage hover:underline flex items-center space-x-1"
-                                             on:click={() => openInviteModal(hh.id)}
-                                         >
-                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                                 <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-                                             </svg>
-                                             <span>{$t.modals.invite_member}</span>
-                                         </button>
-                                     {/if}
                                  </div>
                                  
                                  <!-- Members List -->
@@ -1106,7 +1095,7 @@
                         <div class="font-bold text-gray-900 text-sm">{$t.settings.invitations}</div>
                         <div class="text-xs text-gray-500">
                             {#if pendingInviteCount > 0}
-                                <span class="text-brand-sage font-bold">{$t.settings.invites_new.replace('{n}', pendingInviteCount.toString())}</span> 
+                                <span class="text-brand-sage font-bold">{(pendingInviteCount === 1 ? $t.settings.invites_new : $t.settings.invites_new_plural).replace('{n}', pendingInviteCount.toString())}</span> 
                             {:else if sentInviteCount > 0}
                                 <span class="text-gray-400">{$t.settings.view_sent_invites}</span>
                             {:else}
@@ -1175,7 +1164,7 @@
                     <!-- OUTGOING (SENT) -->
                     {#if outgoingInvites.length > 0}
                         <div class="mt-4 pt-4 border-t border-gray-100">
-                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">{$t.settings.sent_invites}</div>
+                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">{$t.settings.sent_invites}</div>
                             <div class="space-y-2">
                                 {#each outgoingInvites as invite (invite.id)}
                                     <div class="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between">
@@ -1466,6 +1455,7 @@
        </div>
        {/if}
 
+       {#if $userIsAdmin}
        <!-- Admin Tools -->
        <div class="space-y-2">
           <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Admin Tools</div>
@@ -1513,6 +1503,7 @@
               </button>
           </section>
        </div>
+       {/if}
 
    </main>
   
@@ -1741,16 +1732,16 @@
               <span class="text-4xl pr-1">🐾</span>
           </div>
           
-          <h3 class="text-2xl font-black text-gray-900 mb-3">{$t.settings.delete_account_success_title}</h3>
+          <h3 class="text-2xl font-black text-gray-900 mb-3">Account Deleted</h3>
           <p class="text-gray-500 mb-8 text-sm leading-relaxed">
-              {$t.settings.delete_account_success_desc}
+              Your account and all associated data have been permanently removed. We're sorry to see you go!
           </p>
           
           <button 
               class="w-full py-4 bg-brand-sage text-white font-bold rounded-xl shadow-lg hover:bg-brand-sage/90 transition-all"
               on:click={() => window.location.href = '/auth/login'}
           >
-              {$t.settings.back_to_login}
+              Back to Login
           </button>
       </div>
   </div>

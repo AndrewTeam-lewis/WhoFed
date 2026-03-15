@@ -1100,7 +1100,7 @@
           </div>
           <div class="text-left">
             <div class="font-bold text-sm">
-              {pendingInvites.length === 1 ? $t.settings.invites_new.replace('{n}', '1') : $t.settings.invites_new.replace('{n}', pendingInvites.length.toString())}
+              {(pendingInvites.length === 1 ? $t.settings.invites_new : $t.settings.invites_new_plural).replace('{n}', pendingInvites.length.toString())}
             </div>
             <div class="text-xs text-white/80">Tap to view and accept</div>
           </div>

@@ -5,7 +5,7 @@ export interface Profile {
     username: string | null;
     first_name: string | null;
     tier?: string; // 'free' | 'premium'
-    tier?: string; // 'free' | 'premium'
+    is_admin?: boolean;
 }
 
 export class AppDatabase extends Dexie {

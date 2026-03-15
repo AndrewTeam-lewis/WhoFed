@@ -13,10 +13,13 @@
       const type = hashParams.get('type');
 
       if (type === 'recovery') {
-        // Password reset flow - redirect to reset password page
         goto('/auth/reset-password');
         return;
       }
+
+      // Retrieve any pending redirect stored before OAuth flow (e.g., invite link)
+      const pendingRedirect = localStorage.getItem('whofed_oauth_redirect');
+      localStorage.removeItem('whofed_oauth_redirect');
 
       // Get current session after OAuth redirect
       const session = await authService.getSession();
@@ -26,11 +29,15 @@
         const profile = await authService.getProfile(session.user.id);
 
         if (profile) {
-          // Profile exists, go to profile page
-          goto('/app');
+          // Profile exists - honor pending redirect (e.g., /join page) or go to /app
+          goto(pendingRedirect ? decodeURIComponent(pendingRedirect) : '/app');
         } else {
           // No profile, need to complete profile
-          goto('/auth/complete-profile');
+          // Pass pending redirect so complete-profile can forward after setup
+          const completeProfileUrl = pendingRedirect
+            ? `/auth/complete-profile?redirectTo=${encodeURIComponent(pendingRedirect)}`
+            : '/auth/complete-profile';
+          goto(completeProfileUrl);
         }
       } else {
         // No session, redirect to login
