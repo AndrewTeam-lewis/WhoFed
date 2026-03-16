@@ -17,44 +17,53 @@ export const notificationService = {
     },
 
     async subscribeNative() {
-        console.log('Subscribing to Native Push (FCM)');
+        console.log('[Push] Subscribing to Native Push (FCM)');
 
         // 1. Request Permission
         let permStatus = await PushNotifications.checkPermissions();
+        console.log('[Push] Current permission status:', permStatus.receive);
         if (permStatus.receive === 'prompt') {
             permStatus = await PushNotifications.requestPermissions();
+            console.log('[Push] Permission after request:', permStatus.receive);
         }
         if (permStatus.receive !== 'granted') {
             throw new Error('User denied push permissions');
         }
 
-        // 2. Register
-        await PushNotifications.register();
+        // 2. Set up listener BEFORE register() to avoid missing the token
+        await PushNotifications.removeAllListeners();
 
-        // 3. Listen for Token (Promise wrapper or global listener setup?)
-        // Since register() is void and triggers a listener, we need to handle this carefully.
-        // For simplicity in this call, we'll set up the listener to save to DB.
-
-        // Note: Ideally this listener is set up once at app launch, but we can do it here to capture the token.
         return new Promise((resolve, reject) => {
             PushNotifications.addListener('registration', async (token) => {
-                console.log('FCM Token:', token.value);
+                console.log('[Push] FCM Token received:', token.value.substring(0, 20) + '...');
                 const user = get(currentUser);
                 if (user) {
-                    // We save it as a "string" or a specific "native" object structure
-                    // The DB column is JSON, so we can store { type: 'android', token: token.value }
                     const { error } = await supabase
                         .from('profiles')
                         .update({ push_subscription: { type: 'android', token: token.value } as any })
                         .eq('id', user.id);
-                    if (error) console.error('Error saving FCM token', error);
+                    if (error) {
+                        console.error('[Push] Error saving FCM token:', error);
+                        reject(new Error('Failed to save push token'));
+                        return;
+                    }
+                    console.log('[Push] FCM token saved to database');
+                } else {
+                    console.error('[Push] No user found, cannot save token');
+                    reject(new Error('No user found'));
+                    return;
                 }
                 resolve(token);
             });
 
             PushNotifications.addListener('registrationError', (error) => {
+                console.error('[Push] Registration error:', error);
                 reject(error);
             });
+
+            // 3. Register AFTER listeners are ready
+            console.log('[Push] Calling PushNotifications.register()...');
+            PushNotifications.register();
         });
     },
 
@@ -117,9 +126,10 @@ export const notificationService = {
             if (!user) return;
 
             console.log('[Push] Refreshing FCM token on launch...');
-            await PushNotifications.register();
 
-            // Listen for the fresh token
+            // Clear old listeners, set up new one, THEN register
+            await PushNotifications.removeAllListeners();
+
             PushNotifications.addListener('registration', async (token) => {
                 console.log('[Push] FCM token refreshed:', token.value.substring(0, 20) + '...');
                 const { error } = await supabase
@@ -127,7 +137,14 @@ export const notificationService = {
                     .update({ push_subscription: { type: 'android', token: token.value } as any })
                     .eq('id', user.id);
                 if (error) console.error('[Push] Error updating FCM token:', error);
+                else console.log('[Push] FCM token updated in database');
             });
+
+            PushNotifications.addListener('registrationError', (error) => {
+                console.error('[Push] Token refresh registration error:', error);
+            });
+
+            await PushNotifications.register();
         } catch (e) {
             console.error('[Push] Token refresh failed:', e);
         }

@@ -63,17 +63,26 @@
          }).then(listener => appStateListener = listener);
       });
 
-      // Check if we've already shown the prompt
-      const hasSeenPrompt = localStorage.getItem('notificationPromptShown');
-      if (!hasSeenPrompt) {
-          // Check if notifications are already enabled
-          const isEnabled = await notificationService.checkSubscriptionState();
-          if (!isEnabled) {
-             // Show the prompt after a short delay
-             setTimeout(() => {
-               showNotificationPrompt = true;
-             }, 1500);
-          }
+      // Check if we should show the notification permission prompt
+      try {
+        const hasSeenPrompt = localStorage.getItem('notificationPromptShown');
+        console.log('[NotifPrompt] hasSeenPrompt:', hasSeenPrompt);
+        if (!hasSeenPrompt) {
+            const isEnabled = await notificationService.checkSubscriptionState();
+            console.log('[NotifPrompt] isEnabled:', isEnabled);
+            if (!isEnabled) {
+               setTimeout(() => {
+                 console.log('[NotifPrompt] Showing prompt now');
+                 showNotificationPrompt = true;
+               }, 1500);
+            }
+        }
+      } catch (e) {
+        console.error('[NotifPrompt] Error checking notification state:', e);
+        // Still show the prompt if the check fails
+        setTimeout(() => {
+          showNotificationPrompt = true;
+        }, 1500);
       }
     }
 

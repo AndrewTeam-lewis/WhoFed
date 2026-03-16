@@ -18,6 +18,10 @@
   let showAppDownload = false;
   let attemptedDeepLink = false;
 
+  // Email mismatch detection
+  let inviteEmail: string | null = null;
+  let emailMismatch = false;
+
   onMount(async () => {
     // 1. Check Auth
     const { data: { session } } = await supabase.auth.getSession();
@@ -28,6 +32,14 @@
         return;
     }
     currentUser = session.user;
+
+    // Check if invite email doesn't match logged-in user
+    inviteEmail = $page.url.searchParams.get('email');
+    if (inviteEmail && currentUser.email && inviteEmail.toLowerCase() !== currentUser.email.toLowerCase()) {
+        emailMismatch = true;
+        loading = false;
+        return;
+    }
 
     // 2. Load Household Info (authenticated user)
     await loadHouseholdInfo();
@@ -145,6 +157,17 @@
       const returnUrl = encodeURIComponent($page.url.pathname + $page.url.search);
       goto(`/auth/${mode}?redirectTo=${returnUrl}`);
   }
+
+  async function switchAccount() {
+      await supabase.auth.signOut();
+      navigateToAuth('login');
+  }
+
+  async function continueAnyway() {
+      emailMismatch = false;
+      loading = true;
+      await loadHouseholdInfo();
+  }
 </script>
 
 <svelte:head>
@@ -238,6 +261,37 @@
                 <div class="animate-spin h-10 w-10 border-4 border-brand-sage rounded-full border-t-transparent mb-4"></div>
                 <p class="text-gray-500 font-bold">Opening app...</p>
             </div>
+        {:else if emailMismatch}
+            <!-- Email mismatch warning -->
+            <div class="py-6">
+                <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900 mb-2">Wrong Account?</h2>
+                <p class="text-gray-500 mb-2">
+                    This invite was sent to
+                </p>
+                <p class="font-bold text-gray-900 mb-2">{inviteEmail}</p>
+                <p class="text-gray-500 mb-6">
+                    but you're logged in as
+                    <span class="font-bold text-gray-900">{currentUser?.email}</span>
+                </p>
+
+                <button
+                    on:click={switchAccount}
+                    class="w-full py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg hover:bg-brand-sage/90 transition-all mb-3"
+                >
+                    Switch Account
+                </button>
+                <button
+                    on:click={continueAnyway}
+                    class="w-full py-3 text-gray-400 font-semibold hover:text-gray-600 text-sm"
+                >
+                    Continue as {currentUser?.email}
+                </button>
+            </div>
         {:else}
             <!-- Authenticated Join UI -->
             <div class="py-6">
@@ -248,14 +302,21 @@
                 </div>
 
                 <h1 class="text-2xl font-bold text-gray-900 mb-2">Join Household?</h1>
-                <p class="text-gray-500 mb-8">
-                    You've been invited to join 
-                    <span class="font-bold text-gray-900">{ownerName}'s</span> 
+                <p class="text-gray-500 mb-2">
+                    You've been invited to join
+                    <span class="font-bold text-gray-900">{ownerName}'s</span>
                     household with {memberCount} other member{memberCount !== 1 ? 's' : ''}.
                 </p>
 
-                <button 
-                    on:click={joinHousehold} 
+                <!-- Show which account they're joining as -->
+                <p class="text-xs text-gray-400 mb-8">
+                    Joining as <span class="font-semibold">{currentUser?.email}</span>
+                    &middot;
+                    <button on:click={switchAccount} class="text-brand-sage font-semibold hover:underline">Switch</button>
+                </p>
+
+                <button
+                    on:click={joinHousehold}
                     disabled={joining}
                     class="w-full py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg hover:bg-brand-sage/90 transition-all flex items-center justify-center disabled:opacity-70"
                 >
@@ -264,7 +325,7 @@
                     {/if}
                     Join Now
                 </button>
-                
+
                 <button on:click={() => goto('/')} class="mt-6 text-sm text-gray-400 font-bold hover:text-gray-600">Cancel</button>
             </div>
         {/if}

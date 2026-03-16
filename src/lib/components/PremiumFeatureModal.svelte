@@ -17,16 +17,17 @@
     let loading = false;
     let selectedInterval: 'monthly' | 'annual' = 'annual';
 
-    // Hardcoded prices for web (USD), dynamic for mobile
-    let monthlyPrice = isWeb ? '$1.99' : '';
-    let annualPrice = isWeb ? '$19.99' : '';
+    // Hardcoded prices (USD) - override with RevenueCat if available on mobile
+    let monthlyPrice = '$1.99';
+    let annualPrice = '$19.99';
 
     onMount(async () => {
         if (!isWeb) {
-            // Use RevenueCat prices for mobile
+            // Override with RevenueCat prices if available
             const packages = $currentOfferings;
-            const monthly = packages.find(p => p.identifier.includes('monthly'));
-            const annual = packages.find(p => p.identifier.includes('annual'));
+            console.log('[Premium] Available packages:', packages.map(p => p.identifier));
+            const monthly = packages.find(p => p.identifier.includes('monthly') || p.identifier === '$rc_monthly');
+            const annual = packages.find(p => p.identifier.includes('annual') || p.identifier.includes('yearly') || p.identifier === '$rc_annual');
 
             if (monthly) monthlyPrice = monthly.product.priceString;
             if (annual) annualPrice = annual.product.priceString;
@@ -51,14 +52,15 @@
             } else {
                 // Mobile: Use RevenueCat
                 const packages = $currentOfferings;
+                console.log('[Premium] Looking for package. Interval:', selectedInterval, 'Available:', packages.map(p => p.identifier));
                 const pkg = packages.find(p =>
                     selectedInterval === 'monthly'
-                        ? p.identifier.includes('monthly')
-                        : p.identifier.includes('annual')
+                        ? (p.identifier.includes('monthly') || p.identifier === '$rc_monthly')
+                        : (p.identifier.includes('annual') || p.identifier.includes('yearly') || p.identifier === '$rc_annual')
                 );
 
                 if (!pkg) {
-                    throw new Error('Package not found');
+                    throw new Error(`Package not found. Available packages: ${packages.map(p => p.identifier).join(', ') || 'none'}`);
                 }
 
                 const success = await purchasesService.purchase(pkg);

@@ -607,23 +607,16 @@
 
   async function initiateDeleteHousehold(hhId: string) {
       householdIdForAction = hhId;
-      
-      try {
-          // Check for dependencies (Members/Pets)
-          const { count: memberCount, error: memberError } = await supabase
-              .from('household_members')
-              .select('*', { count: 'exact', head: true })
-              .eq('household_id', hhId);
-          if (memberError) throw memberError;
 
+      try {
+          // Check for pets only — members will be removed via cascade
           const { count: petCount, error: petError } = await supabase
               .from('pets')
               .select('*', { count: 'exact', head: true })
               .eq('household_id', hhId);
           if (petError) throw petError;
 
-          // If not empty (members > 1 for owner, pets > 0) -> Block
-          if ((memberCount || 0) > 1 || (petCount || 0) > 0) {
+          if ((petCount || 0) > 0) {
               showCannotDeleteModal = true;
           } else {
               showDeleteHouseholdModal = true;
@@ -1824,8 +1817,8 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Household?</h3>
-              <p class="text-gray-500 text-sm mb-6">This will permanently delete all pets, schedules, and history. This action cannot be undone.</p>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.settings.delete_household_confirm_title}</h3>
+              <p class="text-gray-500 text-sm mb-6">{$t.settings.delete_household_confirm_desc}</p>
               <div class="flex space-x-3">
                   <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showDeleteHouseholdModal = false}>Cancel</button>
                   <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={deleteHousehold}>Delete</button>
@@ -1848,9 +1841,9 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900">Cannot Delete Household</h3>
+              <h3 class="text-xl font-bold text-gray-900">{$t.settings.cannot_delete_household}</h3>
               <p class="text-gray-500 text-sm mt-2">
-                  Please remove all other <strong>members</strong> and <strong>pets</strong> from this household first.
+                  {@html $t.settings.cannot_delete_desc}
               </p>
           </div>
           

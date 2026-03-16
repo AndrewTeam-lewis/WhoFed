@@ -25,4 +25,6 @@ vite.config.ts.timestamp-*
 # Android / Firebase keys
 google-services.json
 android/app/google-services.json
+*.keystore
+android/app/keystore.properties
 docs/STRIPE_SETUP_GUIDE.md
