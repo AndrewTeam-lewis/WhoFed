@@ -308,6 +308,13 @@ export default {
         status_accepted: 'Accepted',
         status_declined: 'Declined'
     },
+    photo_source: {
+        title: 'Add Pet Photo',
+        take_photo: 'Take Photo',
+        choose_library: 'Choose from Library',
+        permission_denied: 'Camera or photo access denied. Please enable in Settings.',
+        permission_required: 'Permissions are required to take or select photos.'
+    },
     add_pet: {
         title: 'Add Pet',
         name_label: 'Name',

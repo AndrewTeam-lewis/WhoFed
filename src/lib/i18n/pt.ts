@@ -308,6 +308,13 @@ export default {
         status_accepted: 'Aceito',
         status_declined: 'Recusado'
     },
+    photo_source: {
+        title: 'Adicionar Foto do Pet',
+        take_photo: 'Tirar Foto',
+        choose_library: 'Escolher da Galeria',
+        permission_denied: 'Acesso à câmera ou fotos negado. Ative nas Configurações.',
+        permission_required: 'Permissões são necessárias para tirar ou selecionar fotos.'
+    },
     add_pet: {
         title: 'Adicionar Pet',
         name_label: 'Nome',

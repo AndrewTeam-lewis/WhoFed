@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { Capacitor } from '@capacitor/core';
+  import { t } from '$lib/services/i18n';
 
   export let open = false;
 
@@ -19,14 +20,14 @@
       const permissions = await Camera.checkPermissions();
 
       if (permissions.camera === 'denied' || permissions.photos === 'denied') {
-        error = 'Camera or photo access denied. Please enable in Settings.';
+        error = $t.photo_source.permission_denied;
         return false;
       }
 
       if (permissions.camera === 'prompt' || permissions.photos === 'prompt') {
         const result = await Camera.requestPermissions();
         if (result.camera !== 'granted' && result.photos !== 'granted') {
-          error = 'Permissions are required to take or select photos.';
+          error = $t.photo_source.permission_required;
           return false;
         }
       }
@@ -125,7 +126,7 @@
 
     <!-- Modal -->
     <div class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl relative z-10 animate-scale-in">
-      <h3 class="text-center text-xl font-bold text-gray-900 mb-6">Add Pet Photo</h3>
+      <h3 class="text-center text-xl font-bold text-gray-900 mb-6">{$t.photo_source.title}</h3>
 
       {#if error}
         <div class="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm text-center">
@@ -145,7 +146,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span>Take Photo</span>
+          <span>{$t.photo_source.take_photo}</span>
         </button>
 
         <!-- Choose from Library Button -->
@@ -158,7 +159,7 @@
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span>Choose from Library</span>
+          <span>{$t.photo_source.choose_library}</span>
         </button>
 
         <!-- Cancel Button -->
@@ -168,7 +169,7 @@
           disabled={checking}
           class="w-full py-3 text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors disabled:opacity-50"
         >
-          Cancel
+          {$t.common.cancel}
         </button>
       </div>
     </div>
