@@ -17,6 +17,8 @@
   let error = '';
   let rcDiagLines: string[] = [];
   let rcDiagRunning = false;
+  let premiumTestLines: string[] = [];
+  let premiumTestRunning = false;
 
   onMount(async () => {
     // Check env vars
@@ -152,7 +154,7 @@
 
   <div class="bg-purple-50 border border-purple-200 p-4 rounded">
     <h2 class="text-xl font-semibold mb-2">RevenueCat Diagnostics</h2>
-    <p class="text-sm text-gray-500 mb-3">Checks RevenueCat init, entitlements, offerings, and DB sync status. Run this on the Android device to diagnose premium issues.</p>
+    <p class="text-sm text-gray-500 mb-3">Checks RevenueCat init, entitlements, offerings, and DB sync status.</p>
     <button
       onclick={async () => { rcDiagRunning = true; rcDiagLines = await purchasesService.runDiagnostics(); rcDiagRunning = false; }}
       class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:opacity-50"
@@ -166,7 +168,74 @@
     {/if}
   </div>
 
-  <div class="text-sm text-gray-600">
-    <p><strong>Open browser console (F12)</strong> to see detailed sync logs</p>
+  <div class="bg-orange-50 border border-orange-200 p-4 rounded">
+    <h2 class="text-xl font-semibold mb-2">Premium DB Write Test</h2>
+    <p class="text-sm text-gray-500 mb-3">Attempts to set your profile tier to 'premium' in the database and shows the result.</p>
+    <button
+      onclick={async () => {
+        premiumTestRunning = true;
+        premiumTestLines = [];
+        const log = (msg) => { premiumTestLines = [...premiumTestLines, msg]; };
+
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            log('ERROR: Not logged in to Supabase');
+          } else {
+            log(`Supabase user ID: ${user.id}`);
+
+            // Read current tier
+            const { data: before, error: readErr } = await supabase
+              .from('profiles')
+              .select('id, tier')
+              .eq('id', user.id)
+              .single();
+            if (readErr) {
+              log(`READ ERROR: ${readErr.message} (code: ${readErr.code})`);
+            } else {
+              log(`Current tier: ${before?.tier || 'NULL'}`);
+            }
+
+            // Attempt to write premium
+            log('Writing tier = premium...');
+            const { data: updated, error: writeErr } = await supabase
+              .from('profiles')
+              .update({ tier: 'premium' })
+              .eq('id', user.id)
+              .select('id, tier')
+              .single();
+
+            if (writeErr) {
+              log(`WRITE ERROR: ${writeErr.message} (code: ${writeErr.code}, details: ${writeErr.details || 'none'})`);
+            } else {
+              log(`WRITE SUCCESS: tier is now '${updated?.tier}'`);
+            }
+
+            // Verify by re-reading
+            const { data: after, error: verifyErr } = await supabase
+              .from('profiles')
+              .select('id, tier')
+              .eq('id', user.id)
+              .single();
+            if (verifyErr) {
+              log(`VERIFY READ ERROR: ${verifyErr.message}`);
+            } else {
+              log(`Verified tier in DB: ${after?.tier || 'NULL'}`);
+            }
+          }
+        } catch (e) {
+          log(`EXCEPTION: ${e.message}`);
+        }
+        premiumTestRunning = false;
+      }}
+      class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 disabled:opacity-50"
+      disabled={premiumTestRunning}
+    >
+      {premiumTestRunning ? 'Testing...' : 'Test Premium DB Write'}
+    </button>
+
+    {#if premiumTestLines.length > 0}
+      <pre class="bg-gray-800 text-green-400 p-4 rounded text-sm mt-3 whitespace-pre-wrap">{premiumTestLines.join('\n')}</pre>
+    {/if}
   </div>
 </div>
