@@ -79,7 +79,7 @@ export const purchasesService = {
 
         try {
             const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
-            this.handleCustomerInfo(customerInfo);
+            await this.handleCustomerInfo(customerInfo);
             return true; // Success
         } catch (e: any) {
             if (e.userCancelled) {

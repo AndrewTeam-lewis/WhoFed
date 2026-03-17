@@ -38,7 +38,8 @@ serve(async (req) => {
             });
         }
 
-        const event: WebhookEvent = await req.json();
+        const body = await req.json();
+        const event: WebhookEvent = body.event || body;
         console.log('RevenueCat Webhook:', event.type, 'for user:', event.app_user_id);
 
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
