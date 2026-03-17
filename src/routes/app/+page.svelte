@@ -54,6 +54,9 @@
     // Refresh when app comes to foreground
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Start silent polling for task updates from other household members
+    startPolling();
+
     // Only show on native platforms (Android/iOS)
     if (Capacitor.isNativePlatform()) {
       // Native foreground listener - refresh when app becomes active
@@ -89,6 +92,7 @@
     return () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (appStateListener) appStateListener.remove();
+        stopPolling();
     };
   });
 
@@ -100,11 +104,67 @@
   import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
   let appStateListener: any = null;
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+  const POLL_INTERVAL_MS = 30000; // 30 seconds
+
+  function startPolling() {
+    stopPolling();
+    pollInterval = setInterval(silentRefreshTasks, POLL_INTERVAL_MS);
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
 
   function handleVisibilityChange() {
     if (document.visibilityState === 'visible') {
       // Refresh data when user returns to the app
       fetchDashboardData();
+      startPolling();
+    } else {
+      stopPolling();
+    }
+  }
+
+  async function silentRefreshTasks() {
+    if (!$activeHousehold || !$currentUser) return;
+    try {
+      const householdId = $activeHousehold.id;
+      const tz = $activeHousehold.timezone || 'America/New_York';
+      const nowZoned = toZonedTime(new Date(), tz);
+      const startOfDay = new Date(nowZoned.getTime());
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(nowZoned.getTime());
+      endOfDay.setHours(23, 59, 59, 999);
+      const startOfDayUTC = fromZonedTime(startOfDay, tz);
+      const endOfDayUTC = fromZonedTime(endOfDay, tz);
+
+      const [todayTasksRes, oldMedsRes] = await Promise.all([
+        supabase
+          .from('daily_tasks')
+          .select('*, schedules(schedule_mode)')
+          .eq('household_id', householdId)
+          .gte('due_at', startOfDayUTC.toISOString())
+          .lte('due_at', endOfDayUTC.toISOString()),
+        supabase
+          .from('daily_tasks')
+          .select('*, schedules(schedule_mode)')
+          .eq('household_id', householdId)
+          .eq('task_type', 'medication')
+          .eq('status', 'pending')
+          .lt('due_at', startOfDayUTC.toISOString())
+      ]);
+
+      if (!todayTasksRes.error) {
+        const todayTasks = (todayTasksRes.data || []) as any;
+        const oldMeds = (oldMedsRes.data || []) as any;
+        dailyTasks = [...oldMeds, ...todayTasks];
+      }
+    } catch (e) {
+      // Silent fail — don't disrupt the UI
     }
   }
 

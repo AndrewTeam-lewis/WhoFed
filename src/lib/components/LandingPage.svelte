@@ -3,7 +3,7 @@
     import { t } from '$lib/services/i18n';
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-brand-sage/10 to-brand-sand/20 flex flex-col">
+<div class="min-h-screen bg-gradient-to-br from-brand-sage/10 to-brand-sand/20 flex flex-col pb-[env(safe-area-inset-bottom,0px)]">
     <!-- Hero Section -->
     <main class="flex-grow flex flex-col items-center justify-center p-6 text-center">
         <div class="mb-8 p-6 bg-white rounded-3xl shadow-xl shadow-brand-sage/10 animate-fade-in">
