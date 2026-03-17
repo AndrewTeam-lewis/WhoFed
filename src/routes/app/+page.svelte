@@ -288,7 +288,7 @@
 
       } catch (e: any) {
           console.error('Error creating household:', e);
-          alert('Failed to create household: ' + e.message);
+          alert(`${$t.dashboard.error_create_household}: ${e.message}`);
       }
   }
   
@@ -324,7 +324,7 @@
       const timeFormatted = isMonthly ? fmtDate(due) : fmtTime(due);
       // Format full month name (e.g., "March 7") - use household timezone
       const dateFormatted = showDateBadge
-          ? toZonedTime(due, tz).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+          ? toZonedTime(due, tz).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
           : null;
 
       let dueLabel = 'Due';
@@ -609,7 +609,7 @@
       }
     } catch (error) {
       console.error('Error updating task:', error);
-      alert('Failed to update task');
+      alert($t.dashboard.error_update_task);
     }
   }
 
@@ -661,7 +661,7 @@
           petToDelete = null;
       } catch(e) {
           console.error("Error deleting pet:", e);
-          alert("Failed to delete pet");
+          alert($t.dashboard.error_delete_pet);
           petToDelete = null;
       }
   }
@@ -698,7 +698,7 @@
 
       } catch (e) {
           console.error("Error deleting task:", e);
-          alert("Failed to delete task");
+          alert($t.dashboard.error_delete_task);
           taskToDelete = null;
       }
   }
@@ -762,7 +762,7 @@
           
       } catch (e: any) {
           console.error("Error creating task:", e);
-          alert("Failed to create task: " + e.message);
+          alert(`${$t.dashboard.error_create_task}: ${e.message}`);
       }
   }
 </script>
@@ -824,24 +824,24 @@
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                   </div>
-                  <h3 class="text-xl font-bold text-gray-900 mb-2">Delete this pet?</h3>
+                  <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.dashboard.delete_pet_title}</h3>
                   <p class="text-gray-500 text-sm">
-                      Are you sure you want to remove <span class="font-bold text-gray-800">{pets.find(p => p.id === petToDelete)?.name}</span>? This action is permanent and cannot be undone.
+                      {$t.dashboard.delete_pet_desc.replace('{name}', pets.find(p => p.id === petToDelete)?.name || '')}
                   </p>
               </div>
 
               <div class="flex space-x-3">
-                  <button 
+                  <button
                       class="flex-1 py-4 text-gray-600 font-bold text-sm bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors"
                       on:click={cancelDelete}
                   >
-                      Cancel
+                      {$t.common.cancel}
                   </button>
-                  <button 
+                  <button
                       class="flex-1 py-4 text-white font-bold text-sm bg-red-500 hover:bg-red-600 rounded-2xl shadow-lg shadow-red-500/20 transition-colors"
                       on:click={confirmDelete}
                   >
-                      Yes, Delete
+                      {$t.dashboard.yes_delete}
                   </button>
               </div>
           </div>
@@ -850,7 +850,7 @@
 
   <!-- Delete Confirmation Modal (TASK) -->
   {#if taskToDelete}
-      <div 
+      <div
           class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in"
           role="button"
           tabindex="0"
@@ -864,24 +864,24 @@
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                   </div>
-                  <h3 class="text-xl font-bold text-gray-900 mb-2">Delete this task?</h3>
+                  <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.dashboard.delete_task_prompt}</h3>
                   <p class="text-gray-500 text-sm">
-                      Remove <span class="font-bold text-gray-800">{taskToDelete.label}</span> for today? This will remove it from your dashboard.
+                      {$t.dashboard.delete_task_confirm.replace('{name}', taskToDelete.label)}
                   </p>
               </div>
 
               <div class="flex space-x-3">
-                  <button 
+                  <button
                       class="flex-1 py-4 text-gray-600 font-bold text-sm bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors"
                       on:click={cancelDeleteTask}
                   >
-                      Cancel
+                      {$t.common.cancel}
                   </button>
-                  <button 
+                  <button
                       class="flex-1 py-4 text-white font-bold text-sm bg-red-500 hover:bg-red-600 rounded-2xl shadow-lg shadow-red-500/20 transition-colors"
                       on:click={confirmDeleteTask}
                   >
-                      Yes, Delete
+                      {$t.dashboard.yes_delete}
                   </button>
               </div>
           </div>
@@ -935,7 +935,7 @@
                           class="py-2 rounded-lg text-sm font-bold transition-all {oneTimeForm.type === 'care' ? 'bg-white text-brand-sage shadow-sm' : 'text-gray-400 hover:text-gray-600'}"
                           on:click={() => oneTimeForm.type = 'care'}
                       >
-                          Care
+                          {$t.modals.care}
                       </button>
                   </div>
                   
@@ -953,7 +953,7 @@
                   
                   <!-- Time Input -->
                   <div>
-                      <label class="block text-xs font-bold text-gray-500 mb-1 ml-1" for="taskTime">Time</label>
+                      <label class="block text-xs font-bold text-gray-500 mb-1 ml-1" for="taskTime">{$t.modals.time}</label>
                       <input 
                           id="taskTime"
                           type="time" 
@@ -964,17 +964,17 @@
               </div>
 
               <div class="flex space-x-3">
-                  <button 
+                  <button
                       class="flex-1 py-4 text-gray-600 font-bold text-sm bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors"
                       on:click={closeOneTimeTaskModal}
                   >
-                      Cancel
+                      {$t.common.cancel}
                   </button>
-                  <button 
+                  <button
                       class="flex-1 py-4 text-white font-bold text-sm bg-brand-sage hover:bg-brand-sage/90 rounded-2xl shadow-lg shadow-brand-sage/20 transition-colors"
                       on:click={saveOneTimeTask}
                   >
-                      Add Task
+                      {$t.modals.add_task}
                   </button>
               </div>
           </div>
@@ -1000,11 +1000,11 @@
               <input 
                   type="text" 
                   bind:value={newHouseholdName}
-                  placeholder="e.g., Beach House, Mom's Place..."
+                  placeholder={$t.modals.household_placeholder}
                   class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent mb-4"
               />
               
-              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.settings.timezone || 'Household Timezone'}</label>
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.settings.timezone}</label>
               <CustomTimezoneSelect
                   bind:value={newHouseholdTimezone}
                   {timezones}
@@ -1034,7 +1034,7 @@
                class="flex items-center space-x-1 text-brand-sage font-medium hover:text-brand-sage/80 transition-colors"
                on:click|stopPropagation={() => showHouseholdMenu = !showHouseholdMenu}
             >
-                <span>{$activeHousehold?.name || $currentUser?.user_metadata?.first_name || 'My Household'}</span>
+                <span>{$activeHousehold?.name || $currentUser?.user_metadata?.first_name || $t.dashboard.household_dropdown}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform {showHouseholdMenu ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -1063,7 +1063,7 @@
                                <span class="truncate flex-1">{hh.name}</span>
                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0
                                    {hh.role === 'owner' ? 'bg-brand-sage/10 text-brand-sage' : 'bg-gray-100 text-gray-500'}">
-                                   {hh.role === 'owner' ? 'Owner' : 'Member'}
+                                   {hh.role === 'owner' ? $t.settings.role_owner : $t.settings.role_member}
                                </span>
                            </button>
                        {/each}
@@ -1111,7 +1111,7 @@
             <div class="font-bold text-sm">
               {(pendingInvites.length === 1 ? $t.settings.invites_new : $t.settings.invites_new_plural).replace('{n}', pendingInvites.length.toString())}
             </div>
-            <div class="text-xs text-white/80">Tap to view and accept</div>
+            <div class="text-xs text-white/80">{$t.dashboard.tap_to_view}</div>
           </div>
         </div>
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1138,7 +1138,7 @@
           {$t.dashboard.add_first_pet}
         </button>
         {:else}
-        <p class="text-gray-600 mb-6 text-base">No pets have been added to this household yet. Ask the household owner to add pets.</p>
+        <p class="text-gray-600 mb-6 text-base">{$t.dashboard.no_pets_member}</p>
         {/if}
 
         <div class="mt-6">
@@ -1302,8 +1302,8 @@
     <!-- PREMIUM UPSELL MODAL -->
     {#if showPremiumModal}
         <PremiumFeatureModal
-            featureName="Multiple Households"
-            featureDescription="Unlock unlimited pets, multiple households, custom photos, and PDF exports!"
+            featureName={$t.dashboard.premium_feature_name}
+            featureDescription={$t.dashboard.premium_feature_desc}
             on:close={() => showPremiumModal = false}
         />
     {/if}

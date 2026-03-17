@@ -43,11 +43,11 @@
             if (error) throw error;
 
             invites = (data || []).map((inv: any) => {
-                const first = inv.profiles?.first_name || 'Someone';
+                const first = inv.profiles?.first_name || $t.notifications.someone_fallback;
                 return {
                     id: inv.id,
                     household_id: inv.household_id,
-                    household_name: inv.households?.name || 'Unnamed Household',
+                    household_name: inv.households?.name || $t.notifications.unnamed_household,
                     invited_by_name: first,
                     invited_by_email: inv.profiles?.email || '',
                     created_at: inv.created_at
@@ -81,7 +81,7 @@
             window.location.reload();
         } catch (e: any) {
             console.error('Error accepting invite:', e);
-            alert('Failed to accept invite: ' + e.message);
+            alert($t.notifications.error_accept + ': ' + e.message);
         } finally {
             actionLoading = null;
         }
@@ -102,7 +102,7 @@
             invites = invites.filter(i => i.id !== invite.id);
         } catch (e: any) {
             console.error('Error declining invite:', e);
-            alert('Failed to decline invite: ' + e.message);
+            alert($t.notifications.error_decline + ': ' + e.message);
         } finally {
             actionLoading = null;
         }

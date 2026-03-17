@@ -4,6 +4,7 @@
     import { Capacitor } from '@capacitor/core';
     import { stripeService, STRIPE_PRICES } from '$lib/services/stripe';
     import { purchasesService, currentOfferings } from '$lib/services/purchases';
+    import { t } from '$lib/services/i18n';
 
     export let featureName: string;
     export let featureDescription: string;
@@ -87,7 +88,7 @@
         <div class="bg-gradient-to-br from-brand-sage to-brand-sage/80 p-8 text-center text-white relative overflow-hidden">
             <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
             <div class="relative z-10">
-                <h3 class="text-2xl font-bold">WhoFed Premium</h3>
+                <h3 class="text-2xl font-bold">{$t.premium.title}</h3>
             </div>
         </div>
         
@@ -95,7 +96,7 @@
             <p class="text-gray-600 mb-6 leading-relaxed">
                 {featureDescription}
                 <br>
-                <span class="text-sm text-gray-400 mt-2 block">Upgrade to unlock this and more.</span>
+                <span class="text-sm text-gray-400 mt-2 block">{$t.premium.upgrade_unlock}</span>
             </p>
 
             <!-- Interval Selector -->
@@ -107,8 +108,8 @@
                     disabled={loading}
                 >
                     <div class="flex flex-col items-center">
-                        <span>Monthly</span>
-                        <span class="text-xs opacity-70 mt-0.5">{monthlyPrice}/mo</span>
+                        <span>{$t.premium.monthly}</span>
+                        <span class="text-xs opacity-70 mt-0.5">{monthlyPrice}{$t.premium.per_month}</span>
                     </div>
                 </button>
                 <button
@@ -118,21 +119,21 @@
                     disabled={loading}
                 >
                     <div class="flex flex-col items-center">
-                        <span>Annual</span>
-                        <span class="text-xs opacity-70 mt-0.5">{annualPrice}/yr</span>
+                        <span>{$t.premium.annual}</span>
+                        <span class="text-xs opacity-70 mt-0.5">{annualPrice}{$t.premium.per_year}</span>
                     </div>
                 </button>
             </div>
 
             <!-- USD Note -->
-            <p class="text-xs text-gray-400 text-center mb-4">Prices in USD</p>
+            <p class="text-xs text-gray-400 text-center mb-4">{$t.premium.prices_note}</p>
 
             <button
                 class="w-full py-4 bg-brand-sage text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 on:click={handleUpgrade}
                 disabled={loading}
             >
-                {loading ? 'Loading...' : 'Upgrade Now'}
+                {loading ? $t.common.loading : $t.premium.upgrade_now}
             </button>
 
             <button
@@ -140,7 +141,7 @@
                 on:click={() => dispatch('close')}
                 disabled={loading}
             >
-                Maybe Later
+                {$t.premium.maybe_later}
             </button>
         </div>
     </div>

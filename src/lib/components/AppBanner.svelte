@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Capacitor } from '@capacitor/core';
+  import { t } from '$lib/services/i18n';
 
   let showBanner = false;
   let currentPath = '';
@@ -59,8 +60,8 @@
       <div class="flex items-center space-x-3 flex-1 min-w-0">
         <img src="/whofed_logo_email_tiny.png" alt="WhoFed" class="w-8 h-8 rounded-lg bg-white/10 p-1" />
         <div class="flex-1 min-w-0">
-          <div class="font-semibold text-sm">Open in WhoFed App</div>
-          <div class="text-xs text-white/80">For the best experience</div>
+          <div class="font-semibold text-sm">{$t.app_banner.open_in_app}</div>
+          <div class="text-xs text-white/80">{$t.app_banner.best_experience}</div>
         </div>
       </div>
       <div class="flex items-center space-x-2 ml-2">
@@ -68,7 +69,7 @@
           on:click={openInApp}
           class="bg-white text-brand-sage font-bold px-4 py-2 rounded-lg text-sm whitespace-nowrap hover:bg-white/90 transition-colors"
         >
-          Open App
+          {$t.app_banner.open_app}
         </button>
         <button
           on:click={closeBanner}

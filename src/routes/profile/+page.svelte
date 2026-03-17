@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { currentUser, currentProfile } from '$lib/stores/user';
   import { authService } from '$lib/services/auth';
+  import { t } from '$lib/services/i18n';
 
   let editing = false;
   let editData = {
@@ -66,7 +67,7 @@
 
       currentProfile.set(updated);
       editing = false;
-      message = 'Profile updated successfully!';
+      message = $t.profile.updated_success;
     } catch (e: any) {
       error = e.message || 'Failed to update profile';
     }
@@ -83,7 +84,7 @@
 </script>
 
 <div class="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-  <h1 class="text-2xl font-bold mb-6">Profile</h1>
+  <h1 class="text-2xl font-bold mb-6">{$t.profile.title}</h1>
 
   {#if message}
     <div class="bg-green-100 text-green-700 p-3 rounded mb-4">{message}</div>
@@ -97,22 +98,22 @@
     {#if !editing}
       <div class="space-y-4 mb-6">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Email</label>
+          <label class="block text-sm font-medium text-gray-700">{$t.profile.email}</label>
           <p class="mt-1 text-gray-900">{$currentUser.email}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700">Username</label>
+          <label class="block text-sm font-medium text-gray-700">{$t.profile.username}</label>
           <p class="mt-1 text-gray-900">{$currentProfile.username}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700">First Name</label>
+          <label class="block text-sm font-medium text-gray-700">{$t.profile.first_name}</label>
           <p class="mt-1 text-gray-900">{$currentProfile.first_name}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700">Auth Provider</label>
+          <label class="block text-sm font-medium text-gray-700">{$t.profile.auth_provider}</label>
           <p class="mt-1 text-gray-900 capitalize">{$currentUser.app_metadata.provider || 'email'}</p>
         </div>
       </div>
@@ -122,20 +123,20 @@
           on:click={startEdit}
           class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
         >
-          Edit Profile
+          {$t.profile.edit_profile}
         </button>
 
-        <button 
+        <button
           on:click={handleLogout}
           class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
         >
-          Logout
+          {$t.profile.logout}
         </button>
       </div>
     {:else}
       <form on:submit={handleUpdate} class="space-y-4">
         <div>
-          <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+          <label for="username" class="block text-sm font-medium text-gray-700">{$t.profile.username}</label>
           <input 
             id="username"
             type="text" 
@@ -146,7 +147,7 @@
         </div>
 
         <div>
-          <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+          <label for="firstName" class="block text-sm font-medium text-gray-700">{$t.profile.first_name}</label>
           <input 
             id="firstName"
             type="text" 
@@ -161,20 +162,20 @@
             type="submit"
             class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
           >
-            Save Changes
+            {$t.profile.save_changes}
           </button>
 
-          <button 
+          <button
             type="button"
             on:click={cancelEdit}
             class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
           >
-            Cancel
+            {$t.common.cancel}
           </button>
         </div>
       </form>
     {/if}
   {:else}
-    <p class="text-gray-500">Loading profile...</p>
+    <p class="text-gray-500">{$t.profile.loading}</p>
   {/if}
 </div>

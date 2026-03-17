@@ -13,7 +13,8 @@ export default {
         ago_h: '{n}h ago',
         ago_d: '{n}d ago',
         name: 'Name',
-        species: 'Species'
+        species: 'Species',
+        add: 'Add'
     },
     nav: {
         dashboard: 'Dashboard',
@@ -37,7 +38,19 @@ export default {
         settings_label: 'Settings',
         household_dropdown: 'My Household',
         delete_task_prompt: 'Delete this task?',
-        delete_task_confirm: 'Are you sure you want to remove this task for today?',
+        delete_task_confirm: 'Remove {name} for today? This will remove it from your dashboard.',
+        delete_pet_title: 'Delete this pet?',
+        delete_pet_desc: 'Are you sure you want to remove {name}? This action is permanent and cannot be undone.',
+        yes_delete: 'Yes, Delete',
+        tap_to_view: 'Tap to view and accept',
+        no_pets_member: 'No pets have been added to this household yet. Ask the household owner to add pets.',
+        error_create_household: 'Failed to create household',
+        error_update_task: 'Failed to update task',
+        error_delete_pet: 'Failed to delete pet',
+        error_delete_task: 'Failed to delete task',
+        error_create_task: 'Failed to create task',
+        premium_feature_name: 'Multiple Households',
+        premium_feature_desc: 'Unlock unlimited pets, multiple households, custom photos, and PDF exports!',
         log_undo: 'Undo',
         log_fed: 'Fed',
         log_meds: 'Gave Meds',
@@ -123,7 +136,42 @@ export default {
         export_data: 'Export Data',
         premium_badge: 'Premium',
         log_out: 'Log Out',
-        support: 'Support'
+        support: 'Support',
+
+        // Error messages
+        error_subscription: 'Error opening subscription management',
+        error_save_pet: 'Failed to save pet',
+        confirm_delete_pet: 'Are you sure you want to delete this pet? This cannot be undone.',
+        error_delete_pet: 'Error deleting pet',
+        error_loading_reminders: 'Error loading reminders',
+        error_notification: 'Notification Error',
+        error_update_permission: 'Failed to update permission',
+        error_remove_member: 'Failed to remove member',
+        error_leave_household: 'Failed to leave household',
+        error_check_household: 'Error checking household status',
+        error_delete_household: 'Failed to delete household',
+        error_update_household: 'Failed to update household',
+        error_accept_invite: 'Error accepting invite',
+        confirm_decline_invite: 'Are you sure you want to decline?',
+        error_decline_invite: 'Failed to decline invite',
+        confirm_revoke_invite: 'Revoke this invitation?',
+        error_delete_account: 'Error deleting account',
+
+        // Settings page UI
+        unknown_household: 'Unknown Household',
+        push_web_warning: 'Push notifications work best on the mobile app. Web notifications require browser permissions and may not work reliably.',
+        premium_unlock_desc: 'Unlock unlimited pets, multiple households, and PDF exports!',
+        premium_upgrade: 'Upgrade',
+        premium_active_desc: "You're all set! Enjoy unlimited features.",
+        premium_manage_app_store: 'Manage via App Store',
+        premium_manage_subscription: 'Manage subscription',
+        premium_active_badge: 'Active',
+        mobile_section: 'Mobile',
+        mobile_download_desc: 'Download the mobile app for notifications and managing your pets on the go',
+        account_deleted_title: 'Account Deleted',
+        account_deleted_desc: "Your account and all associated data have been permanently removed. We're sorry to see you go!",
+        delete_account_warning: 'This action is <strong>permanent</strong> and cannot be undone.<br>All your pets, logs, and data will be erased immediately.',
+        leave_household_desc: 'You will lose access to all pets and schedules in this household.'
     },
     support: {
         title: 'Support & Guide',
@@ -178,7 +226,11 @@ export default {
         accept: 'Accept',
         decline: 'Decline',
         onetime_title: 'One-Time Reminder 🐾',
-        onetime_body: "It's time to {label} {pet}!"
+        onetime_body: "It's time to {label} {pet}!",
+        someone_fallback: 'Someone',
+        unnamed_household: 'Unnamed Household',
+        error_accept: 'Failed to accept invite',
+        error_decline: 'Failed to decline invite'
     },
     modals: {
         create_household: 'Create New Household',
@@ -199,6 +251,7 @@ export default {
         one_time_desc: 'This adds a task for {pet}, today only.',
         feeding: 'Feeding',
         medication: 'Medication',
+        care: 'Care',
         task_name: 'Task Name',
         time: 'Time',
         add_task: 'Add Task',
@@ -304,6 +357,8 @@ export default {
         button_sending: 'Sending...',
         push_title: 'New Invitation',
         push_body: '{name} invited you to join a household!',
+        email_sent_success: 'Email invitation sent to {email}',
+        email_send_failed: 'Email send failed',
         status_pending: 'Pending',
         status_accepted: 'Accepted',
         status_declined: 'Declined'
@@ -327,7 +382,18 @@ export default {
         page_title: 'New Pet',
         cancel_setup: 'Cancel Setup',
         limit_reached: 'Limit Reached',
-        upload_custom: 'Add Photo'
+        upload_custom: 'Add Photo',
+        uploading: 'Uploading...',
+        error_invalid_name: 'Please enter a valid pet name.',
+        error_select_day: 'Please select at least one day for schedule: {name}',
+        error_select_date: 'Please select at least one date for schedule: {name}',
+        error_add_time: 'Please add at least one time for schedule: {name}',
+        error_create_failed: 'Failed to add pet',
+        error_upload_failed: 'Upload failed',
+        task_name_required: 'Please provide a name for this task',
+        premium_feature_name: 'Unlimited Pets',
+        premium_feature_desc: 'Unlock unlimited pets, multiple households, custom photos, and PDF exports!',
+        day_labels: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
     },
     export: {
         title: 'Export Data',
@@ -422,6 +488,142 @@ export default {
         error_display_name_required: 'Display name is required',
         error_all_fields_required: 'Please fill in all required fields',
         error_accept_terms: 'Please accept the Terms of Service and Privacy Policy to continue.'
+    },
+    landing: {
+        tagline: 'Pet Care Simplified',
+        description: 'Connect with your family to track feedings, medicine and more. Never ask "Who fed the dog?" again.',
+        log_in: 'Log In',
+        new_here: 'New here?',
+        create_account: 'Create an account',
+        privacy_policy: 'Privacy Policy',
+        terms_of_service: 'Terms of Service'
+    },
+    app_banner: {
+        open_in_app: 'Open in WhoFed App',
+        best_experience: 'For the best experience',
+        open_app: 'Open App'
+    },
+    selection_modal: {
+        default_title: 'Select Option',
+        no_items: 'No items found.'
+    },
+    notification_prompt: {
+        title: 'Never Miss a Feeding!',
+        description: 'Get notified when it\'s time to feed, give meds, or care for your pets.',
+        enabling: 'Enabling...',
+        enable: 'Enable Notifications',
+        maybe_later: 'Maybe Later',
+        settings_hint: 'You can change this anytime in Settings'
+    },
+    premium: {
+        title: 'WhoFed Premium',
+        upgrade_unlock: 'Upgrade to unlock this and more.',
+        monthly: 'Monthly',
+        annual: 'Annual',
+        per_month: '/mo',
+        per_year: '/yr',
+        prices_note: 'Prices in USD',
+        upgrade_now: 'Upgrade Now',
+        maybe_later: 'Maybe Later'
+    },
+    premium_success: {
+        welcome: 'Welcome to Premium!',
+        description: 'You now have unlimited access to all WhoFed features. Thank you for supporting the app!',
+        unlimited_pets: 'Unlimited pets',
+        custom_photos: 'Custom pet photos',
+        multiple_households: 'Multiple households',
+        pdf_exports: 'PDF exports',
+        redirecting: 'Redirecting to settings in {countdown} seconds...',
+        go_now: 'Go Now \u2192'
+    },
+    timezone_select: {
+        default_label: 'Select Timezone',
+        no_timezones: 'No timezones available.'
+    },
+    change_email: {
+        title: 'Change Email',
+        check_inbox: 'Check Your Inbox',
+        confirmation_sent: 'We have sent a confirmation link to {email}. You must click the link to finalize this change.',
+        close: 'Close',
+        verification_desc: 'Changing your email address requires verification. You will need to click a link sent to your new address.',
+        current_email: 'Current Email',
+        new_email: 'New Email',
+        sending: 'Sending...',
+        send_link: 'Send Confirmation Link',
+        error_enter_email: 'Please enter a new email address',
+        error_same_email: 'New email must be different from current email',
+        error_invalid_email: 'Please enter a valid email address',
+        error_update_failed: 'Failed to update email'
+    },
+    photo_crop: {
+        title: 'Crop & Zoom Photo',
+        rotate: 'Rotate',
+        saving: 'Saving...',
+        hint: 'Pinch to zoom \u2022 Drag to reposition',
+        error_too_large: 'Image too large (>10MB). Please choose a smaller image.'
+    },
+    profile: {
+        title: 'Profile',
+        email: 'Email',
+        username: 'Username',
+        first_name: 'First Name',
+        auth_provider: 'Auth Provider',
+        edit_profile: 'Edit Profile',
+        logout: 'Logout',
+        save_changes: 'Save Changes',
+        loading: 'Loading profile...',
+        updated_success: 'Profile updated successfully!'
+    },
+    walkthrough: {
+        slide1_title: 'Welcome to WhoFed!',
+        slide1_desc: "A single location to manage your pet's care.",
+        slide2_title: 'No More Double-Feeding',
+        slide2_desc: 'When you check off a task on your Dashboard, everyone in your household sees it instantly.',
+        slide3_title: "Let's Get Started",
+        slide3_desc: 'Add your first pet and set up their schedule to begin tracking!',
+        start_tracking: 'Start Tracking',
+        next: 'Next',
+        invite_family: 'Invite Family',
+        invite_family_desc: 'Tap the + button to generate an invite link. Share it with your household members to let them view and log tasks!',
+        close: 'Close',
+        how_shared_homes: 'How Shared Homes Work',
+        how_shared_homes_desc: 'As an Owner, you have full control to add and remove pets, invite and remove members, and manage permissions. As a Member, you can view all pets and log tasks. Owners can customize your permissions to allow editing schedules. All updates synchronize across everyone\'s devices.',
+        onetime_vs_recurring: 'One-Time vs Recurring',
+        onetime_vs_recurring_desc: 'Recurring tasks happen every day based on your pet\'s schedule. Need a one-off reminder (like a vet appointment or a monthly pill)? Tap the + button above your task list to create a one-time event!',
+        thanks: 'Thanks'
+    },
+    join: {
+        loading: 'Loading invite...',
+        oops: 'Oops!',
+        go_home: 'Go Home',
+        download_title: 'Download WhoFed',
+        download_desc: "You've been invited to help care for pets on WhoFed.",
+        download_note: 'Download the mobile app to get push notifications and the full experience.',
+        download_app_store: 'Download on App Store',
+        download_google_play: 'Get it on Google Play',
+        or_continue_web: 'Or continue on web',
+        create_web_account: 'Create Web Account',
+        log_in_web: 'Log In on Web',
+        opening_app: 'Opening app...',
+        wrong_account: 'Wrong Account?',
+        invite_sent_to: 'This invite was sent to',
+        logged_in_as: "but you're logged in as",
+        switch_account: 'Switch Account',
+        continue_as: 'Continue as {email}',
+        join_title: 'Join Household?',
+        invite_desc: "You've been invited to join {owner}'s household with {count} other members.",
+        joining_as: 'Joining as',
+        switch: 'Switch',
+        join_now: 'Join Now'
+    },
+    date_picker: {
+        select_date: 'Select Date',
+        day_headers: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+    },
+    time_picker: {
+        am: 'AM',
+        pm: 'PM',
+        set_time: 'Set Time'
     },
     history: {
         page_title: 'Activity History',

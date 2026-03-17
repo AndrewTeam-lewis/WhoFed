@@ -1,6 +1,7 @@
 <script lang="ts">
     import { fade, scale } from 'svelte/transition';
     import type { TimezoneOption } from '$lib/utils/timezones';
+    import { t } from '$lib/services/i18n';
 
     export let timezones: TimezoneOption[] = [];
     export let value: string = '';
@@ -9,7 +10,7 @@
     let showDropdown = false;
     
     // Derived selected label
-    $: selectedLabel = timezones.find(tz => tz.value === value)?.label || value || 'Select Timezone';
+    $: selectedLabel = timezones.find(tz => tz.value === value)?.label || value || $t.timezone_select.default_label;
 </script>
 
 <div class="relative w-full">
@@ -42,7 +43,7 @@
         >
             {#if timezones.length === 0}
                 <div class="p-4 text-center text-gray-500 text-sm">
-                    No timezones available.
+                    {$t.timezone_select.no_timezones}
                 </div>
             {:else}
                 {#each timezones as tz}

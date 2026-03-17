@@ -13,7 +13,8 @@ export default {
         ago_h: 'há {n}h',
         ago_d: 'há {n}d',
         name: 'Nome',
-        species: 'Espécie'
+        species: 'Espécie',
+        add: 'Adicionar'
     },
     nav: {
         dashboard: 'Início',
@@ -37,7 +38,19 @@ export default {
         settings_label: 'Ajustes',
         household_dropdown: 'Minha Casa',
         delete_task_prompt: 'Excluir tarefa?',
-        delete_task_confirm: 'Tem certeza que deseja remover esta tarefa de hoje?',
+        delete_task_confirm: 'Remover {name} de hoje? Isso removerá da sua página inicial.',
+        delete_pet_title: 'Excluir este pet?',
+        delete_pet_desc: 'Tem certeza que deseja remover {name}? Esta ação é permanente e não pode ser desfeita.',
+        yes_delete: 'Sim, Excluir',
+        tap_to_view: 'Toque para ver e aceitar',
+        no_pets_member: 'Nenhum pet foi adicionado a esta casa ainda. Peça ao proprietário para adicionar pets.',
+        error_create_household: 'Falha ao criar casa',
+        error_update_task: 'Falha ao atualizar tarefa',
+        error_delete_pet: 'Falha ao excluir pet',
+        error_delete_task: 'Falha ao excluir tarefa',
+        error_create_task: 'Falha ao criar tarefa',
+        premium_feature_name: 'Múltiplas Casas',
+        premium_feature_desc: 'Desbloqueie pets ilimitados, múltiplas casas, fotos personalizadas e exportação em PDF!',
         log_undo: 'Desfazer',
         log_fed: 'Alimentou',
         log_meds: 'Deu Remédio',
@@ -123,7 +136,42 @@ export default {
         export_data: 'Exportar Dados',
         premium_badge: 'Premium',
         log_out: 'Sair',
-        support: 'Suporte'
+        support: 'Suporte',
+
+        // Error messages
+        error_subscription: 'Erro ao abrir gerenciamento de assinatura',
+        error_save_pet: 'Falha ao salvar pet',
+        confirm_delete_pet: 'Tem certeza que deseja excluir este pet? Esta ação não pode ser desfeita.',
+        error_delete_pet: 'Erro ao excluir pet',
+        error_loading_reminders: 'Erro ao carregar lembretes',
+        error_notification: 'Erro de Notificação',
+        error_update_permission: 'Falha ao atualizar permissão',
+        error_remove_member: 'Falha ao remover membro',
+        error_leave_household: 'Falha ao sair da casa',
+        error_check_household: 'Erro ao verificar status da casa',
+        error_delete_household: 'Falha ao excluir casa',
+        error_update_household: 'Falha ao atualizar casa',
+        error_accept_invite: 'Erro ao aceitar convite',
+        confirm_decline_invite: 'Tem certeza que deseja recusar?',
+        error_decline_invite: 'Falha ao recusar convite',
+        confirm_revoke_invite: 'Revogar este convite?',
+        error_delete_account: 'Erro ao excluir conta',
+
+        // Settings page UI
+        unknown_household: 'Casa Desconhecida',
+        push_web_warning: 'Notificações push funcionam melhor no aplicativo móvel. Notificações web requerem permissões do navegador e podem não funcionar de forma confiável.',
+        premium_unlock_desc: 'Desbloqueie pets ilimitados, múltiplas casas e exportação em PDF!',
+        premium_upgrade: 'Assinar',
+        premium_active_desc: 'Tudo pronto! Aproveite recursos ilimitados.',
+        premium_manage_app_store: 'Gerenciar pela App Store',
+        premium_manage_subscription: 'Gerenciar assinatura',
+        premium_active_badge: 'Ativo',
+        mobile_section: 'Celular',
+        mobile_download_desc: 'Baixe o aplicativo móvel para notificações e gerenciamento dos seus pets em qualquer lugar',
+        account_deleted_title: 'Conta Excluída',
+        account_deleted_desc: 'Sua conta e todos os dados associados foram removidos permanentemente. Sentiremos sua falta!',
+        delete_account_warning: 'Esta ação é <strong>permanente</strong> e não pode ser desfeita.<br>Todos os seus pets, registros e dados serão apagados imediatamente.',
+        leave_household_desc: 'Você perderá acesso a todos os pets e agendamentos desta casa.'
     },
     support: {
         title: 'Suporte e Guia',
@@ -178,7 +226,11 @@ export default {
         accept: 'Aceitar',
         decline: 'Recusar',
         onetime_title: 'Lembrete Único 🐾',
-        onetime_body: 'Está na hora de {label} {pet}!'
+        onetime_body: 'Está na hora de {label} {pet}!',
+        someone_fallback: 'Alguém',
+        unnamed_household: 'Casa sem nome',
+        error_accept: 'Falha ao aceitar convite',
+        error_decline: 'Falha ao recusar convite'
     },
     modals: {
         create_household: 'Criar Nova Casa',
@@ -199,6 +251,7 @@ export default {
         one_time_desc: 'Adiciona uma tarefa para {pet}, apenas hoje.',
         feeding: 'Alimentação',
         medication: 'Medicação',
+        care: 'Cuidado',
         task_name: 'Nome da Tarefa',
         time: 'Horário',
         add_task: 'Adicionar Tarefa',
@@ -304,6 +357,8 @@ export default {
         button_sending: 'Enviando...',
         push_title: 'Novo Convite',
         push_body: '{name} convidou você para entrar em uma casa!',
+        email_sent_success: 'Convite por email enviado para {email}',
+        email_send_failed: 'Falha ao enviar email',
         status_pending: 'Pendente',
         status_accepted: 'Aceito',
         status_declined: 'Recusado'
@@ -327,7 +382,18 @@ export default {
         page_title: 'Novo Pet',
         cancel_setup: 'Cancelar Configuração',
         limit_reached: 'Limite Atingido',
-        upload_custom: 'Adicionar Foto'
+        upload_custom: 'Adicionar Foto',
+        uploading: 'Enviando...',
+        error_invalid_name: 'Por favor, insira um nome válido para o pet.',
+        error_select_day: 'Selecione pelo menos um dia para o agendamento: {name}',
+        error_select_date: 'Selecione pelo menos uma data para o agendamento: {name}',
+        error_add_time: 'Adicione pelo menos um horário para o agendamento: {name}',
+        error_create_failed: 'Falha ao adicionar pet',
+        error_upload_failed: 'Falha ao enviar foto',
+        task_name_required: 'Por favor, forneça um nome para esta tarefa',
+        premium_feature_name: 'Pets Ilimitados',
+        premium_feature_desc: 'Desbloqueie pets ilimitados, múltiplas casas, fotos personalizadas e exportação em PDF!',
+        day_labels: ['S', 'T', 'Q', 'Q', 'S', 'S', 'D']
     },
     export: {
         title: 'Exportar Dados',
@@ -422,6 +488,142 @@ export default {
         error_display_name_required: 'Nome de exibição é obrigatório',
         error_all_fields_required: 'Por favor, preencha todos os campos obrigatórios',
         error_accept_terms: 'Por favor, aceite os Termos de Serviço e a Política de Privacidade para continuar.'
+    },
+    landing: {
+        tagline: 'Cuidado com Pets Simplificado',
+        description: 'Conecte-se com sua família para acompanhar alimentação, medicação e mais. Nunca mais pergunte "Quem alimentou o cachorro?".',
+        log_in: 'Entrar',
+        new_here: 'Novo aqui?',
+        create_account: 'Criar uma conta',
+        privacy_policy: 'Política de Privacidade',
+        terms_of_service: 'Termos de Serviço'
+    },
+    app_banner: {
+        open_in_app: 'Abrir no App WhoFed',
+        best_experience: 'Para a melhor experiência',
+        open_app: 'Abrir App'
+    },
+    selection_modal: {
+        default_title: 'Selecionar Opção',
+        no_items: 'Nenhum item encontrado.'
+    },
+    notification_prompt: {
+        title: 'Nunca Perca uma Alimentação!',
+        description: 'Receba notificações quando for hora de alimentar, dar remédio ou cuidar dos seus pets.',
+        enabling: 'Ativando...',
+        enable: 'Ativar Notificações',
+        maybe_later: 'Talvez Depois',
+        settings_hint: 'Você pode alterar isso a qualquer momento nos Ajustes'
+    },
+    premium: {
+        title: 'WhoFed Premium',
+        upgrade_unlock: 'Assine para desbloquear este e mais recursos.',
+        monthly: 'Mensal',
+        annual: 'Anual',
+        per_month: '/mês',
+        per_year: '/ano',
+        prices_note: 'Preços em USD',
+        upgrade_now: 'Assinar Agora',
+        maybe_later: 'Talvez Depois'
+    },
+    premium_success: {
+        welcome: 'Bem-vindo ao Premium!',
+        description: 'Agora você tem acesso ilimitado a todos os recursos do WhoFed. Obrigado por apoiar o app!',
+        unlimited_pets: 'Pets ilimitados',
+        custom_photos: 'Fotos personalizadas',
+        multiple_households: 'Múltiplas casas',
+        pdf_exports: 'Exportação em PDF',
+        redirecting: 'Redirecionando para ajustes em {countdown} segundos...',
+        go_now: 'Ir Agora \u2192'
+    },
+    timezone_select: {
+        default_label: 'Selecionar Fuso Horário',
+        no_timezones: 'Nenhum fuso horário disponível.'
+    },
+    change_email: {
+        title: 'Alterar Email',
+        check_inbox: 'Verifique sua Caixa de Entrada',
+        confirmation_sent: 'Enviamos um link de confirmação para {email}. Você deve clicar no link para finalizar a alteração.',
+        close: 'Fechar',
+        verification_desc: 'A alteração do email requer verificação. Você precisará clicar em um link enviado para o novo endereço.',
+        current_email: 'Email Atual',
+        new_email: 'Novo Email',
+        sending: 'Enviando...',
+        send_link: 'Enviar Link de Confirmação',
+        error_enter_email: 'Por favor, insira um novo endereço de email',
+        error_same_email: 'O novo email deve ser diferente do email atual',
+        error_invalid_email: 'Por favor, insira um endereço de email válido',
+        error_update_failed: 'Falha ao atualizar email'
+    },
+    photo_crop: {
+        title: 'Cortar e Ajustar Foto',
+        rotate: 'Girar',
+        saving: 'Salvando...',
+        hint: 'Aperte para zoom \u2022 Arraste para reposicionar',
+        error_too_large: 'Imagem muito grande (>10MB). Escolha uma imagem menor.'
+    },
+    profile: {
+        title: 'Perfil',
+        email: 'Email',
+        username: 'Nome de Usuário',
+        first_name: 'Primeiro Nome',
+        auth_provider: 'Provedor de Autenticação',
+        edit_profile: 'Editar Perfil',
+        logout: 'Sair',
+        save_changes: 'Salvar Alterações',
+        loading: 'Carregando perfil...',
+        updated_success: 'Perfil atualizado com sucesso!'
+    },
+    walkthrough: {
+        slide1_title: 'Bem-vindo ao WhoFed!',
+        slide1_desc: 'Um único lugar para gerenciar o cuidado do seu pet.',
+        slide2_title: 'Chega de Alimentar Duas Vezes',
+        slide2_desc: 'Quando você marca uma tarefa no seu Painel, todos na sua casa veem instantaneamente.',
+        slide3_title: 'Vamos Começar',
+        slide3_desc: 'Adicione seu primeiro pet e configure a agenda para começar a acompanhar!',
+        start_tracking: 'Começar',
+        next: 'Próximo',
+        invite_family: 'Convidar Família',
+        invite_family_desc: 'Toque no botão + para gerar um link de convite. Compartilhe com os membros da sua casa para que possam ver e registrar tarefas!',
+        close: 'Fechar',
+        how_shared_homes: 'Como Casas Compartilhadas Funcionam',
+        how_shared_homes_desc: 'Como Proprietário, você tem controle total para adicionar e remover pets, convidar e remover membros e gerenciar permissões. Como Membro, você pode ver todos os pets e registrar tarefas. Proprietários podem personalizar suas permissões para permitir edição de agendas. Todas as atualizações sincronizam entre os dispositivos de todos.',
+        onetime_vs_recurring: 'Única vs Recorrente',
+        onetime_vs_recurring_desc: 'Tarefas recorrentes acontecem todos os dias com base na agenda do seu pet. Precisa de um lembrete único (como uma consulta no veterinário ou um remédio mensal)? Toque no botão + acima da sua lista de tarefas para criar um evento único!',
+        thanks: 'Obrigado'
+    },
+    join: {
+        loading: 'Carregando convite...',
+        oops: 'Ops!',
+        go_home: 'Ir para Início',
+        download_title: 'Baixar WhoFed',
+        download_desc: 'Você foi convidado para ajudar a cuidar dos pets no WhoFed.',
+        download_note: 'Baixe o app para receber notificações push e ter a experiência completa.',
+        download_app_store: 'Baixar na App Store',
+        download_google_play: 'Baixar no Google Play',
+        or_continue_web: 'Ou continue na web',
+        create_web_account: 'Criar Conta Web',
+        log_in_web: 'Entrar na Web',
+        opening_app: 'Abrindo app...',
+        wrong_account: 'Conta Errada?',
+        invite_sent_to: 'Este convite foi enviado para',
+        logged_in_as: 'mas você está logado como',
+        switch_account: 'Trocar Conta',
+        continue_as: 'Continuar como {email}',
+        join_title: 'Entrar na Casa?',
+        invite_desc: 'Você foi convidado para entrar na casa de {owner} com {count} outros membros.',
+        joining_as: 'Entrando como',
+        switch: 'Trocar',
+        join_now: 'Entrar Agora'
+    },
+    date_picker: {
+        select_date: 'Selecionar Data',
+        day_headers: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+    },
+    time_picker: {
+        am: 'AM',
+        pm: 'PM',
+        set_time: 'Definir Horário'
     },
     history: {
         page_title: 'Histórico de Atividade',

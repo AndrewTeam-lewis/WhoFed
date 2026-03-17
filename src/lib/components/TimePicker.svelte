@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { fade, scale } from 'svelte/transition';
+    import { t } from '$lib/services/i18n';
 
     export let value = '08:00'; // HH:MM 24h format
     export let label = '';
@@ -121,14 +122,14 @@
                         class="w-12 py-3 rounded-xl font-bold text-sm transition-all {selectedPeriod === 'AM' ? 'bg-brand-sage text-white shadow-md' : 'bg-gray-100 text-gray-400'}"
                         on:click={() => selectedPeriod = 'AM'}
                     >
-                        AM
+                        {$t.time_picker.am}
                     </button>
-                    <button 
+                    <button
                         type="button"
                         class="w-12 py-3 rounded-xl font-bold text-sm transition-all {selectedPeriod === 'PM' ? 'bg-brand-sage text-white shadow-md' : 'bg-gray-100 text-gray-400'}"
                         on:click={() => selectedPeriod = 'PM'}
                     >
-                        PM
+                        {$t.time_picker.pm}
                     </button>
                 </div>
             </div>
@@ -139,13 +140,13 @@
                     class="flex-1 py-4 text-center font-bold text-gray-400 hover:bg-gray-50 rounded-2xl transition-colors"
                     on:click={() => showModal = false}
                 >
-                    Cancel
+                    {$t.common.cancel}
                 </button>
-                <button 
+                <button
                     class="flex-1 py-4 text-center font-bold bg-brand-sage text-white rounded-2xl shadow-lg hover:bg-brand-sage/90 transition-all"
                     on:click={confirm}
                 >
-                    Set Time
+                    {$t.time_picker.set_time}
                 </button>
             </div>
         </div>

@@ -1,9 +1,10 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { fade, scale } from 'svelte/transition';
+    import { t } from '$lib/services/i18n';
 
     export let value = ''; // YYYY-MM-DD
-    export let placeholder = 'Select Date';
+    export let placeholder = '';
 
     const dispatch = createEventDispatcher();
     let showModal = false;
@@ -62,7 +63,7 @@
     on:click={openModal}
 >
     <span class={!value ? 'text-gray-400' : ''}>
-        {value ? new Date(value + 'T00:00:00').toLocaleDateString(undefined, {month:'short', day: 'numeric', year: 'numeric'}) : placeholder}
+        {value ? new Date(value + 'T00:00:00').toLocaleDateString(undefined, {month:'short', day: 'numeric', year: 'numeric'}) : (placeholder || $t.date_picker.select_date)}
     </span>
     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -102,7 +103,7 @@
 
             <!-- Days Header -->
             <div class="grid grid-cols-7 mb-2">
-                {#each ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as day}
+                {#each $t.date_picker.day_headers as day}
                     <div class="text-center text-xs font-bold text-gray-300">{day}</div>
                 {/each}
             </div>
@@ -139,7 +140,7 @@
                     class="text-sm font-bold text-gray-400 hover:text-typography-primary px-4 py-2"
                     on:click={() => showModal = false}
                 >
-                    Cancel
+                    {$t.common.cancel}
                 </button>
             </div>
         </div>

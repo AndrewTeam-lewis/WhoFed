@@ -76,7 +76,7 @@
       try {
         await stripeService.redirectToCustomerPortal();
       } catch (e: any) {
-        alert('Error opening subscription management: ' + e.message);
+        alert(`${$t.settings.error_subscription}: ${e.message}`);
       }
     }
   }
@@ -190,7 +190,7 @@
           await loadSettings(); // Reload to refresh list
       } catch (e: any) {
           console.error('Error saving pet:', e);
-          alert('Failed to save pet: ' + e.message);
+          alert(`${$t.settings.error_save_pet}: ${e.message}`);
       } finally {
           loading = false;
       }
@@ -200,7 +200,7 @@
   const savePetEdits = savePet;
 
   async function deletePet() {
-      if (!confirm('Are you sure you want to delete this pet? This cannot be undone.')) return;
+      if (!confirm($t.settings.confirm_delete_pet)) return;
       loading = true;
       try {
           const { error } = await supabase
@@ -212,7 +212,7 @@
           showEditPetModal = false;
           await loadSettings();
       } catch (e: any) {
-          alert('Error deleting pet: ' + e.message);
+          alert(`${$t.settings.error_delete_pet}: ${e.message}`);
       } finally {
           loading = false;
       }
@@ -223,7 +223,7 @@
        if (!input.files?.length) return;
        // Logic to upload custom icon would go here.
        // For now, simple alert or ignore as we use emoji picker primarily.
-       alert("Custom photo upload coming soon!");
+       alert($t.modals.upload_coming_soon);
   }
 
   function openEditPet(pet: any) {
@@ -351,9 +351,9 @@
               return {
                   ...s,
                   pet: pet,
-                  household_name: hh?.name || 'Unknown Household',
+                  household_name: hh?.name || $t.settings.unknown_household,
                   // Fallback title logic
-                  display_label: s.label || (s.task_type === 'medication' ? 'Medication' : s.task_type === 'care' ? 'Care Task' : 'Feeding'),
+                  display_label: s.label || (s.task_type === 'medication' ? $t.modals.medication : s.task_type === 'care' ? $t.modals.care : $t.modals.feeding),
                   my_enabled: settingsMap[s.id] !== undefined ? settingsMap[s.id] : true
               };
           });
@@ -367,7 +367,7 @@
 
           showManageRemindersModal = true;
       } catch (e: any) {
-          alert('Error loading reminders: ' + e.message);
+          alert(`${$t.settings.error_loading_reminders}: ${e.message}`);
       } finally {
           loading = false;
       }
@@ -413,7 +413,7 @@
               notificationsEnabled = true;
           }
       } catch (e: any) {
-          alert('Notification Error: ' + e.message);
+          alert(`${$t.settings.error_notification}: ${e.message}`);
           // Revert Toggle if failed
           notificationsEnabled = !notificationsEnabled;
       }
@@ -523,7 +523,7 @@
           members = [...members]; // trigger reactivity
       } catch (error) {
           console.error('Error updating permission:', error);
-          alert('Failed to update permission');
+          alert($t.settings.error_update_permission);
       }
   }
 
@@ -580,7 +580,7 @@
           householdIdForAction = null;
       } catch (e: any) {
           console.error('Error removing member:', e);
-          alert('Failed to remove member: ' + e.message);
+          alert(`${$t.settings.error_remove_member}: ${e.message}`);
       }
   }
 
@@ -601,7 +601,7 @@
           window.location.reload();
       } catch (e: any) {
           console.error('Error leaving household:', e);
-          alert('Failed to leave household: ' + e.message);
+          alert(`${$t.settings.error_leave_household}: ${e.message}`);
       }
   }
 
@@ -623,7 +623,7 @@
           }
       } catch (e) {
           console.error('Check failed:', e);
-          alert('Error checking household status');
+          alert($t.settings.error_check_household);
       }
   }
 
@@ -655,7 +655,7 @@
           window.location.reload(); 
       } catch (e: any) {
           console.error('Error deleting household:', e);
-          alert('Failed to delete household: ' + e.message);
+          alert(`${$t.settings.error_delete_household}: ${e.message}`);
       }
   }
 
@@ -742,7 +742,7 @@
 
       } catch (e: any) {
           console.error('Error updating household:', e);
-          alert('Failed to update household: ' + e.message);
+          alert(`${$t.settings.error_update_household}: ${e.message}`);
       }
   }
 
@@ -773,13 +773,13 @@
           window.location.reload();
       } catch (e: any) {
           console.error('Error in acceptInvite:', e);
-          alert('Error accepting invite: ' + e.message);
+          alert(`${$t.settings.error_accept_invite}: ${e.message}`);
           processingInviteId = null;
       }
   }
 
   async function declineInvite(inviteId: string) {
-      if (!confirm('Are you sure you want to decline?')) return;
+      if (!confirm($t.settings.confirm_decline_invite)) return;
       processingInviteId = inviteId;
       try {
           const { error } = await supabase.from('household_invitations').update({ status: 'declined' }).eq('id', inviteId);
@@ -790,14 +790,14 @@
           pendingInviteCount = incomingInvites.length;
       } catch (e: any) {
           console.error('Error declining invite:', e);
-          alert('Failed to decline invite');
+          alert($t.settings.error_decline_invite);
       } finally {
           processingInviteId = null;
       }
   }
 
   async function revokeInvite(inviteId: string) {
-      if (!confirm('Revoke this invitation?')) return;
+      if (!confirm($t.settings.confirm_revoke_invite)) return;
       try {
           const { error } = await supabase.from('household_invitations').delete().eq('id', inviteId);
           if (error) throw error;
@@ -805,7 +805,7 @@
           outgoingInvites = outgoingInvites.filter(i => i.id !== inviteId);
           sentInviteCount = Math.max(0, sentInviteCount - 1);
       } catch (e: any) {
-          alert('Error: ' + e.message);
+          alert(`${$t.common.error}: ${e.message}`);
       }
   }
 
@@ -988,7 +988,7 @@
                                                      <div>
                                                          <div class="font-bold text-gray-900 text-xs">
                                                              {member.first_name || 'Unknown'}
-                                                             {member.user_id === $currentUser?.id ? ' (You)' : ''}
+                                                             {member.user_id === $currentUser?.id ? $t.settings.you : ''}
                                                          </div>
                                                          <div class="text-[10px]  font-bold {member.role === 'owner' ? 'text-brand-sage' : 'text-gray-400'}">
                                                              {member.role === 'owner' ? $t.settings.role_owner : $t.settings.role_member}
@@ -1167,12 +1167,12 @@
                                              </div>
                                              <div>
                                                  <div class="text-xs font-bold text-gray-900">
-                                                     {invite.profiles?.first_name ? invite.profiles.first_name : (invite.profiles?.email || 'Unknown')}
+                                                     {invite.profiles?.first_name ? invite.profiles.first_name : (invite.profiles?.email || $t.common.name)}
                                                  </div>
                                                  <div class="text-[10px] text-gray-500">
                                                       {$t.settings.invited_to.replace('{household}', invite.households?.name)} • 
-                                                     <span class="{invite.status === 'pending' ? 'text-orange-500' : (invite.status === 'accepted' ? 'text-green-500' : 'text-red-500')} font-bold capitalize">
-                                                         {invite.status}
+                                                     <span class="{invite.status === 'pending' ? 'text-orange-500' : (invite.status === 'accepted' ? 'text-green-500' : 'text-red-500')} font-bold">
+                                                         {invite.status === 'pending' ? $t.invite.status_pending : invite.status === 'accepted' ? $t.invite.status_accepted : $t.invite.status_declined}
                                                      </span>
                                                  </div>
                                              </div>
@@ -1255,7 +1255,7 @@
 
            {#if !Capacitor.isNativePlatform()}
            <p class="text-xs text-gray-400 px-4 leading-relaxed mt-2">
-               Push notifications work best on the mobile app. Web notifications require browser permissions and may not work reliably.
+               {$t.settings.push_web_warning}
            </p>
            {/if}
 
@@ -1323,12 +1323,12 @@
               <div class="relative z-10 flex items-center justify-between">
                   <div>
                       <h3 class="text-base font-bold text-white mb-1">
-                          WhoFed Premium
+                          {$t.premium.title}
                       </h3>
-                      <p class="text-white/80 text-xs font-medium max-w-[200px]">Unlock unlimited pets, multiple households, and PDF exports!</p>
+                      <p class="text-white/80 text-xs font-medium max-w-[200px]">{$t.settings.premium_unlock_desc}</p>
                   </div>
                   <div class="bg-white/20 backdrop-blur-md rounded-full px-3 py-1">
-                      <span class="text-white text-[10px] font-bold tracking-wider uppercase">Upgrade</span>
+                      <span class="text-white text-[10px] font-bold tracking-wider uppercase">{$t.settings.premium_upgrade}</span>
                   </div>
               </div>
           </button>
@@ -1337,18 +1337,18 @@
               <div class="flex items-center justify-between">
                   <div>
                       <h3 class="text-base font-bold text-brand-sage mb-1">
-                          WhoFed Premium
+                          {$t.premium.title}
                       </h3>
-                      <p class="text-brand-sage/70 text-xs font-medium mb-2">You're all set! Enjoy unlimited features.</p>
+                      <p class="text-brand-sage/70 text-xs font-medium mb-2">{$t.settings.premium_active_desc}</p>
                       <button
                           on:click={manageSubscription}
                           class="text-xs font-medium text-brand-sage hover:text-brand-sage/70 transition-colors underline"
                       >
-                          {Capacitor.isNativePlatform() ? 'Manage via App Store' : 'Manage subscription'}
+                          {Capacitor.isNativePlatform() ? $t.settings.premium_manage_app_store : $t.settings.premium_manage_subscription}
                       </button>
                   </div>
                   <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-sage text-white">
-                      Active
+                      {$t.settings.premium_active_badge}
                   </span>
               </div>
           </div>
@@ -1431,10 +1431,10 @@
        <!-- Mobile (only show on web) -->
        {#if !Capacitor.isNativePlatform()}
        <div class="space-y-2">
-          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Mobile</div>
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{$t.settings.mobile_section}</div>
           <section class="bg-white rounded-2xl overflow-hidden shadow-sm p-6">
               <p class="text-xs text-gray-500 text-center mb-4">
-                  Download the mobile app for notifications and managing your pets on the go
+                  {$t.settings.mobile_download_desc}
               </p>
               <div class="flex justify-center items-center gap-3">
                   <a href="https://play.google.com/store/apps/details?id=com.whofed.app" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity">
@@ -1508,7 +1508,7 @@
       <div class="bg-white rounded-[32px] w-full max-w-sm relative z-10 animate-scale-in max-h-[85vh] overflow-y-auto flex flex-col">
           <div class="p-6">
                <div class="flex items-center justify-between mb-6">
-                   <h3 class="text-xl font-bold text-gray-900">Edit Pet</h3>
+                   <h3 class="text-xl font-bold text-gray-900">{$t.modals.edit_pet}</h3>
                    <button on:click={() => showEditPetModal = false} class="text-gray-400 hover:text-gray-600" aria-label="Close">
                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1522,7 +1522,7 @@
                         <PetIcon icon={editPetIcon} size="lg" />
                    </div>
                    
-                   <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Icon</p>
+                   <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{$t.modals.select_icon}</p>
                    
                    <!-- Unified Grid -->
                    <div class="grid grid-cols-5 gap-2 w-full mb-4">
@@ -1550,15 +1550,15 @@
                         }}
                    >
                        {#if isUploading}
-                           <span>Uploading...</span>
+                           <span>{$t.add_pet.uploading}</span>
                        {:else}
                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                            </svg>
-                           <span>Upload Photo</span>
+                           <span>{$t.modals.upload_photo}</span>
                        {/if}
                        {#if !$userIsPremium}
-                            <span class="text-[10px] bg-gray-100 px-1.5 rounded ml-1">PREM</span>
+                            <span class="text-[10px] bg-gray-100 px-1.5 rounded ml-1">{$t.modals.prem_badge}</span>
                        {/if}
                    </button>
                    <input type="file" bind:this={fileInput} class="hidden" accept="image/*" on:change={handleFileUpload} />
@@ -1566,11 +1566,11 @@
 
                <div class="space-y-4">
                    <div>
-                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="editPetName">Name</label>
+                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="editPetName">{$t.common.name}</label>
                        <input id="editPetName" type="text" bind:value={editPetName} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
                    </div>
                    <div>
-                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="editPetSpecies">Species</label>
+                       <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="editPetSpecies">{$t.common.species}</label>
                        <input id="editPetSpecies" type="text" bind:value={editPetSpecies} class="w-full p-3 bg-gray-50 rounded-xl font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-sage/20 transition-all" />
                    </div>
                </div>
@@ -1581,15 +1581,15 @@
                    class="w-full mt-6 py-4 bg-brand-sage text-white font-bold rounded-2xl shadow-lg shadow-brand-sage/20 active:scale-95 transition-transform"
                    on:click={savePetEdits}
                >
-                   Save Changes
+                   {$t.modals.save_changes}
                </button>
-               
+
                {#if isOwner}
-               <button 
+               <button
                    class="w-full mt-2 py-4 text-red-500 font-bold rounded-xl hover:bg-red-50 transition-colors"
                    on:click={deletePet}
                >
-                   Delete Pet
+                   {$t.modals.delete_pet}
                </button>
                {/if}
           </div>
@@ -1652,8 +1652,8 @@
   <!-- PREMIUM UPSELL MODAL -->
   {#if showPremiumModal}
     <PremiumFeatureModal
-        featureName="WhoFed Premium"
-        featureDescription="Unlock unlimited pets, multiple households, custom photos, and PDF exports!"
+        featureName={$t.premium.title}
+        featureDescription={$t.settings.premium_unlock_desc}
         on:close={() => showPremiumModal = false}
     />
   {/if}
@@ -1678,9 +1678,9 @@
           </div>
           
           <div class="p-6 text-center">
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Account?</h3>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.modals.delete_account_title}</h3>
               <p class="text-gray-500 mb-6 text-sm leading-relaxed">
-                  This action is <span class="font-bold text-red-600">permanent</span> and cannot be undone.<br>All your pets, logs, and data will be erased immediately.
+                  {@html $t.settings.delete_account_warning}
               </p>
               
               <div class="space-y-3">
@@ -1696,18 +1696,18 @@
                               await supabase.auth.signOut();
                               showGoodbyeModal = true;
                           } catch(err: any) {
-                              alert('Error deleting account: ' + err.message);
+                              alert(`${$t.settings.error_delete_account}: ${err.message}`);
                               showDeleteAccountModal = false;
                           }
                       }}
                   >
-                      Yes, Delete Everything
+                      {$t.modals.delete_account_confirm}
                   </button>
-                  <button 
+                  <button
                       class="w-full py-3 text-gray-500 font-medium text-sm hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
                       on:click={() => showDeleteAccountModal = false}
                   >
-                      Cancel
+                      {$t.common.cancel}
                   </button>
               </div>
           </div>
@@ -1725,16 +1725,16 @@
               <span class="text-4xl pr-1">🐾</span>
           </div>
           
-          <h3 class="text-2xl font-black text-gray-900 mb-3">Account Deleted</h3>
+          <h3 class="text-2xl font-black text-gray-900 mb-3">{$t.settings.account_deleted_title}</h3>
           <p class="text-gray-500 mb-8 text-sm leading-relaxed">
-              Your account and all associated data have been permanently removed. We're sorry to see you go!
+              {$t.settings.account_deleted_desc}
           </p>
-          
-          <button 
+
+          <button
               class="w-full py-4 bg-brand-sage text-white font-bold rounded-xl shadow-lg hover:bg-brand-sage/90 transition-all"
               on:click={() => window.location.href = '/auth/login'}
           >
-              Back to Login
+              {$t.modals.back_to_login}
           </button>
       </div>
   </div>
@@ -1751,11 +1751,11 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
                   </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Remove {memberToRemove.first_name}?</h3>
-              <p class="text-gray-500 text-sm mb-6">They will lose access to this household and its pets.</p>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.modals.remove_member_title.replace('{name}', memberToRemove.first_name)}</h3>
+              <p class="text-gray-500 text-sm mb-6">{$t.modals.remove_member_desc}</p>
               <div class="flex space-x-3">
-                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => { showRemoveMemberModal = false; memberToRemove = null; }}>Cancel</button>
-                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={removeMember}>Remove</button>
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => { showRemoveMemberModal = false; memberToRemove = null; }}>{$t.common.cancel}</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={removeMember}>{$t.settings.remove}</button>
               </div>
           </div>
       </div>
@@ -1774,11 +1774,11 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
                   </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Remove {memberToRemove.first_name}?</h3>
-              <p class="text-gray-500 text-sm mb-6">They will lose access to all pets and schedules in this household.</p>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.modals.remove_member_title.replace('{name}', memberToRemove.first_name)}</h3>
+              <p class="text-gray-500 text-sm mb-6">{$t.modals.remove_member_desc}</p>
               <div class="flex space-x-3">
-                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showRemoveMemberModal = false}>Cancel</button>
-                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={removeMember}>Remove</button>
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showRemoveMemberModal = false}>{$t.common.cancel}</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={removeMember}>{$t.settings.remove}</button>
               </div>
           </div>
       </div>
@@ -1795,11 +1795,11 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Leave this household?</h3>
-              <p class="text-gray-500 text-sm mb-6">You will lose access to all pets and schedules in this household.</p>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.modals.leave_household_title}</h3>
+              <p class="text-gray-500 text-sm mb-6">{$t.settings.leave_household_desc}</p>
               <div class="flex space-x-3">
-                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showLeaveHouseholdModal = false}>Cancel</button>
-                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={leaveHousehold}>Leave</button>
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showLeaveHouseholdModal = false}>{$t.common.cancel}</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={leaveHousehold}>{$t.settings.leave}</button>
               </div>
           </div>
       </div>
@@ -1820,8 +1820,8 @@
               <h3 class="text-xl font-bold text-gray-900 mb-2">{$t.settings.delete_household_confirm_title}</h3>
               <p class="text-gray-500 text-sm mb-6">{$t.settings.delete_household_confirm_desc}</p>
               <div class="flex space-x-3">
-                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showDeleteHouseholdModal = false}>Cancel</button>
-                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={deleteHousehold}>Delete</button>
+                  <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showDeleteHouseholdModal = false}>{$t.common.cancel}</button>
+                  <button class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600" on:click={deleteHousehold}>{$t.common.delete}</button>
               </div>
           </div>
       </div>
@@ -1851,7 +1851,7 @@
               class="w-full py-3 bg-brand-sage text-white rounded-xl font-bold hover:bg-brand-sage/90 transition-colors shadow-lg shadow-brand-sage/20 active:scale-95 transform"
               on:click={() => showCannotDeleteModal = false}
           >
-              Got it
+              {$t.common.got_it}
           </button>
       </div>
   </div>
@@ -1939,7 +1939,7 @@
                   class="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-sage focus:border-transparent mb-4"
               />
               
-              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.settings.timezone || 'Household Timezone'}</label>
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{$t.settings.timezone}</label>
               <CustomTimezoneSelect
                   bind:value={editingHousehold.timezone}
                   {timezones}
@@ -1947,12 +1947,12 @@
           </div>
           
           <div class="flex space-x-3">
-              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showEditHouseholdModal = false}>Cancel</button>
-              <button 
-                  class="flex-1 py-3 bg-brand-sage text-white rounded-xl font-semibold hover:bg-brand-sage/90 disabled:opacity-50" 
+              <button class="flex-1 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600 hover:bg-gray-200" on:click={() => showEditHouseholdModal = false}>{$t.common.cancel}</button>
+              <button
+                  class="flex-1 py-3 bg-brand-sage text-white rounded-xl font-semibold hover:bg-brand-sage/90 disabled:opacity-50"
                   on:click={updateHouseholdName}
                   disabled={!editingHousehold?.name.trim()}
-              >Save</button>
+              >{$t.common.save}</button>
           </div>
       </div>
   </div>

@@ -45,9 +45,9 @@
       }
   ];
 
-  const DAYS_OF_WEEK = [
-      { val: 1, label: 'M' }, { val: 2, label: 'T' }, { val: 3, label: 'W' },
-      { val: 4, label: 'T' }, { val: 5, label: 'F' }, { val: 6, label: 'S' }, { val: 0, label: 'S' }
+  $: DAYS_OF_WEEK = [
+      { val: 1, label: $t.add_pet.day_labels[0] }, { val: 2, label: $t.add_pet.day_labels[1] }, { val: 3, label: $t.add_pet.day_labels[2] },
+      { val: 4, label: $t.add_pet.day_labels[3] }, { val: 5, label: $t.add_pet.day_labels[4] }, { val: 6, label: $t.add_pet.day_labels[5] }, { val: 0, label: $t.add_pet.day_labels[6] }
   ];
 
   // Curated Pet Icons (ordered by commonality)
@@ -232,7 +232,7 @@
 
   async function handleSubmit() {
       if (!name || !householdId) {
-          alert('Please enter a valid pet name.');
+          alert($t.add_pet.error_invalid_name);
           return;
       }
       loading = true;
@@ -282,17 +282,17 @@
                   }
                   if (s.frequency === 'weekly' && s.selectedDays.length === 0) {
                       loading = false;
-                      alert(`Please select at least one day for schedule: ${s.label || s.type}`);
+                      alert($t.add_pet.error_select_day.replace('{name}', s.label || s.type));
                       return;
                   }
                   if (s.frequency === 'custom' && s.customDates.length === 0) {
                       loading = false;
-                      alert(`Please select at least one date for schedule: ${s.label || s.type}`);
+                      alert($t.add_pet.error_select_date.replace('{name}', s.label || s.type));
                       return;
                   }
                   if (s.times.length === 0 && s.frequency !== 'monthly') {
                       loading = false;
-                      alert(`Please add at least one time for schedule: ${s.label || s.type}`);
+                      alert($t.add_pet.error_add_time.replace('{name}', s.label || s.type));
                       return;
                   }
               }
@@ -380,7 +380,7 @@
           goto('/');
       } catch (error: any) {
           console.error('Error creating pet:', error);
-          alert(`Failed to add pet: ${error.message}`);
+          alert(`${$t.add_pet.error_create_failed}: ${error.message}`);
       } finally {
           loading = false;
       }
@@ -479,7 +479,7 @@
           selectedImageDataUrl = null;
       } catch (error: any) {
           console.error('Upload failed:', error);
-          alert(`Upload failed: ${error.message}`);
+          alert(`${$t.add_pet.error_upload_failed}: ${error.message}`);
       } finally {
           uploadingPhoto = false;
       }
@@ -591,7 +591,7 @@
                         >
                             {#if uploadingPhoto}
                                 <span class="animate-spin">⏳</span>
-                                <span>Uploading...</span>
+                                <span>{$t.add_pet.uploading}</span>
                             {:else}
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -663,7 +663,7 @@
                                     placeholder={schedule.type === 'feeding' ? $t.pet_settings.food_name_placeholder + ' *' : schedule.type === 'care' ? $t.pet_settings.care_name_placeholder + ' *' : $t.pet_settings.med_name_placeholder + ' *'}
                                 />
                                  {#if labelErrors[schedule.id]}
-                                     <p class="text-red-500 text-xs mt-1">Please provide a name for this task</p>
+                                     <p class="text-red-500 text-xs mt-1">{$t.add_pet.task_name_required}</p>
                                  {/if}
                                  <div class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -752,7 +752,7 @@
                                                 }
                                             }}
                                         >
-                                            Add
+                                            {$t.common.add}
                                         </button>
                                     </div>
                                     
@@ -811,7 +811,7 @@
                                 class="w-full py-3 border-2 border-dashed border-brand-sage/40 rounded-2xl text-brand-sage text-xs font-bold uppercase flex items-center justify-center space-x-2 hover:bg-brand-sage/5 transition-colors"
                             >
                                 <span class="text-lg leading-none">+</span>
-                                <span>{$t.pet_settings.add_time.replace('{type}', schedule.type === 'feeding' ? $t.modals.feeding : schedule.type === 'medication' ? $t.modals.medication : 'Care')}</span>
+                                <span>{$t.pet_settings.add_time.replace('{type}', schedule.type === 'feeding' ? $t.modals.feeding : schedule.type === 'medication' ? $t.modals.medication : $t.modals.care)}</span>
                             </button>
                             {/if}
                         </div>
@@ -858,8 +858,8 @@
     <!-- PREMIUM UPSELL MODAL -->
     {#if showPremiumModal}
         <PremiumFeatureModal
-            featureName="Unlimited Pets"
-            featureDescription="Unlock unlimited pets, multiple households, custom photos, and PDF exports!"
+            featureName={$t.add_pet.premium_feature_name}
+            featureDescription={$t.add_pet.premium_feature_desc}
             on:close={() => showPremiumModal = false}
         />
     {/if}

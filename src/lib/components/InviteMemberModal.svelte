@@ -211,8 +211,7 @@
                 // Handle new user (send email) vs existing user (send push + create invitation)
                 if (result.is_new_user) {
                     // New user - send email invitation
-                    inviteMessage = $t.invite.email_sent_success?.replace('{email}', result.email || identifier)
-                        || `Email invitation sent to ${result.email || identifier}`;
+                    inviteMessage = $t.invite.email_sent_success.replace('{email}', result.email || identifier);
 
                     console.log('[INVITE DEBUG] New user invite - preparing email with key:', result.invite_key);
 
@@ -234,13 +233,13 @@
 
                         if (error) {
                             console.error('[INVITE DEBUG] Edge function error:', error);
-                            alert(`Email send failed: ${error.message || JSON.stringify(error)}`);
+                            alert(`${$t.invite.email_send_failed}: ${error.message || JSON.stringify(error)}`);
                         } else {
                             console.log('[INVITE DEBUG] Email sent successfully:', data);
                         }
                     } catch (err) {
                         console.error('[INVITE DEBUG] Error sending invite email:', err);
-                        alert(`Failed to send email: ${err}`);
+                        alert(`${$t.invite.email_send_failed}: ${err}`);
                     }
                 } else {
                     // Existing user - show success and send both push notification AND email

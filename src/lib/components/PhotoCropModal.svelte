@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import Croppie from 'croppie';
   import 'croppie/croppie.css';
+  import { t } from '$lib/services/i18n';
 
   export let imageDataUrl: string;
   export let open = false;
@@ -74,7 +75,7 @@
     // Validate image size
     const sizeInMB = (imageDataUrl.length * 3 / 4) / (1024 * 1024);
     if (sizeInMB > 10) {
-      error = 'Image too large (>10MB). Please choose a smaller image.';
+      error = $t.photo_crop.error_too_large;
       return;
     }
 
@@ -178,7 +179,7 @@
 
     <!-- Modal -->
     <div class="bg-white rounded-[32px] p-6 w-full max-w-md shadow-xl relative z-10 animate-scale-in">
-      <h3 class="text-center text-xl font-bold text-gray-900 mb-4">Crop & Zoom Photo</h3>
+      <h3 class="text-center text-xl font-bold text-gray-900 mb-4">{$t.photo_crop.title}</h3>
 
       {#if error}
         <div class="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm text-center">
@@ -202,7 +203,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          <span>Rotate</span>
+          <span>{$t.photo_crop.rotate}</span>
         </button>
       </div>
 
@@ -214,7 +215,7 @@
           disabled={saving}
           class="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Cancel
+          {$t.common.cancel}
         </button>
 
         <button
@@ -228,16 +229,16 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>Saving...</span>
+            <span>{$t.photo_crop.saving}</span>
           {:else}
-            <span>Save</span>
+            <span>{$t.common.save}</span>
           {/if}
         </button>
       </div>
 
       <!-- Hint Text -->
       <p class="text-center text-xs text-gray-500 mt-4">
-        Pinch to zoom • Drag to reposition
+        {$t.photo_crop.hint}
       </p>
     </div>
   </div>

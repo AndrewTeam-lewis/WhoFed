@@ -62,150 +62,49 @@ This document catalogs every place in the WhoFed codebase where Portuguese trans
 
 These files have no `$t` usage at all — every string is hardcoded English.
 
-### 2.1 Join Page — `src/routes/join/+page.svelte`
+### ~~2.1 Join Page — `src/routes/join/+page.svelte`~~
 
-| Line | String |
-|------|--------|
-| 75 | `"Invalid or expired invite link."` |
-| 87 | `"Household not found (invalid ID)"` |
-| 131 | `"Failed to join household"` |
-| 159 | `"Loading invite..."` |
-| 169 | `"Oops!"` |
-| 171 | `"Go Home"` |
-| 182 | `"Download WhoFed"` |
-| 183-184 | `"You've been invited to help care for pets on WhoFed."` |
-| 200 | `"Download on App Store"` |
-| 212 | `"Get it on Google Play"` |
-| 217 | `"Or continue on web"` |
-| 223 | `"Create Web Account"` |
-| 230 | `"Log In on Web"` |
-| 250 | `"Join Household?"` |
-| 251-254 | Invite details with hardcoded `"member"/"members"` |
-| 265 | `"Join Now"` |
-| 268 | `"Cancel"` |
+**Status**: Complete — all display strings use `$t.join.*` keys.
 
-### 2.2 Profile Page — `src/routes/profile/+page.svelte`
+### ~~2.2 Profile Page — `src/routes/profile/+page.svelte`~~
 
-| Line | String |
-|------|--------|
-| 69 | `"Profile updated successfully!"` |
-| 86 | `"Profile"` |
-| 100 | `"Email"` |
-| 105 | `"Username"` |
-| 110 | `"First Name"` |
-| 115 | `"Auth Provider"` |
-| 125 | `"Edit Profile"` |
-| 132 | `"Logout"` |
-| 164 | `"Save Changes"` |
-| 172 | `"Cancel"` |
-| 178 | `"Loading profile..."` |
+**Status**: Complete — all strings use `$t.profile.*` and `$t.common.*` keys.
 
-### 2.3 Landing Page — `src/lib/components/LandingPage.svelte`
+### ~~2.3 Landing Page — `src/lib/components/LandingPage.svelte`~~
 
-| Line | String |
-|------|--------|
-| 14 | `"Pet Care Simplified"` |
-| 19 | `"Connect with your family to track feedings, medicine and more..."` |
-| 26 | `"Log In"` |
-| 30 | `"New here?"` |
-| 31 | `"Create an account"` |
-| 39 | `"Privacy Policy"` |
-| 41 | `"Terms of Service"` |
+**Status**: Complete — all strings use `$t.landing.*` keys.
 
-### 2.4 Walkthrough — `src/lib/components/Walkthrough.svelte`
+### ~~2.4 Walkthrough — `src/lib/components/Walkthrough.svelte`~~
 
-| Line | String |
-|------|--------|
-| 16-27 | All carousel slides: `"Welcome to WhoFed!"`, `"No More Double-Feeding"`, `"Let's Get Started"` |
-| 77 | `"Start Tracking"` / `"Next"` |
-| 108 | `"Invite Family"` |
-| 110 | `"Tap the + button to generate an invite link..."` |
-| 112 | `"Close"` |
-| 125 | `"How Shared Homes Work"` |
-| 129 | `"Got it"` |
-| 142 | `"One-Time vs Recurring"` |
-| 146 | `"Thanks"` |
+**Status**: Complete — all strings use `$t.walkthrough.*` and `$t.common.*` keys.
 
-### 2.5 Premium Success — `src/routes/premium/success/+page.svelte`
+### ~~2.5 Premium Success — `src/routes/premium/success/+page.svelte`~~
 
-| Line | String |
-|------|--------|
-| 44-45 | `"Welcome to Premium!"` |
-| 48-49 | `"You now have unlimited access to all WhoFed features."` |
-| 59-77 | Feature list: `"Unlimited pets"`, `"Custom pet photos"`, `"Multiple households"`, `"PDF exports"` |
-| 84 | `"Redirecting to settings in {countdown} second(s)..."` |
-| 91 | `"Go Now"` |
+**Status**: Complete — all strings use `$t.premium_success.*` keys.
 
-### 2.6 Notification Prompt — `src/lib/components/NotificationPrompt.svelte`
+### ~~2.6 Notification Prompt — `src/lib/components/NotificationPrompt.svelte`~~
 
-| Line | String |
-|------|--------|
-| 37 | `"Never Miss a Feeding!"` |
-| 38 | `"Get notified when it's time to feed, give meds, or care for your pets."` |
-| 53/56 | `"Enabling..."` / `"Enable Notifications"` |
-| 64 | `"Maybe Later"` |
-| 69 | `"You can change this anytime in Settings"` |
+**Status**: Complete — all strings use `$t.notification_prompt.*` keys.
 
-### 2.7 Change Email Modal — `src/lib/components/ChangeEmailModal.svelte`
+### ~~2.7 Change Email Modal — `src/lib/components/ChangeEmailModal.svelte`~~
 
-| Line | String |
-|------|--------|
-| 16-23 | Validation: `"Please enter a new email address"`, `"New email must be different"`, `"Please enter a valid email address"` |
-| 58 | `"Change Email"` |
-| 74-76 | `"Check Your Inbox"`, `"We have sent a confirmation link to..."` |
-| 88-89 | `"Changing your email address requires verification..."` |
-| 93/103 | `"Current Email"` / `"New Email"` |
-| 124/126 | `"Sending..."` / `"Send Confirmation Link"` |
+**Status**: Complete — all strings use `$t.change_email.*` keys.
 
-### 2.8 Photo Modals — `src/lib/components/PhotoSourceModal.svelte`, `PhotoCropModal.svelte`
+### ~~2.8 Photo Modals — `src/lib/components/PhotoSourceModal.svelte`, `PhotoCropModal.svelte`~~
 
-**PhotoSourceModal:**
-| Line | String |
-|------|--------|
-| 22 | `"Camera or photo access denied. Please enable in Settings."` |
-| 128 | `"Add Pet Photo"` |
-| 148 | `"Take Photo"` |
-| 161 | `"Choose from Library"` |
-| 171 | `"Cancel"` |
+**Status**: Complete — PhotoSourceModal uses `$t.photo_source.*`, PhotoCropModal uses `$t.photo_crop.*` and `$t.common.*` keys.
 
-**PhotoCropModal:**
-| Line | String |
-|------|--------|
-| 77 | `"Image too large (>10MB). Please choose a smaller image."` |
-| 181 | `"Crop & Zoom Photo"` |
-| 205 | `"Rotate"` |
-| 217/233 | `"Cancel"` / `"Save"` |
-| 240 | `"Pinch to zoom - Drag to reposition"` |
+### ~~2.9 App Banner — `src/lib/components/AppBanner.svelte`~~
 
-### 2.9 App Banner — `src/lib/components/AppBanner.svelte`
+**Status**: Complete — all strings use `$t.app_banner.*` keys.
 
-| Line | String |
-|------|--------|
-| 62 | `"Open in WhoFed App"` |
-| 63 | `"For the best experience"` |
-| 71 | `"Open App"` |
+### ~~2.10 Date/Time Pickers — `DatePicker.svelte`, `TimePicker.svelte`~~
 
-### 2.10 Date/Time Pickers — `DatePicker.svelte`, `TimePicker.svelte`
+**Status**: Complete — DatePicker uses `$t.date_picker.*`, TimePicker uses `$t.time_picker.*` and `$t.common.*` keys.
 
-**DatePicker:**
-| Line | String |
-|------|--------|
-| 6 | `"Select Date"` |
-| 105 | Day abbreviations: `['S', 'M', 'T', 'W', 'T', 'F', 'S']` |
-| 142 | `"Cancel"` |
+### ~~2.11 Selection Modal — `src/lib/components/SelectionModal.svelte`~~
 
-**TimePicker:**
-| Line | String |
-|------|--------|
-| 124/131 | `"AM"` / `"PM"` (Note: PT uses 24-hour time) |
-| 142/148 | `"Cancel"` / `"Set Time"` |
-
-### 2.11 Selection Modal — `src/lib/components/SelectionModal.svelte`
-
-| Line | String |
-|------|--------|
-| 6 | `"Select Option"` |
-| 42 | `"No items found."` |
+**Status**: Complete — all strings use `$t.selection_modal.*` keys.
 
 ---
 
@@ -213,7 +112,9 @@ These files have no `$t` usage at all — every string is hardcoded English.
 
 These files USE `$t` for some strings but have hardcoded English elsewhere.
 
-### 3.1 Dashboard — `src/routes/app/+page.svelte` (~30 hardcoded strings)
+**Re-audited 2026-03-07**: 8 of 16 files are now fully complete. ~70 hardcoded strings remain across 8 files.
+
+### 3.1 Dashboard — `src/routes/app/+page.svelte` (~20 hardcoded strings)
 
 Key gaps:
 - Delete pet/task confirmation modals (headings, body, buttons)
@@ -226,7 +127,7 @@ Key gaps:
 - Premium feature modal props (`featureName`, `featureDescription`)
 - `'Owner'` / `'Member'` badges
 
-### 3.2 Settings — `src/routes/settings/+page.svelte` (~60 hardcoded strings)
+### 3.2 Settings — `src/routes/settings/+page.svelte` (~26 hardcoded strings)
 
 Key gaps:
 - All confirmation/delete modals (remove member, leave household, delete household, delete account)
@@ -239,7 +140,7 @@ Key gaps:
 - `' (You)'` appended to member name
 - ~20 `alert()` calls with English error messages
 
-### 3.3 Add Pet — `src/routes/pets/add/+page.svelte`
+### 3.3 Add Pet — `src/routes/pets/add/+page.svelte` (~8 hardcoded strings)
 
 Key gaps:
 - `DAYS_OF_WEEK` array: `['M', 'T', 'W', 'T', 'F', 'S', 'S']`
@@ -248,56 +149,32 @@ Key gaps:
 - `"Please provide a name for this task"` validation
 - Premium feature modal props
 
-### 3.4 Pet Settings — `src/routes/pets/[id]/settings/+page.svelte`
+### ~~3.4 Pet Settings — `src/routes/pets/[id]/settings/+page.svelte`~~
 
-Key gaps:
-- Same `DAYS_OF_WEEK` array
-- Photo buttons: `"Processing..."`, `"Add Photo"`, `"Edit Photo"`, `"Remove Photo"`
-- `"Delete this whole group?"` confirm
-- Premium feature modal props
-- Validation alerts
+**Status**: Complete — all strings use `$t.*` keys (re-audited 2026-03-07).
 
-### 3.5 Pet History — `src/routes/pets/[id]/history/+page.svelte`
+### ~~3.5 Pet History — `src/routes/pets/[id]/history/+page.svelte`~~
 
-Key gaps:
-- Task type fallbacks: `"Feeding"`, `"Medication"`, `"Care"`
-- Empty state: `"No activity yet"`, `"Activity will appear here..."`
-- Premium feature modal props
+**Status**: Complete — all strings use `$t.*` keys (re-audited 2026-03-07).
 
-### 3.6 Auth Pages
+### ~~3.6 Auth Pages~~
 
-**Login** (`src/routes/auth/login/+page.svelte`):
-- `"Forgot password?"` link text
-- `"Login failed"` / `"Google sign-in failed"` fallbacks
-- `"Terms of Service"` / `"Privacy Policy"` fallbacks
+**Status**: All 6 auth pages are complete (re-audited 2026-03-07):
+- ~~Login (`src/routes/auth/login/+page.svelte`)~~ — Complete
+- ~~Register (`src/routes/auth/register/+page.svelte`)~~ — Complete
+- ~~Forgot Password (`src/routes/auth/forgot-password/+page.svelte`)~~ — Complete
+- ~~Reset Password (`src/routes/auth/reset-password/+page.svelte`)~~ — Complete
+- ~~Confirm (`src/routes/auth/confirm/+page.svelte`)~~ — Complete
+- ~~Callback (`src/routes/auth/callback/+page.svelte`)~~ — Complete
 
-**Register** (`src/routes/auth/register/+page.svelte`):
-- `"Registration successful! Redirecting..."` success message
-- `"Registration failed"` / `"Google sign-in failed"` fallbacks
+### ~~3.7 Other Components~~
 
-**Forgot Password** (`src/routes/auth/forgot-password/+page.svelte`):
-- `"Failed to send reset email"` fallback
-
-**Reset Password** (`src/routes/auth/reset-password/+page.svelte`):
-- `"Reset Password in App"`, `"For the best experience, open this page in the WhoFed app."`, `"Open in WhoFed App"`
-
-**Confirm** (`src/routes/auth/confirm/+page.svelte`):
-- `"Email confirmed! Please log in."`, `"Verifying your change..."`
-
-**Callback** (`src/routes/auth/callback/+page.svelte`):
-- `"Completing sign in..."`
-
-### 3.7 Other Components
-
-**PremiumFeatureModal.svelte**: `"WhoFed Premium"`, `"Monthly"`, `"Annual"`, `"Prices in USD"`, `"Upgrade Now"`, `"Maybe Later"`
-
-**NotificationsModal.svelte**: `"Someone"`, `"Unnamed Household"` fallbacks, alert error messages
-
-**InviteMemberModal.svelte**: `"Email invitation sent to..."` fallback, alert error messages
-
-**CustomTimezoneSelect.svelte**: `"Select Timezone"`, `"No timezones available."`
-
-**HouseholdSetupModal.svelte**: `"Household Timezone"` fallback
+**Status**: All complete (updated 2026-03-07):
+- ~~PremiumFeatureModal.svelte~~ — uses `$t.premium.*` keys
+- ~~NotificationsModal.svelte~~ — uses `$t.notifications.*` fallback keys
+- ~~InviteMemberModal.svelte~~ — uses `$t.invite.*` keys
+- ~~CustomTimezoneSelect.svelte~~ — uses `$t.timezone_select.*` keys
+- ~~HouseholdSetupModal.svelte~~ — already used `$t.settings.timezone`
 
 ---
 
@@ -356,7 +233,7 @@ Developer-only tool. All English. Intentionally not localized.
 - `new Intl.NumberFormat('en-US', ...)` in stripe.ts — should use user's locale
 
 ### Day Abbreviations
-- `['M', 'T', 'W', 'T', 'F', 'S', 'S']` appears in both `add/+page.svelte` and `pets/[id]/settings/+page.svelte`
+- `['M', 'T', 'W', 'T', 'F', 'S', 'S']` appears in `add/+page.svelte` (pet settings is now localized)
 - Portuguese would use: `['S', 'T', 'Q', 'Q', 'S', 'S', 'D']`
 
 ### AM/PM vs 24-Hour

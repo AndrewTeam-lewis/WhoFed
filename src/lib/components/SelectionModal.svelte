@@ -1,9 +1,10 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { fade, scale } from 'svelte/transition';
+    import { t } from '$lib/services/i18n';
 
     export let show = false;
-    export let title = 'Select Option';
+    export let title = '';
     export let items: { id: string; name: string; icon?: string }[] = [];
     export let selectedId: string = '';
 
@@ -27,7 +28,7 @@
             
             <!-- Header -->
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                <h3 class="font-bold text-gray-800">{title}</h3>
+                <h3 class="font-bold text-gray-800">{title || $t.selection_modal.default_title}</h3>
                 <button on:click={close} class="p-1 rounded-full hover:bg-gray-200 transition-colors text-gray-500">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -39,7 +40,7 @@
             <div class="max-h-[60vh] overflow-y-auto p-2">
                 {#if items.length === 0}
                     <div class="p-8 text-center text-gray-500 text-sm">
-                        No items found.
+                        {$t.selection_modal.no_items}
                     </div>
                 {:else}
                     <div class="space-y-1">

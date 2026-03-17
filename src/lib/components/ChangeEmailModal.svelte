@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { supabase } from '$lib/supabase';
+    import { t } from '$lib/services/i18n';
 
     const dispatch = createEventDispatcher();
 
@@ -13,15 +14,15 @@
 
     async function updateEmail() {
         if (!newEmail) {
-            error = 'Please enter a new email address';
+            error = $t.change_email.error_enter_email;
             return;
         }
         if (newEmail === currentEmail) {
-            error = 'New email must be different from current email';
+            error = $t.change_email.error_same_email;
             return;
         }
         if (!newEmail.includes('@') || !newEmail.includes('.')) {
-            error = 'Please enter a valid email address';
+            error = $t.change_email.error_invalid_email;
             return;
         }
 
@@ -39,7 +40,7 @@
 
         } catch (e: any) {
             console.error('Error updating email:', e);
-            error = e.message || 'Failed to update email';
+            error = e.message || $t.change_email.error_update_failed;
         } finally {
             loading = false;
         }
@@ -55,7 +56,7 @@
         <div class="p-6">
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-gray-900">Change Email</h3>
+                <h3 class="text-xl font-bold text-gray-900">{$t.change_email.title}</h3>
                 <button on:click={() => dispatch('close')} class="text-gray-400 hover:text-gray-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -71,26 +72,26 @@
                         </svg>
                     </div>
                     <div>
-                        <h4 class="text-lg font-bold text-gray-900">Check Your Inbox</h4>
+                        <h4 class="text-lg font-bold text-gray-900">{$t.change_email.check_inbox}</h4>
                         <p class="text-sm text-gray-500 mt-2 px-4">
-                            We have sent a confirmation link to <strong>{newEmail}</strong>. You must click the link to finalize this change.
+                            {$t.change_email.confirmation_sent.replace('{email}', newEmail)}
                         </p>
                     </div>
                     <button 
                         class="px-6 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg text-sm hover:bg-gray-200 transition-colors"
                         on:click={() => dispatch('close')}
                     >
-                        Close
+                        {$t.change_email.close}
                     </button>
                 </div>
             {:else}
                 <div class="space-y-4">
                     <p class="text-sm text-gray-500">
-                        Changing your email address requires verification. You will need to click a link sent to your new address.
+                        {$t.change_email.verification_desc}
                     </p>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Current Email</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{$t.change_email.current_email}</label>
                         <input
                             type="text"
                             value={currentEmail}
@@ -100,7 +101,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">New Email</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{$t.change_email.new_email}</label>
                         <input
                             type="email"
                             bind:value={newEmail}
@@ -121,9 +122,9 @@
                         disabled={!newEmail || loading}
                     >
                         {#if loading}
-                            Sending...
+                            {$t.change_email.sending}
                         {:else}
-                            Send Confirmation Link
+                            {$t.change_email.send_link}
                         {/if}
                     </button>
                 </div>

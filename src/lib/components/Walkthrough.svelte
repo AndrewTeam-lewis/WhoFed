@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onboarding } from '$lib/stores/onboarding';
   import { fade, scale } from 'svelte/transition';
+  import { t } from '$lib/services/i18n';
 
   // Tooltip Logic (Simple absolute positioning near target if needed, 
   // or we can just render fixed centered for modal and use this for the overlay)
@@ -11,18 +12,18 @@
 
   // Carousel State
   let currentSlide = 0;
-  const slides = [
+  $: slides = [
     {
-      title: 'Welcome to WhoFed!',
-      description: 'A single location to manage your pet\'s care.'
+      title: $t.walkthrough.slide1_title,
+      description: $t.walkthrough.slide1_desc
     },
     {
-      title: 'No More Double-Feeding',
-      description: 'When you check off a task on your Dashboard, everyone in your household sees it instantly.'
+      title: $t.walkthrough.slide2_title,
+      description: $t.walkthrough.slide2_desc
     },
     {
-      title: 'Let\'s Get Started',
-      description: 'Add your first pet and set up their schedule to begin tracking!'
+      title: $t.walkthrough.slide3_title,
+      description: $t.walkthrough.slide3_desc
     }
   ];
 
@@ -74,7 +75,7 @@
               class="w-full bg-brand-sage text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-brand-sage/20 active:scale-95 transition-transform"
               on:click={nextSlide}
           >
-              {currentSlide === slides.length - 1 ? "Start Tracking" : "Next"}
+              {currentSlide === slides.length - 1 ? $t.walkthrough.start_tracking : $t.walkthrough.next}
           </button>
       </div>
   </div>
@@ -105,11 +106,11 @@
                    </svg>
                </div>
                <div>
-                   <h3 class="font-bold text-gray-900 mb-1">Invite Family</h3>
+                   <h3 class="font-bold text-gray-900 mb-1">{$t.walkthrough.invite_family}</h3>
                    <p class="text-sm text-gray-500 mb-4">
-                       Tap the <span class="inline-block bg-brand-sage/10 text-brand-sage rounded p-0.5"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg></span> button to generate an invite link. Share it with your household members to let them view and log tasks!
+                       {$t.walkthrough.invite_family_desc}
                    </p>
-                   <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>Close</button>
+                   <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>{$t.walkthrough.close}</button>
                </div>
             </div>
             
@@ -122,11 +123,11 @@
                     </svg>
                </div>
                <div>
-                   <h3 class="font-bold text-gray-900 mb-1">How Shared Homes Work</h3>
+                   <h3 class="font-bold text-gray-900 mb-1">{$t.walkthrough.how_shared_homes}</h3>
                    <p class="text-sm text-gray-500 mb-4">
-                       As an <strong>Owner</strong>, you have full control to add and remove pets, invite and remove members, and manage permissions. As a <strong>Member</strong>, you can view all pets and log tasks. Owners can customize your permissions to allow editing schedules. All updates syncronize across everyone's devices.
+                       {$t.walkthrough.how_shared_homes_desc}
                    </p>
-                   <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>Got it</button>
+                   <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>{$t.common.got_it}</button>
                </div>
             </div>
 
@@ -139,11 +140,11 @@
                    </svg>
                </div>
                <div>
-                   <h3 class="font-bold text-gray-900 mb-1">One-Time vs Recurring</h3>
+                   <h3 class="font-bold text-gray-900 mb-1">{$t.walkthrough.onetime_vs_recurring}</h3>
                    <p class="text-sm text-gray-500 mb-4">
-                       Recurring tasks happen every day based on your pet's schedule. Need a one-off reminder (like a vet appointment or a monthly pill)? Tap the <strong>+</strong> button above your task list to create a one-time event!
+                       {$t.walkthrough.onetime_vs_recurring_desc}
                    </p>
-                   <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>Thanks</button>
+                   <button class="text-brand-sage font-bold text-sm hover:underline" on:click={() => onboarding.hideTooltip()}>{$t.walkthrough.thanks}</button>
                </div>
             </div>
             {/if}

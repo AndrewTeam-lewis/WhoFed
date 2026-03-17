@@ -1,7 +1,7 @@
 import { Purchases, LOG_LEVEL, type PurchasesPackage, type CustomerInfo } from '@revenuecat/purchases-capacitor';
 import { Capacitor } from '@capacitor/core';
 import { writable } from 'svelte/store';
-import { userIsPremium } from '$lib/stores/user';
+import { supabase } from '$lib/supabase';
 
 // REVENUECAT PUBLIC API KEY
 const API_KEY = 'goog_icLHxgLbQOtvYjLAyOYoNlpoAYN';
@@ -112,10 +112,29 @@ export const purchasesService = {
         }
     },
 
-    handleCustomerInfo(info: CustomerInfo) {
+    async handleCustomerInfo(info: CustomerInfo) {
         // ENTITLEMENT ID: 'premium' (This must match what you create in RevenueCat Dashboard)
         const isPremium = info.entitlements.active['premium'] !== undefined;
         console.log('Purchases: Premium Status:', isPremium);
         nativePremiumStatus.set(isPremium);
+
+        // Sync premium status to Supabase profiles.tier
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const newTier = isPremium ? 'premium' : 'free';
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({ tier: newTier })
+                    .eq('id', user.id);
+                if (error) {
+                    console.error('Purchases: Failed to sync tier to DB:', error);
+                } else {
+                    console.log('Purchases: Synced tier to DB:', newTier);
+                }
+            }
+        } catch (e) {
+            console.error('Purchases: Error syncing tier to DB:', e);
+        }
     }
 };

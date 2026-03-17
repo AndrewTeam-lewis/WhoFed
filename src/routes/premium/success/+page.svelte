@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { t } from '$lib/services/i18n';
 
   let loading = true;
   let countdown = 5;
@@ -42,11 +43,11 @@
 
     <!-- Title -->
     <h1 class="text-3xl font-bold text-gray-900 mb-3">
-      Welcome to Premium!
+      {$t.premium_success.welcome}
     </h1>
 
     <p class="text-gray-600 mb-8 leading-relaxed">
-      You now have unlimited access to all WhoFed features. Thank you for supporting the app!
+      {$t.premium_success.description}
     </p>
 
     <!-- Feature List -->
@@ -56,39 +57,39 @@
           <svg class="h-5 w-5 text-brand-sage mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
           </svg>
-          <span class="text-sm text-gray-700">Unlimited pets</span>
+          <span class="text-sm text-gray-700">{$t.premium_success.unlimited_pets}</span>
         </div>
         <div class="flex items-center">
           <svg class="h-5 w-5 text-brand-sage mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
           </svg>
-          <span class="text-sm text-gray-700">Custom pet photos</span>
+          <span class="text-sm text-gray-700">{$t.premium_success.custom_photos}</span>
         </div>
         <div class="flex items-center">
           <svg class="h-5 w-5 text-brand-sage mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
           </svg>
-          <span class="text-sm text-gray-700">Multiple households</span>
+          <span class="text-sm text-gray-700">{$t.premium_success.multiple_households}</span>
         </div>
         <div class="flex items-center">
           <svg class="h-5 w-5 text-brand-sage mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
           </svg>
-          <span class="text-sm text-gray-700">PDF exports</span>
+          <span class="text-sm text-gray-700">{$t.premium_success.pdf_exports}</span>
         </div>
       </div>
     </div>
 
     <!-- Redirect Info -->
     <p class="text-sm text-gray-400 mb-4">
-      Redirecting to settings in {countdown} second{countdown !== 1 ? 's' : ''}...
+      {$t.premium_success.redirecting.replace('{countdown}', countdown)}
     </p>
 
     <button
       on:click={() => goto('/settings')}
       class="text-brand-sage font-bold hover:underline text-sm"
     >
-      Go Now →
+      {$t.premium_success.go_now}
     </button>
   </div>
 </div>
