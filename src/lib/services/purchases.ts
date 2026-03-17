@@ -2,13 +2,20 @@ import { Purchases, LOG_LEVEL, type PurchasesPackage, type CustomerInfo } from '
 import { Capacitor } from '@capacitor/core';
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabase';
+import { currentProfile } from '$lib/stores/user';
 
 // REVENUECAT PUBLIC API KEY
 const API_KEY = 'goog_icLHxgLbQOtvYjLAyOYoNlpoAYN';
 
+// Must match the entitlement ID in RevenueCat dashboard
+const ENTITLEMENT_ID = 'WhoFed Premium';
+
 // Store to track native entitlement status locally (instant update)
 export const nativePremiumStatus = writable(false);
 export const currentOfferings = writable<PurchasesPackage[]>([]);
+
+// Track init state so login() can wait for configure() to finish
+let initPromise: Promise<void> | null = null;
 
 export const purchasesService = {
     async init() {
@@ -17,29 +24,36 @@ export const purchasesService = {
             return;
         }
 
-        try {
-            console.log('Purchases: Initializing...');
-            await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
-            await Purchases.configure({ apiKey: API_KEY });
+        const doInit = async () => {
+            try {
+                console.log('Purchases: Initializing...');
+                await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+                await Purchases.configure({ apiKey: API_KEY });
 
-            // Check initial entitlement
-            await this.updateEntitlementStatus();
+                // Check initial entitlement
+                await this.updateEntitlementStatus();
 
-            // Load offerings (products to buy)
-            await this.loadOfferings();
+                // Load offerings (products to buy)
+                await this.loadOfferings();
 
-            // Listen for changes (e.g. external subscription update)
-            Purchases.addCustomerInfoUpdateListener((info) => {
-                this.handleCustomerInfo(info);
-            });
+                // Listen for changes (e.g. external subscription update)
+                Purchases.addCustomerInfoUpdateListener((info) => {
+                    this.handleCustomerInfo(info);
+                });
 
-        } catch (e) {
-            console.error('Purchases: Init failed', e);
-        }
+            } catch (e) {
+                console.error('Purchases: Init failed', e);
+            }
+        };
+
+        initPromise = doInit();
+        return initPromise;
     },
 
     async login(userId: string) {
         if (!Capacitor.isNativePlatform()) return;
+        // Wait for init/configure to finish before calling logIn
+        if (initPromise) await initPromise;
         try {
             console.log('Purchases: Logging in as', userId);
             const { customerInfo } = await Purchases.logIn({ appUserID: userId });
@@ -135,7 +149,8 @@ export const purchasesService = {
         // 2. Get RevenueCat customer info
         try {
             const { customerInfo } = await Purchases.getCustomerInfo();
-            log(`RC App User ID: ${customerInfo.originalAppUserId}`);
+            log(`RC Original App User ID: ${customerInfo.originalAppUserId}`);
+            log(`RC Current App User ID: ${(customerInfo as any).appUserID || (customerInfo as any).appUserId || 'N/A'}`);
             log(`RC All Entitlements: ${JSON.stringify(Object.keys(customerInfo.entitlements.all))}`);
             log(`RC Active Entitlements: ${JSON.stringify(Object.keys(customerInfo.entitlements.active))}`);
 
@@ -144,10 +159,10 @@ export const purchasesService = {
                 log(`  Entitlement "${key}": isActive=${(ent as any).isActive}, productId=${(ent as any).productIdentifier}, expires=${(ent as any).expirationDate}`);
             }
 
-            const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
-            log(`Check active['premium']: ${isPremium}`);
+            const isPremium = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+            log(`Check active['${ENTITLEMENT_ID}']: ${isPremium}`);
             if (!isPremium && Object.keys(customerInfo.entitlements.active).length > 0) {
-                log(`WARNING: Active entitlements exist but none named 'premium'. Check RevenueCat dashboard entitlement ID!`);
+                log(`WARNING: Active entitlements exist but none named '${ENTITLEMENT_ID}'. Check RevenueCat dashboard entitlement ID!`);
             }
         } catch (e: any) {
             log(`RC getCustomerInfo failed: ${e.message}`);
@@ -185,8 +200,7 @@ export const purchasesService = {
     },
 
     async handleCustomerInfo(info: CustomerInfo) {
-        // ENTITLEMENT ID: 'premium' (This must match what you create in RevenueCat Dashboard)
-        const isPremium = info.entitlements.active['premium'] !== undefined;
+        const isPremium = info.entitlements.active[ENTITLEMENT_ID] !== undefined;
         console.log('Purchases: Premium Status:', isPremium);
         nativePremiumStatus.set(isPremium);
 
@@ -203,6 +217,8 @@ export const purchasesService = {
                     console.error('Purchases: Failed to sync tier to DB:', error);
                 } else {
                     console.log('Purchases: Synced tier to DB:', newTier);
+                    // Update the in-memory profile store so UI reacts immediately
+                    currentProfile.update(p => p ? { ...p, tier: newTier } : p);
                 }
             }
         } catch (e) {
