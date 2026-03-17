@@ -1494,6 +1494,24 @@
                       </div>
                   </div>
               </button>
+
+              <!-- Debug Page -->
+              <button
+                  class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                  on:click={() => goto('/debug/')}
+              >
+                  <div class="flex items-center space-x-3 text-gray-700">
+                      <div class="p-2 bg-gray-100 text-gray-600 rounded-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                          </svg>
+                      </div>
+                      <div class="flex flex-col">
+                          <span class="text-sm font-medium text-gray-900">Debug Page</span>
+                          <span class="text-xs text-gray-500">RevenueCat diagnostics, DB checks</span>
+                      </div>
+                  </div>
+              </button>
           </section>
        </div>
        {/if}

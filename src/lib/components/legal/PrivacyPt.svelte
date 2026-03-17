@@ -54,5 +54,5 @@
 
 <h3>9. Contato</h3>
 <p>Se você tiver dúvidas sobre esta Política de Privacidade ou desejar exercer seus direitos de dados, entre em contato:</p>
-<p><strong>E-mail de Suporte WhoFed:</strong> <a href="mailto:andrew@retomar.com">andrew@retomar.com</a></p>
+<p><strong>E-mail de Suporte WhoFed:</strong> <a href="mailto:support@retomarlabs.com">support@retomarlabs.com</a></p>
 <p><strong>Localização:</strong> Michigan, EUA</p>

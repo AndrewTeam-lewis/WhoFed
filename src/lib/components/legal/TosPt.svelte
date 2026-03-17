@@ -50,4 +50,4 @@
 <p>Estes Termos são regidos pelas leis do Estado de Michigan, EUA. No entanto, para usuários residentes no Brasil, aplicam-se as leis brasileiras de proteção ao consumidor (Código de Defesa do Consumidor), e os litígios poderão ser resolvidos no foro do domicílio do usuário.</p>
 
 <h3>8. Contato</h3>
-<p>Se você tiver dúvidas, preocupações ou desejar exercer seus direitos de privacidade de dados, entre em contato:<br>E-mail: <a href="mailto:andrew@retomar.com">andrew@retomar.com</a></p>
+<p>Se você tiver dúvidas, preocupações ou desejar exercer seus direitos de privacidade de dados, entre em contato:<br>E-mail: <a href="mailto:support@retomarlabs.com">support@retomarlabs.com</a></p>

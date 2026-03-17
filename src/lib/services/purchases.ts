@@ -112,6 +112,78 @@ export const purchasesService = {
         }
     },
 
+    async runDiagnostics(): Promise<string[]> {
+        const lines: string[] = [];
+        const log = (msg: string) => { lines.push(msg); console.log('[RC Diag]', msg); };
+
+        log(`Platform: ${Capacitor.getPlatform()}`);
+        log(`Is native: ${Capacitor.isNativePlatform()}`);
+
+        if (!Capacitor.isNativePlatform()) {
+            log('SKIP: Not a native platform, RevenueCat is inactive.');
+            return lines;
+        }
+
+        // 1. Check Supabase auth
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            log(`Supabase user: ${user ? user.id : 'NOT LOGGED IN'}`);
+        } catch (e: any) {
+            log(`Supabase auth error: ${e.message}`);
+        }
+
+        // 2. Get RevenueCat customer info
+        try {
+            const { customerInfo } = await Purchases.getCustomerInfo();
+            log(`RC App User ID: ${customerInfo.originalAppUserId}`);
+            log(`RC All Entitlements: ${JSON.stringify(Object.keys(customerInfo.entitlements.all))}`);
+            log(`RC Active Entitlements: ${JSON.stringify(Object.keys(customerInfo.entitlements.active))}`);
+
+            // Show details of each entitlement
+            for (const [key, ent] of Object.entries(customerInfo.entitlements.all)) {
+                log(`  Entitlement "${key}": isActive=${(ent as any).isActive}, productId=${(ent as any).productIdentifier}, expires=${(ent as any).expirationDate}`);
+            }
+
+            const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
+            log(`Check active['premium']: ${isPremium}`);
+            if (!isPremium && Object.keys(customerInfo.entitlements.active).length > 0) {
+                log(`WARNING: Active entitlements exist but none named 'premium'. Check RevenueCat dashboard entitlement ID!`);
+            }
+        } catch (e: any) {
+            log(`RC getCustomerInfo failed: ${e.message}`);
+        }
+
+        // 3. Check offerings
+        try {
+            const offerings = await Purchases.getOfferings();
+            if (offerings.current) {
+                log(`Offerings: ${offerings.current.availablePackages.map(p => p.identifier).join(', ')}`);
+            } else {
+                log('Offerings: NONE (no current offering configured)');
+            }
+        } catch (e: any) {
+            log(`RC getOfferings failed: ${e.message}`);
+        }
+
+        // 4. Test DB write
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('tier')
+                    .eq('id', user.id)
+                    .single();
+                log(`DB current tier: ${data?.tier || 'NOT FOUND'}`);
+                if (error) log(`DB read error: ${error.message}`);
+            }
+        } catch (e: any) {
+            log(`DB test failed: ${e.message}`);
+        }
+
+        return lines;
+    },
+
     async handleCustomerInfo(info: CustomerInfo) {
         // ENTITLEMENT ID: 'premium' (This must match what you create in RevenueCat Dashboard)
         const isPremium = info.entitlements.active['premium'] !== undefined;

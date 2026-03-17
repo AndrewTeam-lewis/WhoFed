@@ -3,6 +3,7 @@
   import { syncUsersToSupabase } from '$lib/supabase';
   import { db } from '$lib/db';
   import { onMount } from 'svelte';
+  import { purchasesService } from '$lib/services/purchases';
 
   let envCheck = {
     url: '',
@@ -14,6 +15,8 @@
   let supabaseUsers: any[] = [];
   let syncLog = '';
   let error = '';
+  let rcDiagLines: string[] = [];
+  let rcDiagRunning = false;
 
   onMount(async () => {
     // Check env vars
@@ -144,6 +147,22 @@
     
     {#if syncLog}
       <pre class="bg-gray-800 text-green-400 p-4 rounded text-sm">{syncLog}</pre>
+    {/if}
+  </div>
+
+  <div class="bg-purple-50 border border-purple-200 p-4 rounded">
+    <h2 class="text-xl font-semibold mb-2">RevenueCat Diagnostics</h2>
+    <p class="text-sm text-gray-500 mb-3">Checks RevenueCat init, entitlements, offerings, and DB sync status. Run this on the Android device to diagnose premium issues.</p>
+    <button
+      onclick={async () => { rcDiagRunning = true; rcDiagLines = await purchasesService.runDiagnostics(); rcDiagRunning = false; }}
+      class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:opacity-50"
+      disabled={rcDiagRunning}
+    >
+      {rcDiagRunning ? 'Running...' : 'Run RevenueCat Diagnostics'}
+    </button>
+
+    {#if rcDiagLines.length > 0}
+      <pre class="bg-gray-800 text-green-400 p-4 rounded text-sm mt-3 whitespace-pre-wrap">{rcDiagLines.join('\n')}</pre>
     {/if}
   </div>
 

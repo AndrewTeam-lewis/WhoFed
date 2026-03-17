@@ -51,5 +51,5 @@
 
 <h3>9. Contact Us</h3>
 <p>If you have any questions about this Privacy Policy or wish to exercise your data rights, please contact us:</p>
-<p><strong>WhoFed Support Email:</strong> <a href="mailto:andrew@retomar.com">andrew@retomar.com</a></p>
+<p><strong>WhoFed Support Email:</strong> <a href="mailto:support@retomarlabs.com">support@retomarlabs.com</a></p>
 <p><strong>Location:</strong> Michigan, USA</p>

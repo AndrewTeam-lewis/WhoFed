@@ -48,4 +48,4 @@
 <p>These Terms are governed by and construed in accordance with the laws of the State of Michigan, without regard to its conflict of law principles. Any disputes shall be resolved in the courts located in Michigan.</p>
 
 <h3>8. Contact Us</h3>
-<p>If you have questions, concerns, or wish to exercise your data privacy rights, please reach out to: <br>Email: <a href="mailto:andrew@retomar.com">andrew@retomar.com</a></p>
+<p>If you have questions, concerns, or wish to exercise your data privacy rights, please reach out to: <br>Email: <a href="mailto:support@retomarlabs.com">support@retomarlabs.com</a></p>
