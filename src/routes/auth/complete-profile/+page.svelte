@@ -34,11 +34,7 @@
       redirectTo = decodeURIComponent(redirectParam);
     }
 
-    const metadata = session.user.user_metadata;
-    if (metadata) {
-      // Check for first_name (from email/password registration) or given_name (from OAuth)
-      formData.firstName = metadata.first_name || metadata.full_name?.split(' ')[0] || metadata.given_name || '';
-    }
+    // Don't pre-fill — the display name can be anything the user wants
   });
 
 

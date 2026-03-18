@@ -120,7 +120,7 @@ export default {
         privacy_policy: 'Política de Privacidade',
         terms_of_service: 'Termos de Serviço',
         version: 'Versão',
-        personal_identity: 'Identidade Pessoal',
+        personal_identity: 'Perfil',
         primary_email: 'Email Principal',
         no_email_set: 'Nenhum email definido',
         password: 'Senha',

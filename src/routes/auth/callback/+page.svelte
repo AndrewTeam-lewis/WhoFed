@@ -28,11 +28,11 @@
         // Check if profile exists
         const profile = await authService.getProfile(session.user.id);
 
-        if (profile) {
-          // Profile exists - honor pending redirect (e.g., /join page) or go to /app
+        if (profile && profile.first_name) {
+          // Profile exists with name set - honor pending redirect (e.g., /join page) or go to /app
           goto(pendingRedirect ? decodeURIComponent(pendingRedirect) : '/app');
         } else {
-          // No profile, need to complete profile
+          // No profile or missing first_name, need to complete profile
           // Pass pending redirect so complete-profile can forward after setup
           const completeProfileUrl = pendingRedirect
             ? `/auth/complete-profile?redirectTo=${encodeURIComponent(pendingRedirect)}`
