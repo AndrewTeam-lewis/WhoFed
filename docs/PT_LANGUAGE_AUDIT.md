@@ -12,7 +12,7 @@ This document catalogs every place in the WhoFed codebase where Portuguese trans
 |------|--------|
 | i18n key files (`en.ts` / `pt.ts`) | Complete — all 284 keys match, all placeholders consistent |
 | Push notification templates (Postgres) | Complete — `notification_templates` table has EN + PT |
-| Invite email (edge function) | English only |
+| Invite email (edge function) | Complete — bilingual i18n dictionary |
 | Forgot Password email (Supabase Auth) | Complete — dual-language template applied |
 | Client-side components | Mixed — many hardcoded English strings |
 
@@ -20,41 +20,17 @@ This document catalogs every place in the WhoFed codebase where Portuguese trans
 
 ## Tier 1: User-Facing Emails & Notifications
 
-### 1.1 Invite Email — `supabase/functions/send-invite-email/index.ts`
+### ~~1.1 Invite Email — `supabase/functions/send-invite-email/index.ts`~~
 
-**Status**: English only. No `language` parameter accepted.
-
-| Line | String |
-|------|--------|
-| 30 | Subject: `"{inviter_name} invited you to {household_name} on WhoFed"` |
-| 34 | Button: `"Create Account & Join"` (new user) |
-| 36 | Button: `"Accept Invitation"` (existing user) |
-| 45 | Subtitle: `"Pet Care Coordination"` |
-| 50 | Heading: `"You've Been Invited!"` |
-| 53 | Body: `"Create your account to get started!"` / `"Accept your invitation to start coordinating pet care together!"` |
-| 65 | Fallback: `"Button not working?"` |
-| 66 | Fallback: `"Copy and paste this link into your browser:"` |
-| 71 | Tip: `"Accept this invitation in the mobile app to get push notifications..."` |
-| 77 | Disclaimer: `"If you weren't expecting this invitation, you can safely ignore this email."` |
-| 84 | Footer: `"© 2025 WhoFed. All rights reserved."` |
-| 91 | Plain text version (same strings) |
-
-**Fix**: Add `language` param from client, use inline i18n dictionary (like `send-push` does).
+**Status**: Complete — accepts `language` param from client, uses inline i18n dictionary for all strings (EN + PT).
 
 ### 1.2 Forgot Password Email — Supabase Dashboard
 
 **Status**: Complete — Dual-language template (EN + PT) applied in Supabase Dashboard → Authentication → Email Templates → Reset Password.
 
-### 1.3 FCM Fallbacks — `supabase/functions/send-push/index.ts`
+### ~~1.3 FCM Fallbacks — `supabase/functions/send-push/index.ts`~~
 
-**Status**: The i18n dictionary (lines 19-42) is bilingual, but `sendFCM()` has English-only fallbacks.
-
-| Line | String |
-|------|--------|
-| 255 | Fallback title: `"WhoFed Reminder"` |
-| 256 | Fallback body: `"Time to feed the pets!"` |
-
-**Fix**: These should rarely trigger (title/body are always built upstream), but could pass language through to make them safe.
+**Status**: Complete — `sendFCM()` now accepts `language` param and uses localized fallbacks (EN + PT).
 
 ---
 

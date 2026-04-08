@@ -137,6 +137,8 @@ export default {
         premium_badge: 'Premium',
         log_out: 'Log Out',
         support: 'Support',
+        send_feedback: 'Send Feedback',
+        send_feedback_desc: 'Help us improve WhoFed',
 
         // Error messages
         error_subscription: 'Error opening subscription management',

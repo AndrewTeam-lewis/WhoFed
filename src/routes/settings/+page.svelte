@@ -1516,6 +1516,28 @@
        </div>
        {/if}
 
+       <!-- Beta Feedback -->
+       <div class="space-y-2">
+          <section class="bg-white rounded-2xl overflow-hidden shadow-sm">
+              <a href="https://docs.google.com/forms/d/e/1FAIpQLSchiZPImwtSWag4wjzWcO7aKWxf3RBSwJL7DYDUjqYiQ7dgyA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left">
+                  <div class="flex items-center space-x-3 text-gray-700">
+                      <div class="p-2 bg-brand-sage/10 text-brand-sage rounded-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                          </svg>
+                      </div>
+                      <div class="flex flex-col">
+                          <span class="text-sm font-medium text-gray-900">{$t.settings.send_feedback || 'Send Feedback'}</span>
+                          <span class="text-xs text-gray-500">{$t.settings.send_feedback_desc || 'Help us improve WhoFed'}</span>
+                      </div>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+              </a>
+          </section>
+       </div>
+
    </main>
   
   <!-- Edit Pet Modal -->

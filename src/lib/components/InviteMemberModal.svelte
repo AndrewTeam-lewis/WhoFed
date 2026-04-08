@@ -3,7 +3,8 @@
     import { supabase } from '$lib/supabase';
     import { currentUser } from '$lib/stores/user';
     import QRCode from 'qrcode';
-    import { t } from '$lib/services/i18n';
+    import { t, currentLanguage } from '$lib/services/i18n';
+    import { get } from 'svelte/store';
     import { APP_URL } from '$lib/config';
 
     export let householdId: string;
@@ -223,7 +224,8 @@
                             inviter_name: senderName,
                             household_name: result.household_name,
                             is_new_user: true,
-                            invite_key: result.invite_key
+                            invite_key: result.invite_key,
+                            language: get(currentLanguage)
                         };
                         console.log('[INVITE DEBUG] Sending email with payload:', emailPayload);
 
@@ -295,7 +297,8 @@
                                                                 inviter_name: senderName,
                                                                 household_name: household?.name,
                                                                 is_new_user: false,
-                                                                invite_key: keyData.key_value
+                                                                invite_key: keyData.key_value,
+                                                                language: get(currentLanguage)
                                                             }
                                                         }).then(({ error }) => {
                                                             if (error) console.error('Failed to send invite email:', error);

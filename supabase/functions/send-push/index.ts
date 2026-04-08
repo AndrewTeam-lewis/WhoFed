@@ -130,7 +130,7 @@ serve(async (req) => {
         if (sub.type === 'android' && sub.token) {
             console.log(`Sending Native FCM to user ${user_id}`);
             try {
-                await sendFCM(sub.token, finalTitle, finalBody, url);
+                await sendFCM(sub.token, finalTitle, finalBody, url, language);
             } catch (fcmError: any) {
                 // If token is stale (UNREGISTERED), clear it from the database
                 if (fcmError.message?.includes('UNREGISTERED') || fcmError.message?.includes('NotRegistered')) {
@@ -234,7 +234,10 @@ async function getAccessToken(serviceAccount: any) {
     return json.access_token;
 }
 
-async function sendFCM(token: string, title: string, body: string, url: string) {
+async function sendFCM(token: string, title: string, body: string, url: string, language?: string) {
+    const lang = language === 'pt' ? 'pt' : 'en';
+    const fallbackTitle = lang === 'pt' ? 'Lembrete WhoFed' : 'WhoFed Reminder';
+    const fallbackBody = lang === 'pt' ? 'Hora de alimentar os pets!' : 'Time to feed the pets!';
     const serviceAccountStr = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
     if (!serviceAccountStr) {
         console.error("Missing FIREBASE_SERVICE_ACCOUNT env var");
@@ -252,8 +255,8 @@ async function sendFCM(token: string, title: string, body: string, url: string) 
         message: {
             token: token,
             notification: {
-                title: title || 'WhoFed Reminder',
-                body: body || 'Time to feed the pets!',
+                title: title || fallbackTitle,
+                body: body || fallbackBody,
             },
             data: {
                 url: url || '/'

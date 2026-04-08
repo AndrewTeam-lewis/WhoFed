@@ -12,11 +12,50 @@ serve(async (req) => {
   }
 
   try {
-    const { email, inviter_name, household_name, is_new_user, invite_key } = await req.json();
+    const { email, inviter_name, household_name, is_new_user, invite_key, language } = await req.json();
 
     if (!email || !inviter_name || !invite_key) {
       throw new Error('Missing required parameters: email, inviter_name, invite_key');
     }
+
+    const lang = language === 'pt' ? 'pt' : 'en';
+    const i18n = {
+      en: {
+        subtitle: 'Pet Care Coordination',
+        heading: "You've Been Invited!",
+        body_new_user: 'Create your account to get started!',
+        body_existing_user: 'Accept your invitation to start coordinating pet care together!',
+        button_new_user: 'Create Account & Join',
+        button_existing_user: 'Accept Invitation',
+        button_not_working: 'Button not working?',
+        copy_link: 'Copy and paste this link into your browser:',
+        tip: 'Accept this invitation in the mobile app to get push notifications when it\'s time to feed or care for your pets!',
+        disclaimer: 'If you weren\'t expecting this invitation, you can safely ignore this email.',
+        subject_invited: 'invited you to',
+        subject_fallback: 'their household',
+        subject_suffix: 'on WhoFed',
+        tip_label: 'Tip:',
+        plain_text_tip: 'Tip: Accept in the app to get push notifications!',
+      },
+      pt: {
+        subtitle: 'Coordenação de Cuidados com Pets',
+        heading: 'Você Foi Convidado!',
+        body_new_user: 'Crie sua conta para começar!',
+        body_existing_user: 'Aceite seu convite para começar a coordenar os cuidados com os pets!',
+        button_new_user: 'Criar Conta e Entrar',
+        button_existing_user: 'Aceitar Convite',
+        button_not_working: 'Botão não funciona?',
+        copy_link: 'Copie e cole este link no seu navegador:',
+        tip: 'Aceite este convite no aplicativo para receber notificações quando for hora de alimentar ou cuidar dos seus pets!',
+        disclaimer: 'Se você não esperava este convite, pode ignorar este e-mail com segurança.',
+        subject_invited: 'convidou você para',
+        subject_fallback: 'o lar dele(a)',
+        subject_suffix: 'no WhoFed',
+        tip_label: 'Dica:',
+        plain_text_tip: 'Dica: Aceite no aplicativo para receber notificações!',
+      }
+    };
+    const dict = i18n[lang];
 
     const appUrl = 'https://whofed.me';
 
@@ -27,13 +66,13 @@ serve(async (req) => {
     }
 
     // Build email content (works for both new and existing users)
-    const subject = `${inviter_name} invited you to ${household_name || 'their household'} on WhoFed`;
+    const subject = `${inviter_name} ${dict.subject_invited} ${household_name || dict.subject_fallback} ${dict.subject_suffix}`;
     // Include email in URL for new users so registration form can pre-fill it
     const webLink = `${appUrl}/join/?k=${invite_key}&email=${encodeURIComponent(email)}`;
 
     const callToAction = is_new_user
-      ? 'Create Account & Join'
-      : 'Accept Invitation';
+      ? dict.button_new_user
+      : dict.button_existing_user;
 
     // Use branded template
     const htmlContent = `
@@ -42,15 +81,15 @@ serve(async (req) => {
   <!-- Header -->
   <div style="background: linear-gradient(135deg, #3ecf8e 0%, #2fb87a 100%); padding: 32px 24px; text-align: center;">
     <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">WhoFed</h1>
-    <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 13px;">Pet Care Coordination</p>
+    <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 13px;">${dict.subtitle}</p>
   </div>
 
   <!-- Content -->
   <div style="padding: 40px 32px;">
-    <h2 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">You've Been Invited!</h2>
+    <h2 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">${dict.heading}</h2>
 
     <p style="margin: 0 0 24px 0; color: #4a5568; font-size: 15px; line-height: 1.5;">
-      <strong>${inviter_name}</strong> invited you to join <strong>${household_name || 'their household'}</strong> on WhoFed. ${is_new_user ? 'Create your account to get started!' : 'Accept your invitation to start coordinating pet care together!'}
+      <strong>${inviter_name}</strong> ${dict.subject_invited} <strong>${household_name || dict.subject_fallback}</strong> ${dict.subject_suffix}. ${is_new_user ? dict.body_new_user : dict.body_existing_user}
     </p>
 
     <!-- Button -->
@@ -62,19 +101,19 @@ serve(async (req) => {
     </div>
 
     <p style="margin: 24px 0; padding: 16px; background-color: #f7fafc; border-left: 3px solid #3ecf8e; color: #4a5568; font-size: 13px; line-height: 1.5;">
-      <strong>Button not working?</strong><br>
-      Copy and paste this link into your browser:<br>
+      <strong>${dict.button_not_working}</strong><br>
+      ${dict.copy_link}<br>
       <span style="color: #3ecf8e; word-break: break-all;">${webLink}</span>
     </p>
 
     <p style="margin: 24px 0; padding: 16px; background-color: #e6f7f1; border-radius: 6px; color: #2f855a; font-size: 14px; line-height: 1.5;">
-      💡 <strong>Tip:</strong> Accept this invitation in the mobile app to get push notifications when it's time to feed or care for your pets!
+      💡 <strong>${dict.tip_label}</strong> ${dict.tip}
     </p>
 
     <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 32px 0;">
 
     <p style="margin: 0 0 16px 0; color: #718096; font-size: 14px; line-height: 1.5;">
-      If you weren't expecting this invitation, you can safely ignore this email.
+      ${dict.disclaimer}
     </p>
   </div>
 
@@ -88,7 +127,7 @@ serve(async (req) => {
 </div>
         `;
 
-    const textContent = `${inviter_name} invited you to join ${household_name || 'their household'} on WhoFed.\n\nAccept the invitation: ${webLink}\n\nTip: Accept in the app to get push notifications!`;
+    const textContent = `${inviter_name} ${dict.subject_invited} ${household_name || dict.subject_fallback} ${dict.subject_suffix}.\n\n${callToAction}: ${webLink}\n\n${dict.plain_text_tip}`;
 
     // Send email via Resend
     const resendResponse = await fetch('https://api.resend.com/emails', {

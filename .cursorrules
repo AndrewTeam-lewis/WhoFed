@@ -9,7 +9,7 @@
    - Do exactly what is asked, and nothing more.
 
 3. **CONFIRMATION BEFORE EXECUTION**
-   - Before writing code for any task that involves more than a one-line fix:
+   - Before writing code for any task:
      - 1. State exactly what you are going to do.
      - 2. **WAIT** for the user to say "Yes" or "Go ahead".
 
@@ -21,4 +21,4 @@
    - This applies to even small fixes.
    - The user relies on this version number to verify they are running the latest code on their devices.
 
-6. Don't run automatic UI testing in your chrome browser. It's not needed.I'll test it myself.
+6. Don't run automatic UI testing in your chrome browser. It's not needed. I'll test it myself.

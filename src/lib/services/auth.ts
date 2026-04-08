@@ -69,6 +69,24 @@ export const authService = {
         return data;
     },
 
+    // Sign in with Apple OAuth
+    async signInWithApple() {
+        const redirectTo = Capacitor.isNativePlatform()
+            ? 'com.whofed.me://apple-auth'
+            : `${window.location.origin}/auth/callback`;
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'apple',
+            options: {
+                redirectTo,
+                skipBrowserRedirect: false // Ensure we redirect
+            }
+        });
+
+        if (error) throw error;
+        return data;
+    },
+
     // Update profile only (for users joining via invite)
     // Note: Profile is auto-created by handle_new_user trigger, so we UPDATE instead of INSERT
     async createProfileOnly(userId: string, profileData: Omit<Profile, 'id'>) {

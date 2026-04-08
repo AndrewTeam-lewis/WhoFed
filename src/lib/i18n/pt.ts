@@ -137,6 +137,8 @@ export default {
         premium_badge: 'Premium',
         log_out: 'Sair',
         support: 'Suporte',
+        send_feedback: 'Enviar Feedback',
+        send_feedback_desc: 'Ajude-nos a melhorar o WhoFed',
 
         // Error messages
         error_subscription: 'Erro ao abrir gerenciamento de assinatura',
