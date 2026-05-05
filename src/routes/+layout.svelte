@@ -7,6 +7,7 @@
   import { Capacitor } from '@capacitor/core';
   import { authService } from '$lib/services/auth';
   import { notificationService } from '$lib/services/notifications';
+  import { Browser } from '@capacitor/browser';
   import { currentUser, currentSession, currentProfile } from '$lib/stores/user';
   import { db } from '$lib/db';
   import { ensureDailyTasks, cleanupOldTasks } from '$lib/services/taskService';
@@ -140,7 +141,7 @@
         console.log('[DEBUG DEEP LINK] App opened with URL:', event.url);
 
         // Check if it's our auth callback scheme
-        if (event.url.includes('google-auth')) {
+        if (event.url.includes('google-auth') || event.url.includes('apple-auth')) {
             // Extract hash
             const hashIndex = event.url.indexOf('#');
             if (hashIndex !== -1) {
@@ -152,6 +153,11 @@
 
                 if (access_token && refresh_token) {
                     console.log('[DEBUG DEEP LINK] Found tokens, setting session...');
+
+                    if (event.url.includes('apple-auth')) {
+                        await Browser.close();
+                    }
+
                     const { error } = await supabase.auth.setSession({
                         access_token,
                         refresh_token
@@ -161,7 +167,6 @@
                         console.error('[DEBUG DEEP LINK] Error setting session:', error);
                     } else {
                         console.log('[DEBUG DEEP LINK] Session set successfully');
-                        // No need to navigate manually, auth listener will pick it up
                         goto('/app');
                     }
                 }

@@ -1,6 +1,7 @@
 import { supabase } from '$lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 export interface RegisterData {
     email: string;
@@ -72,19 +73,18 @@ export const authService = {
     // Sign in with Apple OAuth
     async signInWithApple() {
         if (Capacitor.isNativePlatform()) {
-            const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
-            const result = await SignInWithApple.authorize({
-                clientId: 'com.whofed.me',
-                redirectURI: 'https://whofed.me/auth/callback',
-                scopes: 'email name',
-            });
-
-            const { data, error } = await supabase.auth.signInWithIdToken({
+            const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'apple',
-                token: result.response.identityToken,
+                options: {
+                    redirectTo: 'com.whofed.me://apple-auth',
+                    skipBrowserRedirect: true
+                }
             });
 
             if (error) throw error;
+            if (data.url) {
+                await Browser.open({ url: data.url });
+            }
             return data;
         } else {
             const { data, error } = await supabase.auth.signInWithOAuth({

@@ -59,6 +59,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>whofed</string>
+				<string>com.whofed.me</string>
 			</array>
 		</dict>
 	</array>
