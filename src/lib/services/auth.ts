@@ -1,7 +1,6 @@
 import { supabase } from '$lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
-import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 
 export interface RegisterData {
     email: string;
@@ -73,6 +72,7 @@ export const authService = {
     // Sign in with Apple OAuth
     async signInWithApple() {
         if (Capacitor.isNativePlatform()) {
+            const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
             const result = await SignInWithApple.authorize({
                 clientId: 'com.whofed.me',
                 redirectURI: 'https://whofed.me/auth/callback',
