@@ -1,6 +1,7 @@
 import { supabase } from '$lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
+import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 
 export interface RegisterData {
     email: string;
@@ -71,20 +72,32 @@ export const authService = {
 
     // Sign in with Apple OAuth
     async signInWithApple() {
-        const redirectTo = Capacitor.isNativePlatform()
-            ? 'com.whofed.me://apple-auth'
-            : `${window.location.origin}/auth/callback`;
+        if (Capacitor.isNativePlatform()) {
+            const result = await SignInWithApple.authorize({
+                clientId: 'com.whofed.me',
+                redirectURI: 'https://whofed.me/auth/callback',
+                scopes: 'email name',
+            });
 
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'apple',
-            options: {
-                redirectTo,
-                skipBrowserRedirect: false // Ensure we redirect
-            }
-        });
+            const { data, error } = await supabase.auth.signInWithIdToken({
+                provider: 'apple',
+                token: result.response.identityToken,
+            });
 
-        if (error) throw error;
-        return data;
+            if (error) throw error;
+            return data;
+        } else {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'apple',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                    skipBrowserRedirect: false
+                }
+            });
+
+            if (error) throw error;
+            return data;
+        }
     },
 
     // Update profile only (for users joining via invite)
